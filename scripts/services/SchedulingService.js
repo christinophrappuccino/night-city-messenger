@@ -12,6 +12,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, isFromGM, resolveDisplayName, whisperCardHtml } from '../utils/helpers.js';
 import { adjustWealth } from '../utils/wealth.js';
+import { hasWealth } from '../utils/cpr.js';
 
 /**
  * Everyone a scheduled message goes to, as recipient rows. Several people or a group ride in `recipients` (toActorId is then
@@ -291,7 +292,7 @@ export class SchedulingService {
       ncmNotify.error(`NCM | Could not refund ${amount.toLocaleString()} eb (${reason}). Add it back to the sender's sheet by hand.`, { permanent: true });
       return 0;
     };
-    if (!actor?.system?.wealth || !(actor.isOwner || isGM())) return failed();
+    if (!hasWealth(actor) || !(actor.isOwner || isGM())) return failed();
     try {
       await adjustWealth(actor, amount, `NCM: Refund of ${amount.toLocaleString()} eb, ${reason}`);
       return amount;

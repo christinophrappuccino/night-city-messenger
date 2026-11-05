@@ -36,6 +36,7 @@ import { bypassRowsOf } from '../../../utils/bypassSkills.js';
 import { formatCyberDate, getPlayerCharacters, log } from '../../../utils/helpers.js';
 import { rackFoldMemory, rackFoldState, rackHeadSummary } from './terminalsRack.js';
 import { triesFromLog, partyRowState, lockInWords, fmtCountdown, STATE_ORDER, LOGIN_ACTIONS, CLEAR_ACTION, rowIsForAccount } from '../../../utils/accountStatus.js';
+import { itemTypes } from '../../../utils/cpr.js';
 
 /** Group-by modes: label, header icon, key-of-row. */
 const GROUPS = {
@@ -1388,7 +1389,7 @@ export class TerminalsTab extends BaseTab {
 
   /** A fresh world item, converted, its config opened — the Shards tab's "Blank shard". */
   async onNewBlank() {
-    const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter(t => t !== 'base');
+    const types = itemTypes();
     const type = types.includes('gear') ? 'gear' : (types[0] || 'gear');
     const existing = (game.items?.contents ?? []).filter(i => /^New Terminal/.test(i.name)).length;
     const name = existing ? `New Terminal ${existing + 1}` : 'New Terminal';
@@ -1427,7 +1428,7 @@ export class TerminalsTab extends BaseTab {
       if (error) return ncmNotify.warn(`NCM | ${error}`);
       const ok = await adminConfirm({ title: 'Import Terminals', content: `<p>Create <strong>${terminals.length}</strong> new terminal${terminals.length > 1 ? 's' : ''} from that file? Nothing existing is changed; sessions and lockouts start fresh.</p>` });
       if (!ok) return;
-      const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter(t => t !== 'base');
+      const types = itemTypes();
       const type = types.includes('gear') ? 'gear' : (types[0] || 'gear');
       let created = 0, failed = 0, last = null;
       for (const t of terminals) {

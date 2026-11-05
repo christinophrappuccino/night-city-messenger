@@ -18,6 +18,7 @@ import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { adminDialog, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries, isCarrier } from '../../utils/namePicker.js';
 import { newFilePicker } from '../../utils/compat.js';
+import { iceAttack, iceClass, isBlackIceActor, marketPrice, PRICE_PATH } from '../../utils/cpr.js';
 
 const BOOT_ICON_OPTIONS = [
   { value: 'fas fa-shield-halved', label: 'Shield' },
@@ -1086,15 +1087,11 @@ export class ItemInboxConfig extends BaseApplication {
     const iceSource = iceConfig.source ?? 'default';
 
     // ─── Black ICE actors ───
-    const blackIceActors = (game.actors?.filter(a =>
-      a.type === 'blackIce' || a.type === 'black-ice' ||
-      a.getFlag(MODULE_ID, 'isBlackICE') ||
-      a.name?.toLowerCase().includes('black ice')
-    ) ?? []).map(a => ({
+    const blackIceActors = (game.actors?.filter(isBlackIceActor) ?? []).map(a => ({
       id: a.id, name: a.name, img: a.img,
-      atk: a.system?.stats?.atk ?? 0,
-      damage: a.system?.stats?.atk ? `ATK: ${a.system.stats.atk}` : '',
-      iceClass: a.system?.class || '',
+      atk: iceAttack(a),
+      damage: iceAttack(a) ? `ATK: ${iceAttack(a)}` : '',
+      iceClass: iceClass(a) || '',
       selected: iceConfig.actorId === a.id,
     }));
 
@@ -1299,7 +1296,7 @@ export class ItemInboxConfig extends BaseApplication {
       notifyContact: config.notifyContact ?? false,
 
       // Item (CPR system properties)
-      itemPrice: this.item?.system?.price?.market ?? 100,
+      itemPrice: marketPrice(this.item, 100),
       itemAmount: this.item?.system?.amount ?? 1,
       itemBrand: this.item?.system?.brand || '',
       itemEquippedOwned: (this.item?.system?.equipped || 'owned') === 'owned',
@@ -1485,7 +1482,7 @@ export class ItemInboxConfig extends BaseApplication {
       // Also save CPR system properties directly on the item
       try {
         await this.item.update({
-          'system.price.market': parseInt(val('itemPrice')) || 0,
+          [PRICE_PATH]: parseInt(val('itemPrice')) || 0,
           'system.amount': parseInt(val('itemAmount')) || 1,
           'system.brand': val('itemBrand'),
           'system.equipped': val('itemEquipped', 'owned'),

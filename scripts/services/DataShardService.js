@@ -23,6 +23,7 @@ import { serializeMethods, itemKey } from '../utils/serialize.js';
 import {
   resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor, afterRecon,
 } from '../ui/content/IntegrityModel.js';
+import { iceAttack, iceClass } from '../utils/cpr.js';
 
 export class DataShardService {
 
@@ -1759,13 +1760,13 @@ export class DataShardService {
     if (source === 'actor' && iceConfig.actorId) {
       const iceActor = game.actors?.get(iceConfig.actorId);
       if (iceActor) {
-        const atk = iceActor.system?.stats?.atk ?? 0;
+        const atk = iceAttack(iceActor);
         return {
           name: iceActor.name || 'BLACK ICE',
           img: iceActor.img || null,
           formula: `${atk} + 1d10`,
           atk,
-          class: iceActor.system?.class || null,
+          class: iceClass(iceActor) || null,
           actorId: iceActor.id,
           encryptionType: encType,
         };

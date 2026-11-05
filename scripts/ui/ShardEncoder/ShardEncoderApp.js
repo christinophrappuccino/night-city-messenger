@@ -48,6 +48,7 @@ import {
   LEGIBILITY_RANGES, LEGIBILITY_PRESETS, getLegibility, setLegibility, applyLegibility, effectiveMotion,
 } from '../../utils/legibility.js';
 import { newFilePicker, renderTemplate } from '../../utils/compat.js';
+import { isBlackIceActor, itemTypes, wealthBalance } from '../../utils/cpr.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1342,7 +1343,7 @@ export class ShardEncoderApp extends BaseApplication {
     const { item, tier } = this._blank();
     const cands = this._candidates();
     const buyable = this.cfg.tiers.filter((t) => t.buyable);
-    const wealth = this.actor?.system?.wealth?.value ?? 0;
+    const wealth = wealthBalance(this.actor);
 
     const card = (name, sub, t, on, act, o = {}) => {
       const b = botchFor(t);
@@ -1890,8 +1891,7 @@ export class ShardEncoderApp extends BaseApplication {
         <input id="${id}" type="checkbox" data-enc-in="param" data-f="${esc(p.f)}" ${v ? 'checked' : ''}>${sub}</div>`;
     }
     if (p.type === 'ice') {
-      const ice = (game.actors?.filter((a) => a.type === 'blackIce' || a.type === 'black-ice'
-        || a.getFlag?.(MODULE_ID, 'isBlackICE') || a.name?.toLowerCase().includes('black ice')) ?? []);
+      const ice = (game.actors?.filter(isBlackIceActor) ?? []);
       return `<div class="ncm-enc-f" style="--fw:190px"><label for="${id}">${esc(p.label)}</label>
         <select id="${id}" data-enc-sel="param" data-f="${esc(p.f)}">
           <option value="">the box's own ICE, if it has any</option>
@@ -2240,7 +2240,7 @@ export class ShardEncoderApp extends BaseApplication {
     } else if (!this._needsRoll()) {
       const load = this._eddiesLoad();
       if (load) {
-        const have = this.actor?.system?.wealth?.value ?? 0;
+        const have = wealthBalance(this.actor);
         this._says(`A cred drop is money <b>moved</b>, not made: <b class="v">${load} eb</b> comes out of ${esc(this.actor?.name || 'your')}'s own wealth when you encode it. ${have < load ? '<b style="color:var(--ncm-danger)">More than you have.</b>' : `You have ${have} eb.`}`,
           '<i class="fas fa-coins"></i> taken when it is written, not before');
       } else {
@@ -2248,7 +2248,7 @@ export class ShardEncoderApp extends BaseApplication {
           '<i class="fas fa-check"></i> no check, no risk to the blank');
       }
       this.g('encBar').innerHTML = ''; this.g('encLadder').innerHTML = '';
-      const have = this.actor?.system?.wealth?.value ?? 0;
+      const have = wealthBalance(this.actor);
       this.g('encEff').innerHTML = load
         // For a cred drop the only numbers that matter are the money ones.
         ? `<div><b>Loaded</b><span>${load}</span></div>
@@ -2448,7 +2448,7 @@ export class ShardEncoderApp extends BaseApplication {
     if (!this._canPersist()) return;
     const price = S.srcMode === 'buy' ? (tier.price || 0) : 0;
     const load = this._eddiesLoad();
-    const wealth = this.actor?.system?.wealth?.value ?? 0;
+    const wealth = wealthBalance(this.actor);
     if (price + load > wealth) {
       ncmNotify.warn(load
         ? `NCM | That is ${price + load} eb (${price ? `${price} for the blank plus ` : ''}${load} loaded onto it) and ${this.actor?.name || 'you'} has ${wealth} eb.`
@@ -2840,7 +2840,7 @@ export class ShardEncoderApp extends BaseApplication {
       // is really being written. Re-check first: wealth can have moved since.
       const load = this._eddiesLoad();
       if (load > 0) {
-        const have = this.actor?.system?.wealth?.value ?? 0;
+        const have = wealthBalance(this.actor);
         if (load > have) throw new Error(`${this.actor?.name || 'You'} no longer has ${load} eb to load onto it.`);
         await this._debitWealth(load, `Loaded onto ${S.label || item.name}`);
         debited += load;
@@ -3077,7 +3077,7 @@ export class ShardEncoderApp extends BaseApplication {
       ncmNotify.error(`NCM | You cannot add items to ${this.actor?.name || 'that character'}.`);
       return null;
     }
-    const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter((t) => t !== 'base');
+    const types = itemTypes();
     const type = types.includes('gear') ? 'gear' : (types[0] || 'gear');
     const data = {
       name: this.S.label || `${tier.name} ${T('one')}`,

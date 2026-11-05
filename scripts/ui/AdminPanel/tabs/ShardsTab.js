@@ -35,6 +35,7 @@ import {
 import { adminDialog, adminConfirm } from '../../../utils/adminTheme.js';
 import { showNamePicker, documentEntries } from '../../../utils/namePicker.js';
 import { DocumentOwnershipConfigClass } from '../../../utils/compat.js';
+import { itemTypes } from '../../../utils/cpr.js';
 
 /**
  * The Filter menu, in order. Multi-select (2026-10-28 toolbar tidy): `state` picks
@@ -1365,7 +1366,7 @@ export class ShardsTab extends BaseTab {
   }
 
   async _createBlankShard() {
-    const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter(t => t !== 'base');
+    const types = itemTypes();
     const type = types.includes('gear') ? 'gear' : (types[0] || 'gear');
     const existing = (game.items?.contents ?? []).filter(i => /^New Data Shard/.test(i.name)).length;
     const name = existing ? `New Data Shard ${existing + 1}` : 'New Data Shard';
@@ -1612,7 +1613,7 @@ export class ShardsTab extends BaseTab {
   }
 
   async _importShardRecords(shards) {
-    const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter(t => t !== 'base');
+    const types = itemTypes();
     const fallbackType = types.includes('gear') ? 'gear' : (types[0] || 'gear');
     let created = 0, failed = 0, entryFailed = 0, lastId = null;
     for (const s of shards) {

@@ -10,6 +10,7 @@ import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUN
 import { NON_PERSON_ACTOR_TYPES } from './emailDirectory.js';
 import { resolveShardEditing } from '../ui/content/EncoderModel.js';
 import { identityRole } from './identities.js';
+import { roleItems } from './cpr.js';
 
 /** Month names for the written-out date styles (dateMonthStyle setting). */
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -961,9 +962,9 @@ export function canOperate(actor, override = null, { standalone = false, label =
   const carries = (name) => { const w = String(name).toLowerCase(); return w && owned.some(o => o.includes(w)); };
 
   if (Array.isArray(gate.roles) && gate.roles.length) {
-    const roleItems = (actor.items ?? []).filter(i => i.type === 'role').map(i => String(i.name).toLowerCase());
+    const roleNames = roleItems(actor).map(i => String(i.name).toLowerCase());
     const wants = gate.roles.map(r => String(r).toLowerCase());
-    const hasRole = (w) => roleItems.some(rn => rn.includes(w));
+    const hasRole = (w) => roleNames.some(rn => rn.includes(w));
     const ok = gate.roleLogic === 'all' ? wants.every(hasRole) : wants.some(hasRole);
     checks.push({ label: gate.roles.join(gate.roleLogic === 'all' ? ' + ' : '/'), ok });
   }

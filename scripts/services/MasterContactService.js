@@ -11,6 +11,7 @@ import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
 import { identitiesOf, identitiesOfContact, primaryOf, identityRole, groupKeyOf, entryStandsFor, senderChoices, reparentAliases, planIdentityRepairs } from '../utils/identities.js';
 import { sanitizeKnows, knowsHolder, knowsOf, knownByNpcs, withKnows, ownIds } from '../utils/npcKnows.js';
+import { firstRole } from '../utils/cpr.js';
 
 export class MasterContactService {
 
@@ -609,7 +610,7 @@ export class MasterContactService {
       );
       if (dupe) return { success: true, existing: true, contact: dupe };
 
-      const roleItem = actor.items?.find?.(i => i.type === 'role');
+      const roleItem = firstRole(actor);
       const img = actor.img && actor.img !== 'icons/svg/mystery-man.svg' ? actor.img : '';
       const result = await contactRepo.addContact(targetActorId, {
         name: actor.name,

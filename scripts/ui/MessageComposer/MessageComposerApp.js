@@ -30,6 +30,7 @@ import { showNamePicker } from '../../utils/namePicker.js';
 import { DRAFTS_FLAG, newDraftId, readDrafts, pruneDrafts, draftRecipientName, draftLabel, draftKind, draftHasContent, relativeAge } from '../../utils/drafts.js';
 import { buildPreview } from './previewModel.js';
 import { newFilePicker } from '../../utils/compat.js';
+import { wealthBalance } from '../../utils/cpr.js';
 
 /** A name's category hue — defined by the admin presets, else the act colour. */
 const hueVar = (name) => `var(--ncm-hue-${tagHueIndex(name) || 1}, var(--ncm-secondary))`;
@@ -3005,7 +3006,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const isGM = game.user.isGM;
 
     // CPR system: confirmed path is system.wealth.value + system.wealth.transactions
-    const currentEddies = actor?.system?.wealth?.value ?? 0;
+    const currentEddies = wealthBalance(actor);
 
     const balanceText = isGM
       ? `GM Mode — no balance restriction${currentEddies > 0 ? ` (actor has ${currentEddies.toLocaleString()} eb)` : ''}`
@@ -3559,7 +3560,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       return false;
     }
 
-    const currentWealth = actor.system?.wealth?.value ?? 0;
+    const currentWealth = wealthBalance(actor);
     const isGM = game.user.isGM;
 
     // GM bypasses balance check (can send from NPC accounts with 0 balance)

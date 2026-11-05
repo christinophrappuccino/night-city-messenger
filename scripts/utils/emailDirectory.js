@@ -23,7 +23,9 @@
 import { parseCsv, toCsv } from './csv.js';
 
 /** Actor types that are never a person with an address (helpers.getPlayerCharacters' list). */
-export const NON_PERSON_ACTOR_TYPES = new Set(['blackIce', 'black-ice', 'demon', 'container']);
+// The list lives in utils/cpr.js (the Cyberpunk RED data adapter); re-exported here for existing callers.
+import { NON_PERSON_ACTOR_TYPES } from './cpr.js';
+export { NON_PERSON_ACTOR_TYPES };
 
 /** Export column order. `kind` is 'actor' | 'contact'. */
 export const DIRECTORY_COLUMNS = ['name', 'email', 'kind', 'actorId', 'contactId'];

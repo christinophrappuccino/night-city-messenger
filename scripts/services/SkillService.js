@@ -14,6 +14,7 @@ import { playRollReveal } from '../ui/content/RollReveal.js';
 import { askRoll } from '../ui/content/RollPanel.js';
 import { beatsDV } from '../utils/rolls.js';
 import { renderTemplate } from '../utils/compat.js';
+import { luckOf, roleItems } from '../utils/cpr.js';
 
 export class SkillService {
 
@@ -175,7 +176,7 @@ export class SkillService {
    */
   getMaxLuck(actor) {
     try {
-      return actor.system?.stats?.luck?.max ?? actor.system?.stats?.luck?.value ?? 0;
+      return luckOf(actor).max;
     } catch { return 0; }
   }
 
@@ -309,7 +310,7 @@ export class SkillService {
    */
   _readRoleAbility(actor, abilityName) {
     const target = this._normSkill(abilityName);
-    const roles = (actor.items ?? []).filter(i => i.type === 'role');
+    const roles = roleItems(actor);
 
     for (const role of roles) {
       const sys = role.system ?? {};
@@ -420,7 +421,7 @@ export class SkillService {
   /** @private */
   _getAvailableLuck(actor) {
     try {
-      return actor.system?.stats?.luck?.value ?? 0;
+      return luckOf(actor).value;
     } catch { return 0; }
   }
 

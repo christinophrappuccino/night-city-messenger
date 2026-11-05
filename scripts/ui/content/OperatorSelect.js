@@ -17,6 +17,7 @@
  */
 
 import { log } from '../../utils/helpers.js';
+import { firstRole } from '../../utils/cpr.js';
 
 /** Minimal HTML escaper. */
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
@@ -25,7 +26,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
 /** The CPR role item is the closest thing to a "job title" on the card. */
 function _roleOf(actor) {
   try {
-    const role = actor.items?.find(i => i.type === 'role');
+    const role = firstRole(actor);
     return role?.name || (actor.type === 'character' ? 'Operator' : 'Unit');
   } catch { return 'Operator'; }
 }

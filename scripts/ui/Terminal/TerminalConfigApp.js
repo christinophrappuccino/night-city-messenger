@@ -25,6 +25,7 @@ import { adminLabelFor, resolveAdminAccess } from '../../utils/terminalAdmin.js'
 import { bypassRowsHtml, wireBypassRows, readBypassRows, bypassFieldsFrom, bypassRowsOf } from '../../utils/bypassSkills.js';
 import { cmvOverrideContext, wireCmvOverride, readCmvOverride } from '../../utils/countermeasureView.js';
 import { newFilePicker } from '../../utils/compat.js';
+import { firstRole } from '../../utils/cpr.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -1203,7 +1204,7 @@ export class TerminalConfigApp extends BaseApplication {
         }
         skills[name] = cache.get(key);
       }
-      const role = actor.items?.find?.((i) => i.type === 'role')?.name || '';
+      const role = firstRole(actor)?.name || '';
       const img = actor.img && !MYSTERY.test(actor.img) ? actor.img : '';
       return { name: actor.name, role, img, skills };
     });

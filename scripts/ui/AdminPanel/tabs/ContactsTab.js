@@ -46,13 +46,14 @@ import {
 } from './contactsModel.js';
 import { buildMapContext, shareWithEveryone, wireContactsMap } from './contactsMap.js';
 import { FilePickerClass } from '../../../utils/compat.js';
+import { NON_PERSON_ACTOR_TYPES, firstRole, isBlackIceActor } from '../../../utils/cpr.js';
 
 const FLAG = MODULE_ID;
 const MYSTERY = 'mystery-man';
 const okImg = (img) => (img && !String(img).includes(MYSTERY) ? img : '');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const NON_PERSON = new Set(['blackIce', 'black-ice', 'demon', 'container']);
-const isIceActor = (a) => a && (a.type === 'blackIce' || a.type === 'black-ice' || a.getFlag?.(FLAG, 'isBlackICE') || /black\s*ice/i.test(a.name || ''));
+const NON_PERSON = NON_PERSON_ACTOR_TYPES;   // utils/cpr.js
+const isIceActor = isBlackIceActor;   // utils/cpr.js
 const SKILLS = ['Interface', 'Electronics/Security Tech', 'Cryptography', 'Basic Tech', 'Library Search'];
 const GROUP_BY = [['role', 'Role'], ['org', 'Organization'], ['trust', 'Trust'], ['folder', 'Folder'], ['none', 'None']];
 
@@ -752,7 +753,7 @@ export class ContactsTab extends BaseTab {
     const groupIds = new Set(group.map((x) => x.id));
     const byEmail = new Map(all.filter((x) => x.email).map((x) => [lc(x.email), x]));
     const roleOf = (actor, mc) => {
-      const item = actor?.items?.find?.((i) => i.type === 'role');
+      const item = firstRole(actor);
       if (item?.name) return `role:${lc(item.name)}`;
       const m = mc || (actor ? all.find((x) => x.actorId === actor.id && x.role) : null);
       return m?.role ? `role:${lc(m.role)}` : '';
@@ -1615,7 +1616,7 @@ export class ContactsTab extends BaseTab {
   startCreateFromActor(actorId, { render = true } = {}) {
     const actor = game.actors?.get(actorId);
     if (!actor) return ncmNotify.warn('NCM | Actor not found.');
-    const roleItem = actor.items?.find?.((i) => i.type === 'role');
+    const roleItem = firstRole(actor);
     this._view = 'directory';
     this._creating = true; this._editing = false;
     this._draft = {

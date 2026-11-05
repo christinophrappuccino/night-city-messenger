@@ -35,6 +35,7 @@ import {
   enrichContactForDisplay,
 } from '../../utils/designHelpers.js';
 import { newFilePicker } from '../../utils/compat.js';
+import { iceAttack, isBlackIceActor } from '../../utils/cpr.js';
 
 export class ContactManagerApp extends BaseApplication {
 
@@ -381,14 +382,10 @@ export class ContactManagerApp extends BaseApplication {
     const iceSource = iceConfig.iceSource || 'default';
 
     const blackIceActors = game.user.isGM
-      ? (game.actors?.filter(a =>
-          a.type === 'blackIce' || a.type === 'black-ice' ||
-          a.getFlag?.(MODULE_ID, 'isBlackICE') ||
-          a.name?.toLowerCase().includes('black ice')
-        ) ?? []).map(a => ({
+      ? (game.actors?.filter(isBlackIceActor) ?? []).map(a => ({
           id: a.id, name: a.name, img: a.img,
-          atk: a.system?.stats?.atk ?? 0,
-          damage: a.system?.stats?.atk ? `ATK ${a.system.stats.atk}` : (a.system?.damage || ''),
+          atk: iceAttack(a),
+          damage: iceAttack(a) ? `ATK ${iceAttack(a)}` : (a.system?.damage || ''),
           selected: iceConfig.iceActorId === a.id,
         }))
       : [];

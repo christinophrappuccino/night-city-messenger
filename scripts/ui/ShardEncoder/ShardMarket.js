@@ -20,6 +20,7 @@
 import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, whisperCardHtml } from '../../utils/helpers.js';
+import { PRICE_PATH } from '../../utils/cpr.js';
 import { awaitGmResult } from '../../utils/gmRequest.js';
 import { suggestedPrice } from '../content/EncoderModel.js';
 import { shardTerm as T } from '../../utils/shardTerm.js';
@@ -31,7 +32,7 @@ export async function applyShardPrice(item, price) {
   if (!item || !isGM()) return false;
   const eb = Math.max(0, Math.round(Number(price) || 0));
   try {
-    await item.update({ 'system.price.market': eb });
+    await item.update({ [PRICE_PATH]: eb });
     await item.setFlag(MODULE_ID, 'playerPriced', { at: new Date().toISOString(), price: eb });
     return true;
   } catch (err) {

@@ -11,6 +11,7 @@ import {
   sanitizeCmvConfig, sanitizeCmvOverride, resolveCountermeasures, expertHasRule, expertGate,
   recallScan, effectiveMode, CMV_VISIBILITY, CMV_DV,
 } from './countermeasures.js';
+import { roleItems } from './cpr.js';
 
 /** The world config, sanitized. */
 export function getCmvConfig() {
@@ -27,7 +28,7 @@ export function isCmvExpert(actor, cfg = getCmvConfig()) {
 
 /** A short "why you know" label: the first role the actor carries that the rule names, else "expert". */
 function expertLabelFor(actor, cfg) {
-  const roles = (actor?.items ?? []).filter((i) => i.type === 'role').map((i) => String(i.name));
+  const roles = roleItems(actor).map((i) => String(i.name));
   const hit = roles.find((r) => cfg.expert.roles.some((w) => r.toLowerCase().includes(String(w).toLowerCase())));
   return hit || 'expert';
 }

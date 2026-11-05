@@ -33,6 +33,7 @@ import {
   spikeRange, brushRange, stamp, clock, kindIcon, kindName, KIND_LIST, SEV_LIST, SEV_HEAT,
   RESULTS, TRACE_MODES, SORTS, ZOOMS,
 } from './securityModel.js';
+import { blackIceActors } from '../../../utils/cpr.js';
 
 /** The Security sub-tabs (2026-10-27 redesign — dev/mockups/admin-security-redesign-mock.html). */
 const VIEWS = [
@@ -1059,7 +1060,7 @@ export class SecurityTab extends BaseTab {
     const { objectId, actorId, objectName, actorName } = target?.dataset || {};
     const MOD = 'night-city-messenger';
     const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
-    const iceActors = (game.actors ?? []).filter(a => a.type === 'blackIce' || a.type === 'black-ice' || a.getFlag?.(MOD, 'isBlackICE') || /black\s*ice/i.test(a.name || ''));
+    const iceActors = blackIceActors();
     const iceOpts = iceActors.length ? iceActors.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('') : '<option value="">— no Black ICE actors in world —</option>';
     const scope = this._lockoutScope(objectId);
     const lockRow = scope.targets.length

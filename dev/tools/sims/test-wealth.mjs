@@ -105,7 +105,7 @@ has('scripts/ui/MessageComposer/MessageComposerApp.js', /adjustWealth\(actor, -a
 has('scripts/ui/MessageComposer/MessageComposerApp.js', /if \(!isGM && amount > currentWealth\)/, 'a player still cannot send more than they have');
 has('scripts/ui/MessageViewer/MessageViewerApp.js', /if \(actor\.isOwner \|\| game\.user\.isGM\) \{\n\s*await adjustWealth\(actor, amount, `NCM: Received/, 'Claim still credits only an owned character (or as GM)');
 has('scripts/services/DataShardService.js', /adjustWealth\(actor, -amount, `NCM: Claim of .* could not be recorded — reversed`\)/, 'an unrecorded shard claim is still reversed');
-has('scripts/services/SchedulingService.js', /if \(!actor\?\.system\?\.wealth \|\| !\(actor\.isOwner \|\| isGM\(\)\)\) return failed\(\);/, 'a scheduled refund still checks the character before paying');
+has('scripts/services/SchedulingService.js', /if \(!(?:actor\?\.system\?\.wealth|hasWealth\(actor\)) \|\| !\(actor\.isOwner \|\| isGM\(\)\)\) return failed\(\);/, 'a scheduled refund still checks the character before paying (utils/cpr.js hasWealth since step 10b)');
 has('scripts/ui/ShardEncoder/ShardEncoderApp.js', /if \(!actor\) throw new Error\('No operator to pay for it\.'\);\n\s*await adjustWealth\(actor, -amount, reason\);/, 'the Encoder still throws with no operator, and pays with no floor');
 for (const f of ['scripts/ui/content/SiphonFlow.js', 'scripts/ui/Terminal/TerminalViewerApp.js'])
   has(f, /if \(actor\.isOwner \|\| isGM\(\)\) await adjustWealth\(actor, amount, reason\);/, 'credits only an owned character (or as GM)');

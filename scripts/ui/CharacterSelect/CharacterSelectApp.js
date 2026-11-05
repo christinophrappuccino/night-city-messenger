@@ -13,6 +13,7 @@ import { MODULE_ID } from '../../utils/constants.js';
 import { log, isGM, isHiddenCharacter } from '../../utils/helpers.js';
 import { MessageRepository } from '../../data/MessageRepository.js';
 import { gmInboxRoster } from '../../utils/inboxRoster.js';
+import { roleItems, roleRank } from '../../utils/cpr.js';
 
 const CONNECT_STEP_DELAY_MS = 400;
 const SUCCESS_HOLD_MS = 1000;
@@ -128,11 +129,11 @@ export class CharacterSelectApp extends BaseApplication {
         || null;
 
       // ── Resolve roles from actor items (CPR stores roles as items) ──
-      const roleItems = actor.items.filter(i => i.type === 'role');
+      const roles = roleItems(actor);
       let roleLabel = 'Unknown Role';
-      if (roleItems.length > 0) {
-        const roleParts = roleItems.map(r => {
-          const rank = r.system?.rank ?? r.system?.value ?? 0;
+      if (roles.length > 0) {
+        const roleParts = roles.map(r => {
+          const rank = roleRank(r);
           return `${r.name} ${rank}`;
         });
         roleLabel = roleParts.join(' / ');

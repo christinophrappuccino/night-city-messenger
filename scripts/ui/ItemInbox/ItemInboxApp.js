@@ -23,6 +23,7 @@ import { playBootVideo } from '../content/BootVideo.js';
 import { applyCrt, resolveCrt, capCrt, playerCrtCap } from '../../utils/crt.js';
 import { shardTerm as T } from '../../utils/shardTerm.js';
 import { cmvForViewer } from '../../utils/countermeasureView.js';
+import { marketPrice } from '../../utils/cpr.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -574,7 +575,7 @@ export class ItemInboxApp extends BaseApplication {
       // Chip info drawer
       chipDrawerOpen: this._chipDrawerOpen,
       chipInfo: {
-        price: this.item?.system?.price?.market ?? 0,
+        price: marketPrice(this.item, 0),
         amount: this.item?.system?.amount ?? 1,
         brand: this.item?.system?.brand || '',
         equipped: this.item?.system?.equipped || 'owned',

@@ -15,6 +15,7 @@ import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
 import { log, isPersonActor } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { firstRole } from '../../utils/cpr.js';
 
 export class ActorImportPickerApp extends BaseApplication {
 
@@ -61,7 +62,7 @@ export class ActorImportPickerApp extends BaseApplication {
       .filter(a => !a.hasPlayerOwner && isPersonActor(a) && !linkedActorIds.has(a.id))
       .map(a => {
         // CPR roles are actor items (type 'role'), not actor.system.role.
-        const roleItem = a.items?.find(i => i.type === 'role');
+        const roleItem = firstRole(a);
         const roleLabel = (roleItem?.name || '').toUpperCase();
         const hasImg = !!a.img && !a.img.includes('mystery-man');
         return {

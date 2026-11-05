@@ -26,6 +26,7 @@ import { showNamePicker, worldItemEntries } from '../../../utils/namePicker.js';
 import { themedPrompt, themedConfirm } from '../../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../../utils/dialogBody.js';
 import { newFilePicker } from '../../../utils/compat.js';
+import { roleName as actorRoleName } from '../../../utils/cpr.js';
 
 export const OVERHEARD_FRAMES = ['ovhome', 'ovstage', 'ovrun', 'oveaves'];
 export const NUMBER_FRAMES = ['numbers', 'bulk', 'board', 'requests', 'retired', 'corp', 'shared'];
@@ -66,7 +67,7 @@ const rowOfNum = (p) => ROWS.find((r) => r['Region code'] === p.rc && r['City co
 const needList = () => PEOPLE.filter((p) => !p.lines.some((l) => l.kind !== 'shared'));
 const rowHeld = (r) => peopleOn(r['Region code'], r['City code'], r.Code).length;
 const roleName = (id) => BUILT_IN_ROLES[id]?.label || game.nightcity?.masterContactService?.getCustomRoles?.()?.find?.((r) => r.id === id)?.label || id || '';
-const actorRole = (a) => (a?.items?.contents || a?.items || []).find?.((i) => i.type === 'role')?.name || '';
+const actorRole = (a) => actorRoleName(a);
 const when = (t) => `<span class="ncm-pn-when">${esc(t)}</span>`;
 
 /** The real world, in the shape the screens read. Rebuilt before every render and every action. */

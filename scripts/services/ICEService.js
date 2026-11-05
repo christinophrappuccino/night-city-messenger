@@ -22,6 +22,7 @@
 import { MODULE_ID, EVENTS, ENCRYPTION_TYPES, SOCKET_OPS } from '../utils/constants.js';
 import { log, chatCardTime } from '../utils/helpers.js';
 import { renderTemplate } from '../utils/compat.js';
+import { iceAttack, iceClass, isBlackIceActor } from '../utils/cpr.js';
 
 export class ICEService {
 
@@ -68,13 +69,13 @@ export class ICEService {
     if (source === 'actor' && iceConfig.actorId) {
       const iceActor = game.actors?.get(iceConfig.actorId);
       if (iceActor) {
-        const atk = iceActor.system?.stats?.atk ?? 0;
+        const atk = iceAttack(iceActor);
         return {
           name: iceActor.name || 'BLACK ICE',
           img: iceActor.img || null,
           formula: `${atk} + 1d10`,
           atk,
-          class: iceActor.system?.class || null,
+          class: iceClass(iceActor) || null,
           actorId: iceActor.id,
           encryptionType: encType,
         };
@@ -257,17 +258,14 @@ export class ICEService {
   getAvailableICEActors() {
     const actors = [];
     for (const actor of game.actors) {
-      const isICE = actor.type === 'blackIce'
-        || actor.type === 'black-ice'
-        || actor.getFlag?.('night-city-messenger', 'isBlackICE')
-        || actor.name?.toLowerCase().includes('black ice');
+      const isICE = isBlackIceActor(actor);
       if (isICE) {
         actors.push({
           id: actor.id,
           name: actor.name,
           img: actor.img,
-          atk: actor.system?.stats?.atk ?? 0,
-          class: actor.system?.class || null,
+          atk: iceAttack(actor),
+          class: iceClass(actor) || null,
         });
       }
     }

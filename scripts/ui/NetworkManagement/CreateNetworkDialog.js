@@ -17,6 +17,7 @@ import { MODULE_ID, TEMPLATES, NETWORK_TYPES } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { newFilePicker } from '../../utils/compat.js';
+import { iceAttack, isBlackIceActor } from '../../utils/cpr.js';
 
 // ─── Template Presets ────────────────────────────────────────
 
@@ -235,13 +236,9 @@ export class CreateNetworkDialog extends BaseApplication {
     const isLethalICE = encType === 'BLACK_ICE' || encType === 'RED_ICE';
 
     // Black ICE actors for actor picker
-    const blackIceActors = (game.actors?.filter(a =>
-      a.type === 'blackIce' || a.type === 'black-ice' ||
-      a.getFlag?.(MODULE_ID, 'isBlackICE') ||
-      a.name?.toLowerCase().includes('black ice')
-    ) ?? []).map(a => ({
+    const blackIceActors = (game.actors?.filter(isBlackIceActor) ?? []).map(a => ({
       id: a.id, name: a.name, img: a.img,
-      atk: a.system?.stats?.atk ?? 0,
+      atk: iceAttack(a),
       selected: iceConfig.actorId === a.id,
     }));
 

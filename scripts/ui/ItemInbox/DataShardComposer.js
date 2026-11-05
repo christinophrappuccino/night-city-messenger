@@ -24,6 +24,7 @@ import { RICH_TEXT_PALETTE, cleanHtml, htmlToBlocks, pasteToBlocks, pasteToHtml,
 import { parseCsv } from '../../utils/csv.js';
 import { SHARED_SCOPE, normalizeFolderPath } from '../../utils/terminalFiles.js';
 import { browseFiles, newFilePicker, renderTemplate } from '../../utils/compat.js';
+import { iceAttackOrNull, isBlackIceActor } from '../../utils/cpr.js';
 
 /** Content type pill definitions */
 const TYPE_PILLS = [
@@ -4819,13 +4820,9 @@ export class DataShardComposer extends BaseApplication {
     if (!skills.includes(deploySkill)) skills.unshift(deploySkill);
     // Linked Black ICE — same world-actor filter as shard security
     // (ItemInboxConfig's Black-ICE cards / ICEService actor source).
-    const iceOptions = (game.actors?.filter(a =>
-      a.type === 'blackIce' || a.type === 'black-ice' ||
-      a.getFlag(MODULE_ID, 'isBlackICE') ||
-      a.name?.toLowerCase().includes('black ice')
-    ) ?? []).map(a => ({
+    const iceOptions = (game.actors?.filter(isBlackIceActor) ?? []).map(a => ({
       id: a.id, name: a.name,
-      atkLabel: a.system?.stats?.atk != null ? `ATK ${a.system.stats.atk}` : '',
+      atkLabel: iceAttackOrNull(a) != null ? `ATK ${iceAttackOrNull(a)}` : '',
       selected: cd.iceActorId === a.id,
     }));
     return {

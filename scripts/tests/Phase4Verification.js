@@ -17,6 +17,7 @@
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { getTemplate } from '../utils/compat.js';
+import { itemTypes } from '../utils/cpr.js';
 
 export class Phase4Verification {
 
@@ -86,7 +87,7 @@ export class Phase4Verification {
         // Create a temporary test item
         const testItem = await Item.create({
           name: `_NCM_Test_Shard_${Date.now()}`,
-          type: game.system.documentTypes?.Item?.[0] ?? 'gear',
+          type: itemTypes()[0] ?? 'gear',
         });
 
         try {

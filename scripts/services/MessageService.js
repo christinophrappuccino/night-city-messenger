@@ -16,6 +16,7 @@ import { makeMember, dedupeMembers, othersFor, selfKeys, normalizeEmail } from '
 import { replyIdentity, groupKeyOf, identitiesOf } from '../utils/identities.js';
 import { serialize } from '../utils/serialize.js';
 import { renderTemplate } from '../utils/compat.js';
+import { firstRole, wealthLedger } from '../utils/cpr.js';
 
 export class MessageService {
   constructor() {
@@ -1234,7 +1235,7 @@ export class MessageService {
       if (data.from && mcs.getByEmail?.(data.from)) return null;
 
       // CPR roles are actor items (type 'role'), not actor.system.role.
-      const roleItem = fromActor.items?.find?.(i => i.type === 'role');
+      const roleItem = firstRole(fromActor);
       const img = fromActor.img || '';
       const created = await mcs.addContact({
         name: fromActor.name,
@@ -2219,7 +2220,7 @@ export class MessageService {
 
   /** @private The ledger match behind verifyEddiesPaid. */
   async _verifyEddiesPaid(actor, per, count) {
-    const tx = actor?.system?.wealth?.transactions || [];
+    const tx = wealthLedger(actor);
     const used = new Set(actor?.getFlag?.(MODULE_ID, 'eddiesPaidIdx') || []);
     for (let i = tx.length - 1; i >= 0; i -= 1) {
       if (used.has(i)) continue;

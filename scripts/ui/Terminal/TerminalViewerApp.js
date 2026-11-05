@@ -29,6 +29,7 @@ import { isNodeVerb } from '../content/ProgramModel.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS, EVENTS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, isHiddenCharacter, canOperate, guardSecretInputs, terminalReachRule } from '../../utils/helpers.js';
 import { adjustWealth } from '../../utils/wealth.js';
+import { NON_CARRIER_ITEM_TYPES } from '../../utils/cpr.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { getInitials } from '../../utils/designHelpers.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
@@ -2840,7 +2841,7 @@ export class TerminalViewerApp extends BaseApplication {
    *  not objects) — previously the picker listed EVERY actor item, so a CPR
    *  character's dozens of skill items drowned out (and, past the old 50-item
    *  cap, entirely hid) the real gear. */
-  static NON_CARRIER_TYPES = ['skill', 'role', 'criticalInjury', 'netarch'];
+  static NON_CARRIER_TYPES = [...NON_CARRIER_ITEM_TYPES];   // utils/cpr.js
 
   async _doExfilShard(msg) {
     // Players pick from their OWN inventory; GMs can also target world items.

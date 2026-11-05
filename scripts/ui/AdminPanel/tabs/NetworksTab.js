@@ -52,11 +52,12 @@ import {
   PAINT_DOCK_AT, paintDock,
 } from '../../../utils/scenesAtlas.js';
 import { FilePickerClass, renderTemplate } from '../../../utils/compat.js';
+import { iceAttack, isBlackIceActor } from '../../../utils/cpr.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const typeLabel = (t) => { const s = String(t || 'custom').toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
 const sigTier = (s) => (s >= 80 ? 'good' : s >= 50 ? 'mid' : s >= 25 ? 'low' : 'dead');
-const isIceActor = (a) => a.type === 'blackIce' || a.type === 'black-ice' || a.getFlag?.(MODULE_ID, 'isBlackICE') || a.name?.toLowerCase().includes('black ice');
+const isIceActor = isBlackIceActor;   // utils/cpr.js
 
 /** Log kind chips — value → which entry types it shows. */
 const LOG_KINDS = [
@@ -626,7 +627,7 @@ export class NetworksTab extends BaseTab {
       isNew: this._isNew, step: this._step, presetKey: this._presetKey,
       types: Object.values(NETWORK_TYPES),
       scenes: sortedScenes.map(s => ({ id: s.id, name: s.name, current: s.id === game.scenes?.viewed?.id })),
-      iceActors: (game.actors?.filter?.(isIceActor) ?? []).map(a => ({ id: a.id, name: a.name, atk: a.system?.stats?.atk ?? 0 })),
+      iceActors: (game.actors?.filter?.(isIceActor) ?? []).map(a => ({ id: a.id, name: a.name, atk: iceAttack(a) })),
       groups: [...new Set(nets.map(n => n.group).filter(g => g && g.trim()))].sort(),
       bypassHtml: bypassRowsHtml(d.security, { defaultDV: 9 }),
       recipientPicker,

@@ -49,7 +49,9 @@ import { adminDialog, playerDialog } from './adminTheme.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /** CPR sheet-abstraction item types — never carryable gear, so never offered. */
-export const NON_CARRIER_TYPES = new Set(['skill', 'role', 'criticalInjury', 'netarch']);
+// The list lives in utils/cpr.js (the Cyberpunk RED data adapter); re-exported here under its old name.
+export { NON_CARRIER_ITEM_TYPES as NON_CARRIER_TYPES } from './cpr.js';
+import { NON_CARRIER_ITEM_TYPES as NON_CARRIER_TYPES } from './cpr.js';
 
 /** Whether an Item is something a character can physically carry (the picker's gear filter). */
 export const isCarrier = (item) => !!item && !NON_CARRIER_TYPES.has(item.type);
