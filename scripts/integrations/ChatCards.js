@@ -18,6 +18,7 @@
 import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, resolveOperator } from '../utils/helpers.js';
+import { onRenderChatMessage } from '../utils/compat.js';
 
 const ROW = '.ncm-cc__p';
 const BTN_ACTION = 'ncm-add-contact';
@@ -111,8 +112,9 @@ export async function addContactFromCard(btn) {
 
 /** Register the render hook + the delegated click. Call once per client. */
 export function registerChatCardHooks() {
-  Hooks.on('renderChatMessage', (message, html) => {
-    try { decorateChatCards(html?.[0] ?? html); } catch (err) { log.warn(`ChatCards: decorate failed: ${err.message}`); }
+  // renderChatMessageHTML on v13, renderChatMessage on v12 — an element either way (utils/compat.js)
+  onRenderChatMessage((message, el) => {
+    try { decorateChatCards(el); } catch (err) { log.warn(`ChatCards: decorate failed: ${err.message}`); }
   });
   // Capture-phase at the document: chat HTML cannot carry its own listeners,
   // and Foundry's own chat handlers must not swallow the click first.

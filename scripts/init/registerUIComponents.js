@@ -9,7 +9,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, MODULE_TITLE } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { registerMinimizeControls } from '../utils/windowMinimize.js';
-import { InteractionLayerClass } from '../utils/compat.js';
+import { InteractionLayerClass, addSceneControlGroup } from '../utils/compat.js';
 
 export function registerUIComponents(initializer) {
   // A visible minimize button on every NCM window + the bigger dialogs (scripts/utils/windowMinimize.js).
@@ -88,7 +88,8 @@ export function registerUIComponents(initializer) {
         );
       }
 
-      controls.push({
+      // v12: an array of groups; v13: a record keyed by name with onChange tools (utils/compat.js)
+      addSceneControlGroup(controls, {
         name: MODULE_ID,
         title: MODULE_TITLE,
         icon: 'fas fa-satellite-dish',

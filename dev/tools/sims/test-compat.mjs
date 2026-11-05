@@ -61,6 +61,51 @@ const jq = Object.assign([el], { jquery: '3.7', get(i) { return this[i]; } });
 ok(C.htmlOf(jq) === el, 'htmlOf: a jQuery object gives its element');
 ok(C.htmlOf(null) === null && C.htmlOf(undefined) === null, 'htmlOf: nothing → null');
 
+// ═══ scene controls: v12 array, v13 record (step 10a-2) ═══
+{
+  const fired = [];
+  const group = () => ({ name: 'ncm', title: 'NCM', icon: 'fas fa-x', layer: 'ncmControls', tools: [
+    { name: 'inbox', title: 'Inbox', icon: 'a', button: true, onClick: () => fired.push('inbox') },
+    { name: 'compose', title: 'Compose', icon: 'b', button: true, onClick: () => fired.push('compose') }] });
+  const v12 = [{ name: 'token' }];
+  C.addSceneControlGroup(v12, group());
+  ok(v12.length === 2 && v12[1].name === 'ncm' && Array.isArray(v12[1].tools) && v12[1].layer === 'ncmControls', 'v12: the group is pushed onto the array, unchanged');
+  const v13 = { tokens: { name: 'tokens', order: 0 }, walls: { name: 'walls', order: 1 } };
+  let layerActivated = 0; globalThis.canvas = { ncmControls: { activate: () => { layerActivated++; } } };
+  C.addSceneControlGroup(v13, group());
+  const g = v13.ncm;
+  ok(g && g.order === 2 && g.activeTool === 'inbox' && g.visible === true && !Array.isArray(g.tools), 'v13: the group is a record entry with an order, an active tool and tools keyed by name');
+  ok(g.tools.inbox.order === 0 && g.tools.compose.order === 1 && g.tools.inbox.button === true && typeof g.tools.inbox.onChange === 'function' && !('onClick' in g.tools.inbox), 'v13: tools have order + onChange, no deprecated onClick');
+  // selecting the group: Foundry fires the active tool's onChange with the GROUP's click
+  g.onChange({ target: { closest: () => null } }, true);
+  g.tools.inbox.onChange({ target: { closest: (s) => (s === '[data-tool]' ? null : null) } }, true);
+  ok(fired.length === 0 && layerActivated === 1, 'v13: opening the group fires no button (and activates NCM\'s canvas layer)');
+  const clickOn = (tool) => ({ target: { closest: (s) => (s === '[data-tool]' ? { dataset: { tool } } : null) } });
+  g.tools.compose.onChange(clickOn('compose'), true);
+  ok(fired.join() === 'compose', 'v13: clicking a button runs it');
+  g.tools.inbox.onChange(clickOn('inbox'), false);
+  g.tools.inbox.onChange(clickOn('compose'), true);
+  ok(fired.join() === 'compose', 'v13: a deactivation, or a click on another tool, runs nothing');
+  C.addSceneControlGroup(v13, { name: 'empty', title: 'E', icon: 'x', tools: [] });
+  ok(!('empty' in v13), 'a group with no tools is not added');
+}
+
+// ═══ chat message hook: renderChatMessageHTML on v13, renderChatMessage on v12, an element either way ═══
+{
+  const hooks = [];
+  globalThis.Hooks = { on: (n, f) => { hooks.push([n, f]); return hooks.length; } };
+  const el = { querySelector: () => null, tag: 'div' };
+  const got = [];
+  globalThis.game = { release: { generation: 12 } };
+  C.onRenderChatMessage((m, e) => got.push(e));
+  hooks.at(-1)[1]({ id: 'm' }, Object.assign([el], { jquery: '3' }), {});
+  ok(hooks.at(-1)[0] === 'renderChatMessage' && got.at(-1) === el, 'v12: renderChatMessage, jQuery turned into the element');
+  globalThis.game = { release: { generation: 13 } };
+  C.onRenderChatMessage((m, e) => got.push(e));
+  hooks.at(-1)[1]({ id: 'm' }, el, {});
+  ok(hooks.at(-1)[0] === 'renderChatMessageHTML' && got.at(-1) === el, 'v13: renderChatMessageHTML with the element (the deprecated hook is not registered)');
+}
+
 // ═══ the codebase uses compat ═══
 const r = spawnSync(process.execPath, [`${ROOT}/dev/tools/check-deprecations.mjs`], { encoding: 'utf8' });
 ok(r.status === 0, `check-deprecations passes:\n${(r.stderr || r.stdout).trim().split('\n').slice(0, 6).join('\n')}`);

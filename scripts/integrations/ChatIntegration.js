@@ -8,6 +8,7 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { onRenderChatMessage } from '../utils/compat.js';
 
 export class ChatIntegration {
 
@@ -45,11 +46,11 @@ export class ChatIntegration {
     });
 
     // Style chat messages from this module
-    Hooks.on('renderChatMessage', (message, html) => {
+    // renderChatMessageHTML on v13, renderChatMessage on v12 — an element either way (utils/compat.js)
+    onRenderChatMessage((message, el) => {
       const flags = message.flags?.[MODULE_ID];
-      if (!flags) return;
+      if (!flags || !el) return;
 
-      const el = html[0] || html;
       el.classList.add('ncm-chat-card');
 
       if (flags.type === 'shared-message') {

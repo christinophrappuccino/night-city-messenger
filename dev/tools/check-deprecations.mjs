@@ -55,9 +55,14 @@ const RATCHET = [
   ['v1 Dialog (new Dialog / Dialog.confirm|prompt|wait)', /(?<![\w$.])(?:new\s+Dialog\(|Dialog\.(?:confirm|prompt|wait)\()/g, 9],
   ['jQuery html.find(', /\bhtml\.find\(/g, 110],
   ['jQuery $(', /(?<![\w$.])\$\(/g, 39],
-  ["Hooks on 'renderChatMessage'", /['"]renderChatMessage['"]/g, 2],
-  ["Hooks on 'getSceneControlButtons'", /['"]getSceneControlButtons['"]/g, 1],
 ];
+
+// 3. banned outright since step 10a-2 (handled in compat.js; v13 changed their shape)
+const BANNED = [
+  [/['"]renderChatMessage['"]/g, "the 'renderChatMessage' hook (deprecated in v13, removed in v15) — use compat.onRenderChatMessage"],
+  [/\bcontrols\.push\(/g, 'pushing onto the scene controls (an array on v12, a record on v13) — use compat.addSceneControlGroup'],
+];
+for (const [f, t] of src) for (const [re, why] of BANNED) for (const m of t.matchAll(re)) problems.push(`${f}:${t.slice(0, m.index).split('\n').length} uses ${why}`);
 const counts = [];
 for (const [label, re, max] of RATCHET) {
   const n = src.reduce((s, [, t]) => s + (t.match(re) || []).length, 0);

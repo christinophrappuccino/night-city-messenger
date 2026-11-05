@@ -235,11 +235,10 @@ CSS is a single entry: `styles/night-city-messenger.css` `@import`s every other 
 **Moved Foundry APIs go through `scripts/utils/compat.js`** (stage 2, step 10 — v13 readiness). `renderTemplate` /
 `loadTemplates` / `getTemplate` (import them from compat; bare calls then reach the right one), `FilePickerClass()` /
 `newFilePicker(opts)` / `browseFiles(…)`, `ImagePopoutClass()`, `DocumentOwnershipConfigClass()`,
-`SettingsConfigClass()`, `InteractionLayerClass()`, and `htmlOf(html)` (jQuery or element → element). Each tries the
+`SettingsConfigClass()`, `InteractionLayerClass()`, `htmlOf(html)` (jQuery or element → element), **`onRenderChatMessage(fn)`** (renderChatMessageHTML on v13, renderChatMessage on v12, an element either way) and **`addSceneControlGroup(controls, group)`** (v12 array push; v13 record with `order`, `activeTool` and `onChange` tools — a button fires only when ITS button was clicked, because selecting a v13 group fires its active tool). Each tries the
 v13 namespace first and falls back to the v12 global, so nothing prints a deprecation warning on v13 and v12 keeps
 working. `dev/tools/check-deprecations.mjs` (in run-checks / CI) fails on a direct use outside compat.js, and holds a
-count for what is still to move (v1 `Dialog`, `html.find`, `$(`, the `renderChatMessage` and
-`getSceneControlButtons` hooks) that may only go DOWN. Verified live on v12 (build 343): no namespaced path exists
+count for what is still to move (v1 `Dialog`, `html.find`, `$(`) that may only go DOWN, and bans the old `renderChatMessage` hook and `controls.push(`. Verified live on v12 (build 343): no namespaced path exists
 there yet, every lookup returns the real v12 class.
 
 These have all bitten the project. Don't relearn them:

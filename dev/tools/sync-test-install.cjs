@@ -33,20 +33,34 @@ const SHIP = [...((zipSrc.match(/const SHIP = \[([\s\S]*?)\];/) || [])[1] || '')
 if (SHIP.length < 5) { console.error('sync-test-install: could not read SHIP from build-zip.cjs'); process.exit(1); }
 const SKIP = /(^|[\\/])(LOCK|LOG|LOG\.old)$/;   // LevelDB lock/log files are never copied
 
-let files = 0, bytes = 0;
+// Copy OVER the existing copy, file by file, never delete the folder first: a running world keeps its macro-pack
+// LevelDB files open (EBUSY on Windows), and deleting first left a half-deleted copy when that happened. A locked
+// file is left as it is and reported; files the release no longer ships are removed when they can be.
+let files = 0, bytes = 0; const locked = [], shipped = new Set();
+const busy = (e) => e && (e.code === 'EBUSY' || e.code === 'EPERM' || e.code === 'EACCES');
 const copy = (rel) => {
   const from = path.join(ROOT, rel), to = path.join(TARGET, rel);
   if (!fs.existsSync(from)) { console.warn(`  (missing in the checkout: ${rel})`); return; }
   const st = fs.statSync(from);
   if (st.isDirectory()) { for (const f of fs.readdirSync(from)) copy(path.join(rel, f)); return; }
   if (SKIP.test(rel)) return;
+  shipped.add(path.normalize(rel));
   files++; bytes += st.size;
-  if (!dry) { fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(from, to); }
+  if (dry) return;
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  try { fs.copyFileSync(from, to); } catch (e) { if (busy(e)) locked.push(rel); else throw e; }
 };
-
-if (!dry && fs.existsSync(TARGET)) fs.rmSync(TARGET, { recursive: true, force: true });
 for (const rel of SHIP) copy(rel);
-console.log(`sync-test-install: ${dry ? 'would copy' : 'copied'} ${files} files (${(bytes / 1048576).toFixed(1)} MB) → ${TARGET}`);
+let removed = 0;
+if (!dry && fs.existsSync(TARGET)) {
+  const sweep = (dir) => { for (const f of fs.readdirSync(dir)) { const abs = path.join(dir, f), rel = path.relative(TARGET, abs); const st = fs.statSync(abs);
+    if (st.isDirectory()) { if (rel !== 'packs') sweep(abs); continue; }   // never sweep the packs: a running world's open LevelDB files live there
+    if (path.basename(rel) === 'module.json' && path.dirname(rel) === '.') continue;
+    if (!shipped.has(path.normalize(rel)) && !SKIP.test(rel)) { try { fs.unlinkSync(abs); removed++; } catch (e) { if (!busy(e)) throw e; } } } };
+  sweep(TARGET);
+}
+console.log(`sync-test-install: ${dry ? 'would copy' : 'copied'} ${files} files (${(bytes / 1048576).toFixed(1)} MB) → ${TARGET}${removed ? `; removed ${removed} stale` : ''}`);
+if (locked.length) console.log(`sync-test-install: ${locked.length} file(s) in use by the running world were left as they are (${locked.slice(0, 3).join(', ')}${locked.length > 3 ? ', …' : ''}). Close the world to update them.`);
 
 // --any-system: in THE COPY only, drop module.json's systems relationship so NCM can load in a world of another system
 // (a Foundry version the Cyberpunk RED system doesn't support yet). Tests Foundry-level code; CPR data paths can't run.

@@ -83,6 +83,50 @@ export function InteractionLayerClass() {
   return ns('canvas.layers.InteractionLayer') || (typeof InteractionLayer !== 'undefined' ? InteractionLayer : null);   // eslint-disable-line no-undef
 }
 
+// ─── Hooks whose shape changed ──────────────────────────────────────────────
+/**
+ * Listen to a chat message being drawn, with an HTML ELEMENT on both versions. v13 deprecates `renderChatMessage`
+ * (jQuery; removed in v15) for `renderChatMessageHTML` (element). Registers exactly one of the two.
+ * @param {(message: ChatMessage, el: HTMLElement, data: object) => void} fn
+ * @returns {number} the hook id
+ */
+export function onRenderChatMessage(fn) {
+  if (foundryGeneration() >= 13) return Hooks.on('renderChatMessageHTML', (message, el, data) => fn(message, htmlOf(el), data));
+  return Hooks.on('renderChatMessage', (message, html, data) => fn(message, htmlOf(html), data));
+}
+
+/**
+ * Add one group of buttons to the scene controls (call it from a `getSceneControlButtons` hook).
+ * Written in the v12 shape: `{ name, title, icon, layer, tools: [{ name, title, icon, button: true, onClick }] }`.
+ *   v12 hands the hook an ARRAY of groups; the group is pushed as it is.
+ *   v13 hands it a RECORD keyed by name (Foundry's SceneControls#prepareControls), each tool a record entry with an
+ *   `order` and `onChange(event, active)`; `onClick` is deprecated there (removed in v15). A group is joined to a
+ *   canvas layer by its own `onChange`, not a `layer` field. Selecting a group fires its `activeTool`'s onChange, so
+ *   a BUTTON only acts when the click landed on that button — otherwise opening the group would open the inbox.
+ * @param {object[]|Record<string, object>} controls  what the hook received
+ * @param {{name:string, title:string, icon:string, layer?:string, tools:object[]}} group
+ */
+export function addSceneControlGroup(controls, { name, title, icon, layer, tools = [] }) {
+  if (Array.isArray(controls)) { controls.push({ name, title, icon, layer, tools }); return; }   // v12
+  if (!controls || typeof controls !== 'object' || !tools.length) return;
+  const record = {};
+  tools.forEach((t, i) => {
+    record[t.name] = {
+      name: t.name, title: t.title, icon: t.icon, order: i, button: !!t.button, visible: t.visible !== false,
+      onChange: (event, active) => {
+        if (!t.button) { t.onClick?.(active); return; }
+        if (!active) return;
+        const clicked = event?.target?.closest?.('[data-tool]')?.dataset?.tool;
+        if (clicked === t.name) t.onClick?.();
+      },
+    };
+  });
+  controls[name] = {
+    name, title, icon, order: Object.keys(controls).length, visible: true, tools: record, activeTool: tools[0].name,
+    onChange: (event, active) => { if (active && layer) globalThis.canvas?.[layer]?.activate?.(); },
+  };
+}
+
 // ─── Hook arguments ─────────────────────────────────────────────────────────
 /**
  * The HTML element a hook or dialog callback was given. v12 hands jQuery to v1 apps and dialogs; v13 hands elements.
