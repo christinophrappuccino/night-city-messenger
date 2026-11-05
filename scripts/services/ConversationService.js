@@ -16,6 +16,8 @@ import {
   visibleLines, sortLines, nextStarter, unreadFor, previewOf, titleFor, makeLine, goneLine, waitingOn, notifyPlan, tapLogLine, appendTapLog,
 } from '../utils/conversations.js';
 
+import { serializeMethods } from '../utils/serialize.js';
+
 const FOLDER = 'Conversations';
 const REPLY_MS = 8000;
 
@@ -577,5 +579,10 @@ export class ConversationService {
 
   _dropSent(id, lineId) { if (this.pendingFor(id).some((p) => p.lineId === lineId)) this._setPending(id, lineId, null); }
 }
+
+// One conversation's tap log is written one line at a time (audit INT-05). `_tap` reads the log, appends and writes it
+// back, and it is fired without waiting — two lines close together both found no log page and made two, or one
+// overwrote the other's line.
+serializeMethods(ConversationService.prototype, ['_tap'], (args) => (args[0]?.id ? `convtap:${args[0].id}` : null));
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

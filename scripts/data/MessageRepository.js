@@ -854,9 +854,12 @@ export class MessageRepository {
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
       if (!page) return { success: false, error: 'Message not found' };
 
-      const currentFlags = page.flags?.[MODULE_ID] ?? {};
-      const merged = foundry.utils.mergeObject(currentFlags, flagUpdates, { inplace: false });
-      await page.update({ [`flags.${MODULE_ID}`]: merged });
+      // Only the fields being changed are written (audit INT-10). Writing the whole merged block re-sent every OTHER
+      // field from this client's copy too, so a GM working from a slightly stale copy could put back a player's
+      // just-claimed eddies or just-read flag.
+      const changes = flagChangePaths(flagUpdates, `flags.${MODULE_ID}`);
+      if (!Object.keys(changes).length) return { success: true };
+      await page.update(changes);
       return { success: true };
     } catch (error) {
       console.error(`${MODULE_ID} | MessageRepository.updateMessageFlags:`, error);
@@ -1274,4 +1277,26 @@ export class MessageRepository {
     this._folderCache.clear();
     this._rootFolder = null;
   }
+}
+
+/**
+ * The changed fields of a flag update as dot paths under `prefix` (audit INT-10), so a write touches only them.
+ * Plain objects are walked down to their leaves; arrays, null and other values are written whole (arrays were
+ * always replaced, never merged). An empty object writes nothing, as merging it never did. A `-=key` deletion key
+ * keeps working: it becomes `prefix.path.-=key`. Pure.
+ * @param {object} updates @param {string} prefix e.g. "flags.night-city-messenger"
+ * @returns {Object<string, any>}
+ */
+export function flagChangePaths(updates, prefix) {
+  const out = {};
+  const plain = (v) => v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
+  const walk = (obj, path) => {
+    for (const [k, v] of Object.entries(obj || {})) {
+      const p = `${path}.${k}`;
+      if (plain(v) && !k.startsWith('-=')) walk(v, p);
+      else out[p] = v;
+    }
+  };
+  walk(updates, prefix);
+  return out;
 }

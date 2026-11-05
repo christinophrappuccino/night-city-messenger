@@ -303,6 +303,7 @@ export class DocumentSyncBridge {
    * @private
    */
   static _onJournalPageCreated(page, userId) {
+    // (the rules for which pages toast are in isNewMailPage, below the class)
     const journal = page.parent;
     if (!journal) return;
 
@@ -321,11 +322,18 @@ export class DocumentSyncBridge {
     // Spam-routed mail is delivered silently (player discovers it in Spam).
     if (msgFlags.status?.spam) return;
 
+    // Copies that are not news are silent too (audit INT-07): a page that lands already read (a conversation tap log,
+    // an imported copy), a tap or exfil copy in the Exfil folder (the person who took it knows), and a file.
+    if (!isNewMailPage(msgFlags)) return;
+
     // Only the recipient gets the toast/sound. Mirror the socket path's
     // ownership gate (handleMessageNotification checks actor.isOwner) so a
     // player never sees toasts for NPC inboxes or another player's mail.
     const actor = inbox.isContact ? null : game.actors.get(inbox.ownerId);
     if (!actor?.isOwner) return;
+    // A GM owns every actor, so a SECOND GM was toasted for everyone's mail (INT-07). A GM hears only about their own
+    // assigned character here; the delivering GM's NPC-mail toast comes from MessageService.
+    if (game.user.isGM && game.user.character?.id !== inbox.ownerId) return;
 
     // Stored flags carry no fromName — resolve a display name so the toast
     // doesn't render "Unknown" (matches MESSAGE_RECEIVED payload contract).
@@ -500,4 +508,18 @@ export class DocumentSyncBridge {
       log.debug(`SyncBridge: Signal synced to ${refreshed.signalStrength}% for ${currentId}`);
     }
   }
+}
+
+/**
+ * Is a newly created inbox page NEWS for its owner — something to toast (audit INT-07)? Not when it lands already
+ * read (a conversation tap log, an imported copy), not a tap / exfil copy (`metadata.recovered`: the person who took
+ * it knows), not a file. Pure.
+ * @param {object} flags the page's NCM flag block
+ */
+export function isNewMailPage(flags) {
+  if (!flags) return false;
+  if (flags.status?.read) return false;
+  if (flags.metadata?.recovered) return false;
+  if (flags.envelope === 'file') return false;
+  return true;
 }
