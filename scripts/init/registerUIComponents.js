@@ -11,9 +11,13 @@ import { log, isGM } from '../utils/helpers.js';
 import { registerMinimizeControls } from '../utils/windowMinimize.js';
 import { InteractionLayerClass, addSceneControlGroup } from '../utils/compat.js';
 import { isFeatureOn } from '../utils/features.js';
+import { registerSettingsLayout } from '../ui/settingsLayout.js';
 
 export function registerUIComponents(initializer) {
   // A visible minimize button on every NCM window + the bigger dialogs (scripts/utils/windowMinimize.js).
+  // Module Settings in sections (scripts/ui/settingsLayout.js, stage 2 step 18)
+  initializer.register('init', 22, 'Settings layout', () => registerSettingsLayout());
+
   initializer.register('init', 21, 'Minimize buttons', () => {
     try { registerMinimizeControls(); } catch (err) { log.error(`Minimize buttons failed: ${err.message}`); }
   });

@@ -54,6 +54,11 @@ if (joined !== 'ok') { console.error(`live-smoke: ${joined}`); done(1); }
 for (let i = 0; i < 90; i++) { await sleep(1000); if (await ev('!!(window.game && game.ready && game.nightcity?.startupReport)')) break; }
 await sleep(2000);
 
+// --eval <file>: run that file's expression in the joined world (an async IIFE returning a JSON-able value), print
+// the result and stop — a probe against the real DOM / API, without the rest of the smoke.
+const EVAL = arg('--eval', null);
+if (EVAL) { const out = await ev(fs.readFileSync(EVAL, 'utf8')); console.log(typeof out === 'string' ? out : JSON.stringify(out, null, 2)); done(0); }
+
 const facts = await ev(`(async () => {
   const C = await import('/modules/night-city-messenger/scripts/utils/compat.js');
   const n = (c) => c?.name || null;
@@ -74,6 +79,24 @@ if (UI && facts?.isGM) {
     await step('theme customizer', () => ns.openThemeCustomizer());
     await step('v1 dialog (adminConfirm)', async () => { const { adminConfirm } = await import('/modules/night-city-messenger/scripts/utils/adminTheme.js'); adminConfirm({ title: 'NCM smoke', content: '<p>smoke</p>' }); await sleep(700); for (const w of Object.values(ui.windows)) if (w.title === 'NCM smoke') await w.close(); });
     await step('name picker', async () => { const { showNamePicker } = await import('/modules/night-city-messenger/scripts/utils/namePicker.js'); showNamePicker({ title: 'NCM smoke picker', entries: [{ id: 'a', name: 'A' }] }); await sleep(700); for (const w of Object.values(ui.windows)) if (/NCM smoke picker/.test(w.title)) await w.close(); });
+    // Module Settings in sections (scripts/ui/settingsLayout.js): every NCM row sits under an NCM heading
+    await step('module settings (sections)', async () => {
+      const C = await import('/modules/night-city-messenger/scripts/utils/compat.js');
+      const SC = C.SettingsConfigClass();
+      const app = new SC();
+      await app.render(game.release.generation >= 13 ? { force: true } : true);
+      await sleep(1200);
+      try { app.changeTab?.('night-city-messenger', 'categories'); } catch { /* v12 has no tabs here */ }
+      await sleep(600);
+      const root = app.element instanceof HTMLElement ? app.element : app.element?.[0];   // v13's root is a <form>, and form[0] is its first input
+      const heads = root.querySelectorAll('.ncm-settings-head').length;
+      const rows = [...root.querySelectorAll('[name^="night-city-messenger."]')].map((e) => e.closest('.form-group'));
+      const orphan = rows.filter((r) => { let p = r?.previousElementSibling; while (p && !p.classList.contains('ncm-settings-head')) p = p.previousElementSibling; return !p; }).length;
+      const other = [...root.querySelectorAll('.ncm-settings-head')].some((h) => h.firstChild?.textContent === 'Other');
+      await app.close();
+      if (!heads || !rows.length || orphan) throw new Error('headings ' + heads + ', rows ' + rows.length + ', rows above every heading ' + orphan);
+      if (other) throw new Error('a visible setting is not in SETTINGS_LAYOUT (it fell into "Other")');
+    });
     for (const a of [...foundry.applications.instances.values()]) if (/Admin|Composer|SoundBoard|ThemeCustomizer/.test(a.constructor.name)) await a.close();
     return res;
   })()`);

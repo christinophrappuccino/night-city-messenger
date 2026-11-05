@@ -1,0 +1,22 @@
+/* Module Settings section headings (scripts/ui/settingsLayout.js, stage 2 step 18).
+   This is Foundry's own settings window, not an NCM window: use Foundry's colours, not --ncm-* tokens,
+   so it matches the core and system sections above it on every theme. */
+.ncm-settings-head {
+  margin: 18px 0 6px;
+  padding: 0 0 4px;
+  border-bottom: 1px solid var(--color-border-light-primary, var(--color-border, #7a7971));
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ncm-settings-head:first-of-type { margin-top: 8px; }
+.ncm-settings-head small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.85em;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.75;
+}

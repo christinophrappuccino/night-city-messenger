@@ -16,6 +16,7 @@
 import { log } from '../utils/helpers.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { PUBLIC_EVENTS, passOnce } from './publicEvents.js';
+import { buildApiV2 } from './publicApi.js';
 
 // The events published to other modules, what they carry and which client fires them: publicEvents.js (the contract).
 
@@ -53,7 +54,13 @@ export async function initializeIntegrationBridge() {
   if (mod) {
     mod.api = {
       /** Bump on breaking changes to THIS object's shape (semver). */
-      apiVersion: '1.1.0',   // 1.1.0 (2026-11-05): + publicEvents
+      apiVersion: '1.2.0',   // 1.1.0 (2026-11-05): + publicEvents · 1.2.0: + v2
+      /**
+       * The v2 API (publicApi.js, docs/API.md): plain objects in and out, `{ ok, data }` / `{ ok:false, code, error }`,
+       * the same permission paths as the UI. New code should use this; the v1 fields below hand out service
+       * instances whose methods can change, and stay only for existing integrations.
+       */
+      v2: buildApiV2(),
       /** The events this module publishes as `night-city-messenger.<name>` hooks: name, meaning, firing client, payload fields. */
       publicEvents: PUBLIC_EVENTS,
       /** Macro-level helpers: sendMessage, scheduling, master-contact trio, UI launchers. */

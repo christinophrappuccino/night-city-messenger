@@ -11,6 +11,10 @@ This module is part of a three-module constellation, each fully standalone:
 
 `scripts/integrations/IntegrationBridge.js` (registered at postReady/95) provides:
 
+- **`api.v2` (since apiVersion 1.2.0, 2026-11-05) — the API new code should use. Documented in `docs/API.md`**
+  (`scripts/integrations/publicApi.js`): plain objects in and out, `{ ok, data }` / `{ ok:false, code, error }`, the
+  same permission paths as the UI, no service instances. The v1 fields below stay for existing integrations.
+
 - `game.modules.get("night-city-messenger").api` — `apiVersion`, `messenger`
   (macro helpers), `contacts` (per-actor address books), `masterContacts`
   (GM directory), `groups` (contact groups — see the group hooks below), `portraits`,

@@ -155,7 +155,7 @@ Admin Panel → **Messages** has four views:
 What you can do when you write:
 
 - **Send as anyone.** Pick any contact in the From field, including one of a character's aliases. When players message an NPC, you get a popup, and the mail collects in **Needs a reply** and on the Overview.
-- **Anonymous send.** Turn on **Anonymous Send — Enable** in settings, and the composer gets an option that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.
+- **Anonymous send.** Turn on **Enable Anonymous Send** (Module Settings → Anonymous send), and the composer gets an option that hides who you are. Players see a glitchy masked avatar instead. They can reply without knowing who they're talking to, and if you allow it, they can roll to trace you. Great for mystery employers.
 - **Self-destruct.** Set a message to delete after it's read, or after 1, 6, or 24 hours.
 - **Schedule it.** Write now, deliver later — from any sender to anyone, eddies included. The GM's client delivers it when the time comes, so a GM has to be in the game then.
 - **Send via a network, or backdate it.** Click the network chip to send through another network for this message only; the date chip backdates a message, or schedules it if you pick a time in the future.
@@ -391,7 +391,7 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 
 **Lawman Backup.** Same place. Backup is whoever this Lawman can call, not only the police: a corp's security, a gang, a nomad pack. Pick each Lawman's organization, rename its groups, and set its **Kind**. By default only Police and Government get red and blue lights and a siren. An organization can have a picture, and a group can have its own, which wins.
 
-**You hear about it.** When someone calls Trauma Team or Backup, the table gets one chat card saying who is calling and where (a whispered call stays whispered), and every GM gets a toast and a short tone, even if the dice are whispered. Its button opens Admin → Phone → Live. Turn it off with **GM Alert — Trauma Team and Backup Calls** in Module Settings.
+**You hear about it.** When someone calls Trauma Team or Backup, the table gets one chat card saying who is calling and where (a whispered call stays whispered), and every GM gets a toast and a short tone, even if the dice are whispered. Its button opens Admin → Phone → Live. Turn it off with **Trauma Team and Backup Calls** in Module Settings → GM alerts.
 
 **The team arrives by itself.** Rounds count down with combat, or at about 6 seconds each outside it, and stop while the game is paused. On Live you can **Hold** a team, take a round off, bring them in now, or call them off.
 
@@ -411,7 +411,7 @@ Tip: open **Number setup → How it works** first. It explains the format and ha
 
 ## Part 10 — Conversations
 
-Group chat beside mail. **Turn it on in Module Settings → Conversations.** With it off, nothing about it shows or runs.
+Group chat beside mail. **Turn it on in Module Settings → Systems → Conversations.** With it off, nothing about it shows or runs.
 
 **Mail or a conversation?** A message is something you send, and it carries the subject, eddies, encryption and shards. A conversation is something you are in: plain lines, pictures, and shared contacts or numbers. It stays out of the rest of the module on purpose, so it has no trace, sniffers, terminal copies or last-interaction entries.
 
@@ -447,27 +447,22 @@ Two more things worth knowing: self-destructing messages never destroy when a GM
 
 ## Settings that matter
 
-All in Module Settings unless noted. The important ones:
+All in Module Settings unless noted. NCM's settings are grouped there under headings:
 
-| Setting | What it does |
+| Section | What's in it |
 |---|---|
-| **Time Source** | which clock the module uses |
-| **Require Contact Verification** | players can only message addresses they know |
-| **Smart Conversation Grouping** | groups same-subject mail into threads |
-| **Anonymous Send — Enable** | the masked-sender feature (and its trace options) |
-| **Spam Filter — Unknown Senders** | chance for mail from strangers to land in Spam |
-| **Auto-Register NPC Senders** | an NPC actor you send from gets a directory entry |
-| **Planted Programs — When They Fire** | fire on their own, or ask you first |
-| **Role Ability Rolls (Interface)** | Interface rolls as rank only (the rulebook), or stat + rank |
-| **Watching Other Players** | whether the table can watch a player work a terminal, shard or node |
-| **Exfil Folder Name** | what the players' stolen-files folder is called |
-| **What Players Call a Shard** | Data Shard, Memory Chip, Data Chip, or your own |
-| **Shard Name Prefix** | a tag added to the front of every shard's item name |
-| **GM Alert — Player Mail to NPCs** | popup when players message NPCs |
-| **Terminal Pins — Auto-Show Map Notes** | map pins visible without extra clicks |
-| **Debug Mode** | the module explains its decisions in the console |
+| **Systems** | switch whole parts on or off: **Network Simulation** (off = simple network mode: everyone on CitiNet, always connected), **Calls** and its parts (**Payphones**, **Emergency Lines**, **Overheard Calls**), **Conversations**, **Trace Consequences** (off = failed hacks are logged but add no heat or alerts). Most reload the world; nothing is deleted. |
+| **Mail** | **Smart Conversation Grouping** (threads), **Require Contact Verification** (players can only write to addresses they know), **Auto-Register NPC Senders**, **Exfil Folder Name** |
+| **Email addresses** | whether players must pick an address, the default domain, custom domains, identity burn |
+| **Anonymous send** | **Enable Anonymous Send** (a composer option that hides who you are), its default mask, replies, and the trace mechanic players can use to unmask it |
+| **Spam filter** | **Filter Unknown Senders**: a chance for mail from strangers to land in Spam |
+| **GM alerts** | popups when players message NPCs or write in an NPC conversation, and for Trauma Team / backup calls |
+| **Shards, terminals & hacking** | **What Players Call a Shard** (Data Shard, Memory Chip…), **Shard Name Prefix**, **Terminal Pins — Auto-Show Map Notes**, **Planted Programs — When They Fire**, **Role Ability Rolls (Interface)**, **Ask Before Rolling** (per player) |
+| **Date & time** | **Time Source** (which clock the module uses) and how dates are written |
+| **Advanced** | **Watching Other Players**, **Debug Mode** (the module explains its decisions in the console) |
 | Netrunning resolution, jacking in | Admin → Security → Hacking rules |
 | Sounds | Admin → Tools → Sounds |
+| Calls, payphones, voicemail details | Admin → Phone → Settings |
 
 ---
 

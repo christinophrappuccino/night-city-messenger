@@ -148,7 +148,8 @@ const direct = [];
 for (const p of walk(path.join(ROOT, 'scripts'))) {
   const rel = path.relative(ROOT, p).split(path.sep).join('/');
   // the registry, the registration, and the GM's own switches in Admin → Phone → Settings (they WRITE the settings)
-  if (['scripts/core/SettingsManager.js', 'scripts/utils/features.js', 'scripts/ui/AdminPanel/tabs/PhoneTab.js', 'scripts/ui/AdminPanel/tabs/phoneModel.js'].includes(rel)) continue;
+  // (+ the Module Settings layout, which only names the keys to place their rows)
+  if (['scripts/core/SettingsManager.js', 'scripts/utils/features.js', 'scripts/ui/AdminPanel/tabs/PhoneTab.js', 'scripts/ui/AdminPanel/tabs/phoneModel.js', 'scripts/ui/settingsLayout.js'].includes(rel)) continue;
   const t = readFileSync(p, 'utf8');
   for (const f of Object.values(F.FEATURES)) if (t.includes(`'${f.setting}'`)) direct.push(`${rel} (${f.setting})`);
 }

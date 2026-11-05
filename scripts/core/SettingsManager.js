@@ -177,7 +177,7 @@ export class SettingsManager {
       requiresReload: true,
     });
     game.settings.register(MODULE_ID, 'notifyGmConversations', {
-      name: 'GM Alert — Conversations With NPCs',
+      name: 'Conversations With NPCs',
       hint: 'One toast when a player writes in a conversation with an NPC, updated in place however many lines arrive.',
       scope: 'world',
       config: true,
@@ -190,7 +190,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'emergencyChatCard', {
-      name: 'Chat Card for Trauma Team and Backup Calls',
+      name: 'Trauma Team and Backup — Chat Card',
       hint: 'Post one chat card when someone calls Trauma Team or Lawman Backup, so the table knows. It follows the caller\'s roll mode, so a whispered call stays whispered.',
       scope: 'world',
       config: true,
@@ -199,7 +199,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'notifyGmEmergency', {
-      name: 'GM Alert — Trauma Team and Backup Calls',
+      name: 'Trauma Team and Backup Calls',
       hint: 'Show the GM a toast and play a short tone whenever someone calls Trauma Team or Lawman Backup, even if their dice are hidden.',
       scope: 'world',
       config: true,
@@ -208,7 +208,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'notifyGmNpcMail', {
-      name: 'GM Alert — Player Mail to NPCs',
+      name: 'Player Mail to NPCs',
       hint: 'Show the GM a toast notification whenever a player sends a message to an NPC. The NPC Inbox section in Admin → Messages is always available regardless of this setting.',
       scope: 'world',        // GM-facing; world-scoped so all GMs share it
       config: true,
@@ -231,7 +231,7 @@ export class SettingsManager {
     // nudging players to check their spam folder and add their contacts.
 
     game.settings.register(MODULE_ID, 'spamUnknownSenderEnabled', {
-      name: 'Spam Filter — Unknown Senders',
+      name: 'Filter Unknown Senders',
       hint: 'When ON, messages to players from senders they have NOT added as a contact may be routed to the Spam folder instead of the Inbox (silent — no new-message toast). Encourages players to check spam and save contacts.',
       scope: 'world',
       config: true,
@@ -240,7 +240,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'spamUnknownSenderChance', {
-      name: 'Spam Filter — Chance (%)',
+      name: 'Chance (%)',
       hint: 'Percent chance an eligible message from an un-added sender is routed to Spam. 0 = never, 100 = always.',
       scope: 'world',
       config: true,
@@ -250,7 +250,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'spamUnknownSenderScope', {
-      name: 'Spam Filter — Sender Scope',
+      name: 'Sender Scope',
       hint: 'Which un-added senders are eligible. "Known contacts only" = the sender exists in the Master Directory / is a registered character but the player hasn\'t added them ("a contact exists but isn\'t added"). "Any un-added sender" = also includes completely unknown addresses.',
       scope: 'world',
       config: true,
@@ -263,7 +263,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'spamUnknownSenderExcludePlayers', {
-      name: 'Spam Filter — Exclude Player Senders',
+      name: 'Exclude Player Senders',
       hint: 'When ON, messages from other player characters are never spam-filtered (keeps party comms out of spam). Only NPC / contact senders are eligible.',
       scope: 'world',
       config: true,
@@ -277,7 +277,7 @@ export class SettingsManager {
     // sender is stored GM-side only). Optional trace-to-unmask minigame.
 
     game.settings.register(MODULE_ID, 'anonSendEnabled', {
-      name: 'Anonymous Send — Enable',
+      name: 'Enable Anonymous Send',
       hint: 'Allow the GM to send messages anonymously from the composer. The recipient sees a masked avatar + alias and cannot resolve who sent it; the GM always sees the true sender (flagged SENT ANON).',
       scope: 'world',
       config: true,
@@ -286,7 +286,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'anonDefaultStyle', {
-      name: 'Anonymous Send — Default Mask',
+      name: 'Default Mask',
       hint: 'Which avatar mask is pre-selected when the GM toggles Anonymous on. Filtered = their photo dimmed to a shadow; Scrambled = photo buried under static; Ghost = silhouette; Monolith = SEELE-style "SOUND ONLY" slab.',
       scope: 'world',
       config: true,
@@ -301,7 +301,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'anonAllowRepliesDefault', {
-      name: 'Anonymous Send — Allow Replies by Default',
+      name: 'Allow Replies by Default',
       hint: 'When ON, anonymous messages can be replied to by default — the reply routes back to the real sender but stays masked to the player. The GM can override per message. When OFF, anonymous mail is one-way (no reply) unless enabled per message.',
       scope: 'world',
       config: true,
@@ -310,7 +310,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'anonTraceEnabled', {
-      name: 'Anonymous Send — Trace Mechanic',
+      name: 'Trace Mechanic',
       hint: 'Allow recipients to attempt to trace (unmask) an anonymous sender via a skill check. Disable to make anonymity absolute (no in-fiction way to reveal the sender).',
       scope: 'world',
       config: true,
@@ -319,7 +319,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'anonTraceDV', {
-      name: 'Anonymous Send — Trace Difficulty (DV)',
+      name: 'Trace Difficulty (DV)',
       hint: 'Default difficulty value the recipient must beat to trace an anonymous sender. The GM can override per message.',
       scope: 'world',
       config: true,
@@ -329,7 +329,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'anonTraceSkill', {
-      name: 'Anonymous Send — Trace Skill',
+      name: 'Trace Skill',
       hint: 'CPR skill the recipient rolls to trace (unmask) an anonymous sender.',
       scope: 'world',
       config: true,
@@ -355,7 +355,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'dateMonthStyle', {
-      name: 'Date — Month Style',
+      name: 'Month Style',
       hint: 'Render the month as a number (03), short name (Mar), or full name (March) across all NCM dates. Composes with the date order above — e.g. with MM.DD.YYYY + Full = "March 18, 2045".',
       scope: 'world',
       config: true,
@@ -611,14 +611,14 @@ export class SettingsManager {
 
     // Network simulation (stage 2, step 17) — off is SIMPLE NETWORK MODE (utils/features.js, NetworkService.simple)
     game.settings.register(MODULE_ID, 'networkSimulationEnabled', {
-      name: 'Network simulation',
+      name: 'Network Simulation',
       hint: 'Networks, signal, dead zones, network logins and network nodes. Off (simple network mode): everyone is on CitiNet, always connected at full signal; no dead zones, no network logins, no network-restricted mail, every network requirement on shards and terminals passes, and network nodes do nothing. Your networks and nodes are kept. Switching this reloads the world for everyone.',
       scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
     });
 
     // Trace consequences (stage 2, step 16) — a LIVE feature (utils/features.js): no reload, read every time.
     game.settings.register(MODULE_ID, 'traceConsequencesEnabled', {
-      name: 'Trace consequences',
+      name: 'Trace Consequences',
       hint: 'Failed hacks gain heat, alert you and show the player a trace warning. Off: a failure is still logged in Admin → Security, but nothing follows from it (no heat, no alert, no warning). Your own tools (set heat, escalate, countdowns) still work. Takes effect at once.',
       scope: 'world', config: true, type: Boolean, default: true,
     });
@@ -631,17 +631,17 @@ export class SettingsManager {
     });
     // stage 2, step 15: the parts of calls a table may not want, each a feature (utils/features.js) that needs Calls
     game.settings.register(MODULE_ID, 'payphonesEnabled', {
-      name: 'Calls — Payphones',
+      name: 'Payphones',
       hint: 'Payphone booths on the map. Off: a booth says it is out of order; your payphones are kept. Needs Calls. Switching this reloads the world.',
       scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
     });
     game.settings.register(MODULE_ID, 'emergencyEnabled', {
-      name: 'Calls — Emergency lines',
+      name: 'Emergency Lines',
       hint: 'The Trauma Team and backup lines, with their rolls and arrival countdowns. Off: those numbers do not answer. Needs Calls. Switching this reloads the world.',
       scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
     });
     game.settings.register(MODULE_ID, 'overheardEnabled', {
-      name: 'Calls — Overheard calls',
+      name: 'Overheard Calls',
       hint: 'NPC conversations players can listen in on (scanners, taps, network nodes). Off: nothing can be overheard; your scripts are kept. Needs Calls. Switching this reloads the world.',
       scope: 'world', config: true, type: Boolean, default: true, requiresReload: true,
     });

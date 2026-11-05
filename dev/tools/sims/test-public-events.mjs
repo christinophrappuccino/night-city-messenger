@@ -92,7 +92,7 @@ bus.emit('message:received', { messageId: 'x2' });
 ok(calls.filter(([n]) => n === 'night-city-messenger.message:received').length === 2 && calls[0][1].from === 'socket', 'message:received fires once per message (the second copy of x1 is dropped), and different messages both fire');
 calls.length = 0; bus.emit('message:sent', { messageId: 's1' }); bus.emit('message:sent', { messageId: 's1' });
 ok(calls.length === 2, 'events not marked once are passed on every time');
-ok(mod.api?.apiVersion === '1.1.0' && mod.api.publicEvents === PUBLIC_EVENTS, 'the api object carries the table (apiVersion 1.1.0)');
+ok(/^1\.\d+\.\d+$/.test(mod.api?.apiVersion || '') && Number(mod.api.apiVersion.split('.')[1]) >= 1 && mod.api.publicEvents === PUBLIC_EVENTS, `the api object carries the table (apiVersion ${mod.api?.apiVersion}, 1.1.0 or later)`);
 // passOnce, pure
 const seen = new Map();
 ok(passOnce(seen, { messageId: 'a' }, 0) && !passOnce(seen, { messageId: 'a' }, 100) && passOnce(seen, { messageId: 'a' }, DEDUPE_MS + 101), 'passOnce drops a repeat within the window and forgets after it');
