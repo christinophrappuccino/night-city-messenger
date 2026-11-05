@@ -92,6 +92,13 @@ const SOUNDS = {
   // Backup rolls in: one soft siren yelp.
   'em-arrive-backup': render(1.2, (t) => 0.2 * env(t, 0, 1.15, 0.05, 0.3) * Math.sin(2 * Math.PI * (620 * t + 260 * Math.sin(2 * Math.PI * 1.6 * t) / (2 * Math.PI * 1.6)))),
   // The voicemail tone.
+  // payphone: an electro-mechanical bell (two clappers on two gongs), a hook switch, a chip dropping into the slot
+  'payphone-ring': render(1.3, (t) => {
+    const strike = Math.floor(t * 24), local = t * 24 - strike, gong = strike % 2 ? 1310 : 1180;
+    return t < 1.1 ? 0.3 * Math.exp(-local * 3.2) * (0.6 * sin(gong, t) + 0.25 * sin(gong * 2.76, t) + 0.15 * sin(gong * 5.4, t)) : 0.3 * Math.exp(-(t - 1.1) * 9) * sin(1240, t);
+  }),
+  'payphone-hook': render(0.22, (t) => 0.5 * env(t, 0, 0.03, 0.001, 0.02) * noise() + 0.35 * env(t, 0.01, 0.12, 0.002, 0.09) * sin(140, t) + 0.25 * env(t, 0.07, 0.05, 0.001, 0.04) * noise()),
+  'payphone-chip': render(0.36, (t) => 0.3 * env(t, 0, 0.18, 0.004, 0.06) * noise() * (0.4 + 0.6 * sin(30, t)) + 0.4 * env(t, 0.2, 0.06, 0.001, 0.05) * (noise() * 0.5 + sin(220, t))),
   'voicemail-beep': render(0.42, (t) => 0.28 * env(t, 0, 0.38, 0.006, 0.05) * sin(1000, t)),
 };
 

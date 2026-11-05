@@ -243,13 +243,54 @@ export class EmergencyService {
 
   /** SOCKET_OPS.CALL_EMERGENCY */
   async handleSocket(data, senderId) {
-    if (data.op === 'arrive') { this._showArrival(data.show); return; }
-    if (data.op === 'started') { this.gmAlert(data); return; }
-    if (data.op === 'auto') { if (data.userId === game.user.id) { const a = game.actors.get(data.actorId); if (a) game.nightcity?.emergencyHud?.trauma(a, a, { auto: true }); } return; }
+    const fromGM = !!game.users?.get?.(senderId)?.isGM;
+    // An arrival banner and an automatic Trauma call only ever come from a GM (audit SEC-22).
+    if (data.op === 'arrive') { if (fromGM) this._showArrival(data.show || {}); return; }
+    if (data.op === 'started') { if (senderId) this.gmAlert(this._cleanStarted(data)); return; }
+    if (data.op === 'auto') { if (fromGM && data.userId === game.user.id) { const a = game.actors.get(data.actorId); if (a) game.nightcity?.emergencyHud?.trauma(a, a, { auto: true }); } return; }
     if (data.op !== 'add' || !isGM() || game.users.activeGM?.id !== game.user.id) return;
-    const sender = game.users.get(senderId), actor = game.actors.get(data.row?.actorId);
-    if (!actor?.testUserPermission(sender, 'OWNER')) return;
-    await this._write([...this.active(), data.row]);
+    const sender = game.users?.get?.(senderId), actor = game.actors.get(data.row?.actorId);
+    if (!sender || !actor?.testUserPermission(sender, 'OWNER')) return;
+    const row = this.cleanRow(data.row, actor);
+    if (!row) { log.warn('Emergency: a tracker row that does not make sense was refused'); return; }
+    await this._write([...this.active(), row]);
+  }
+
+  /** The GM's toast for a call: short text only (it is escaped when shown). */
+  _cleanStarted(d = {}) {
+    const s = (v) => String(v ?? '').slice(0, 80);
+    return { op: 'started', kind: d.kind === 'trauma' ? 'trauma' : 'backup', name: s(d.name), patient: s(d.patient), org: s(d.org), group: s(d.group), place: s(d.place), plan: s(d.plan), auto: false };
+  }
+
+  /**
+   * A player's tracker row, rebuilt from checked fields (audit SEC-22). The countdown is the
+   * client's roll (the gameplay boundary) but held to a sane range, so a forged row cannot make
+   * a team arrive at once or never; who it is for, and when, come from the GM's side.
+   * @returns {object|null}
+   */
+  cleanRow(raw, actor) {
+    const r = raw && typeof raw === 'object' ? raw : {};
+    if (!['backup', 'trauma'].includes(r.kind)) return null;
+    const s = (v, n) => String(v ?? '').slice(0, n);
+    const rounds = Math.round(Number(r.rounds));
+    if (!Number.isFinite(rounds) || rounds < 1 || rounds > 30) return null;
+    // Plain values only (strings capped, finite numbers, booleans): the display fields, the patient's vitals.
+    const out = {};
+    for (const [k, v] of Object.entries(r)) {
+      if (!/^[A-Za-z]\w{0,30}$/.test(k)) continue;
+      if (typeof v === 'string') out[k] = s(v, 300);
+      else if (typeof v === 'boolean') out[k] = v;
+      else if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+    }
+    if ('color' in out && !/^#[0-9a-f]{6}$/i.test(out.color)) out.color = '';
+    // Who it is for, how long, and when: the GM's side decides.
+    const patient = r.kind === 'trauma' && r.patientId ? game.actors.get(r.patientId) : null;
+    Object.assign(out, {
+      id: foundry.utils.randomID(), kind: r.kind, actorId: actor.id, name: actor.name,
+      left: rounds, rounds, at: Date.now(), combatRound: game.combat?.round ?? null, held: false, arrived: false,
+    });
+    if (r.kind === 'trauma') Object.assign(out, { payerId: actor.id, patientId: patient?.id || actor.id, patient: (patient || actor).name, onPlanOf: patient && patient.id !== actor.id ? actor.name : '' });
+    return out;
   }
 }
 

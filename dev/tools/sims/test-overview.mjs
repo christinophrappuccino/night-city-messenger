@@ -206,6 +206,7 @@ if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars from a
 else {
   const H = Handlebars.create();
   H.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('ncm-hue', (t) => (t ? 'var(--ncm-hue-1)' : 'var(--ncm-text-label)'));
   const render = H.compile(tpl);
   const html = render({ activeTab: 'overview', ov });

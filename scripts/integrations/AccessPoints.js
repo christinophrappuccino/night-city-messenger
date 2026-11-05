@@ -11,6 +11,7 @@
  * Handout colours: world setting `accessHandoutStyle` { mode: match|default|custom, custom:{…} }.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM, buildTerminalThemePrefs, buildShardThemePrefs } from '../utils/helpers.js';
 import { adminDialog, playerDialog } from '../utils/adminTheme.js';
@@ -20,6 +21,7 @@ import {
   ACCESS_KINDS, HANDOUT_STYLES, ACCESS_LINK_PATTERN, accessRef, isAccessRef, parseAccessLink, accessLinkText,
   accessMacroCommand, accessMacroSnippet, sanitizeHandoutStyle, postDialogHtml, placementDialogHtml, placementHint, sanitizePlacement, handoutPalette, paletteStyle, accessCardHtml, accessChipHtml, escHtml,
 } from '../utils/accessPoints.js';
+import { placeLabel } from '../utils/payphones.js';
 
 const MACRO_FOLDER = 'NCM — Access points';
 
@@ -34,6 +36,20 @@ export function refForItem(item) {
   if (item.getFlag?.(MODULE_ID, 'isTerminal')) return accessRef('terminal', item.uuid);
   if (item.getFlag?.(MODULE_ID, 'isDataShard')) return accessRef('shard', item.uuid);
   return null;
+}
+
+/** The access ref an NCM hotbar drop would make, or null when the drop is not NCM's (then it is left alone). */
+export function hotbarRefFor(data) {
+  if (data?.type === 'NCMAccess') return accessRef(data.ref?.kind ?? data.kind, data.ref?.id ?? data.id);
+  if (data?.type === 'Item' && data.uuid) { try { return refForItem(fromUuidSync(data.uuid)); } catch { return null; } }
+  return null;
+}
+
+/** The hotbar slot a drop landed on (Foundry v12: `li.macro[data-slot]`, the absolute slot 1–50), or null. */
+export function hotbarSlotOf(target) {
+  const li = target?.closest?.('#hotbar [data-slot]');
+  const n = Number(li?.dataset?.slot);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 function _item(id) {
@@ -64,6 +80,12 @@ export function describeAccess(ref) {
       Object.assign(out, { found: true, name: node.name, img: `modules/${MODULE_ID}/assets/icons/nodes/${node.kind}.svg`,
         sub: [net?.name, scene?.name].filter(Boolean).join(' · '), tags: [node.hidden ? 'hidden' : ''],
         source: { primary: c, accent: c, bgDeep: '#07070c', textPrimary: '#e6ecf5' } });
+    } else if (ref.kind === 'payphone') {
+      const pp = game.nightcity?.payphoneService?.get?.(ref.id); if (!pp) return out;
+      const scene = pp.sceneId ? game.scenes.get(pp.sceneId) : null;
+      Object.assign(out, { found: true, name: placeLabel(pp), img: `modules/${MODULE_ID}/assets/icons/payphone/payphone.svg`,
+        sub: [pp.number, scene?.name].filter(Boolean).join(' · '), tags: [pp.condition === 'out' ? 'out of order' : ''],
+        source: { primary: pp.look.case, accent: pp.look.ink, bgDeep: '#07070c', textPrimary: '#e6ecf5' } });
     } else if (ref.kind === 'shard') {
       const item = _item(ref.id); if (!item) return out;
       const cfg = game.nightcity?.dataShardService?.getConfig(item) || {};
@@ -90,17 +112,19 @@ export function paletteFor(ref, style = getHandoutStyle()) {
 
 /** Open whatever the ref points at. */
 export function openAccess(ref) {
-  if (!isAccessRef(ref)) return void ui.notifications.warn('Night City Messenger: that access point is broken.');
+  if (!isAccessRef(ref)) return void ncmNotify.warn('Night City Messenger: that access point is broken.');
   const ns = game.nightcity;
   switch (ref.kind) {
     case 'terminal': return ns?.openTerminal?.(ref.id);
     case 'shard': return ns?.openDataShard?.(ref.id);
     case 'node': return ns?.openNode?.(ref.id);
+    // a link, a macro or a chat card: the GM handed it out, so no reach check (a map pin checks reach itself)
+    case 'payphone': return ns?.payphoneService?.open?.(ref.id, { skipReach: true });
     case 'inbox':
     case 'message': {
       const [owner, messageId] = ref.id.split('|');
       const actor = game.actors.get(owner);
-      if (!isGM() && !actor?.isOwner) return void ui.notifications.warn('That inbox is not yours to open.');
+      if (!isGM() && !actor?.isOwner) return void ncmNotify.warn('That inbox is not yours to open.');
       return ns?.openInbox?.(owner, ref.kind === 'message' ? messageId : undefined);
     }
   }
@@ -128,12 +152,12 @@ export async function createAccessMacro(ref, { slot, assign = true } = {}) {
         flags: { [MODULE_ID]: { access: { kind: ref.kind, id: ref.id } } } });
     }
     if (macro && assign) await game.user.assignHotbarMacro(macro, slot ?? null);
-    if (macro && assign) ui.notifications.info(`"${macro.name}" is on your hotbar.`);
-    else if (macro) ui.notifications.info(`Macro "${macro.name}" is in the "${MACRO_FOLDER}" folder — pick it in any tool that runs a macro (set it to run as the triggering player).`);
+    if (macro && assign) ncmNotify.info(`"${macro.name}" is on your hotbar.`);
+    else if (macro) ncmNotify.info(`Macro "${macro.name}" is in the "${MACRO_FOLDER}" folder — pick it in any tool that runs a macro (set it to run as the triggering player).`);
     return macro;
   } catch (err) {
     log.error(`createAccessMacro: ${err.message}`);
-    ui.notifications.warn(`Could not make the macro — ${err.message}`);
+    ncmNotify.warn(`Could not make the macro — ${err.message}`);
     return null;
   }
 }
@@ -146,7 +170,7 @@ export async function copyAccessMacro(ref) {
   const code = accessMacroSnippet(ref, describeAccess(ref).name);
   try {
     await navigator.clipboard.writeText(code);
-    ui.notifications.info('Macro code copied — paste it into any tool that runs a script. Set it to run as the triggering player.');
+    ncmNotify.info('Macro code copied — paste it into any tool that runs a script. Set it to run as the triggering player.');
   } catch {
     adminDialog({
       title: 'Macro code', default: 'ok',
@@ -161,8 +185,8 @@ export async function copyAccessMacro(ref) {
 /** Copy the journal-link text for the ref. */
 export async function copyAccessLink(ref) {
   const text = accessLinkText(ref, describeAccess(ref).name);
-  try { await navigator.clipboard.writeText(text); ui.notifications.info('Link copied — paste it into any journal page.'); }
-  catch { ui.notifications.info(`Paste this into a journal page: ${text}`); }
+  try { await navigator.clipboard.writeText(text); ncmNotify.info('Link copied — paste it into any journal page.'); }
+  catch { ncmNotify.info(`Paste this into a journal page: ${text}`); }
   return text;
 }
 
@@ -250,7 +274,7 @@ function _postDialog(ref, style) {
 let _lastPlace = { how: 'pin', where: 'view', range: null, size: 2, hidden: false };
 export async function openPlaceDialog(item, { sceneId } = {}) {
   const ref = refForItem(item);
-  if (!ref) return ui.notifications.warn('Only a terminal or a shard can be placed on a scene.');
+  if (!ref) return ncmNotify.warn('Only a terminal or a shard can be placed on a scene.');
   const d = describeAccess(ref);
   const cfgRange = ref.kind === 'terminal' ? Number(game.nightcity?.terminalService?.getConfig(item)?.scenePin?.range) || 0 : 0;
   let scene = game.scenes.get(sceneId) || canvas?.scene || game.scenes.find(s => s.active) || null;
@@ -347,11 +371,24 @@ export function nodeAccessEntries(nodeId) {
 export async function openNodePlaceDialog(nodeId) {
   const ns = game.nightcity?.networkService;
   const node = ns?.getNode?.(nodeId);
-  if (!node) return ui.notifications.warn('That node no longer exists.');
+  if (!node) return ncmNotify.warn('That node no longer exists.');
   const ref = accessRef('node', nodeId);
   const d = describeAccess(ref);
   let scene = game.scenes.get(node.sceneId) || canvas?.scene || null;
-  const place = sanitizePlacement({ ..._lastPlace, range: _lastPlace.range ?? 1, sceneId: scene?.id, hidden: node.hidden });
+  const p = await askPlacement(ref, d, scene, node.hidden, 'Place a node');
+  if (!p) return null;
+  // a node stands where it is placed; its own Hidden switch follows the placement's
+  if (p.sceneId !== node.sceneId || p.hidden !== node.hidden) await ns.saveNode({ ...node, sceneId: p.sceneId, hidden: p.hidden });
+  return game.nightcity?.terminalScenePins?.placeNode(nodeId, p);
+}
+
+
+/**
+ * The placement dialog for a thing that is not an item (a network node, a payphone): which scene, pin / area / both,
+ * reach, hidden. Resolves the placement, or null when cancelled.
+ */
+async function askPlacement(ref, d, scene, hidden, title) {
+  const place = sanitizePlacement({ ..._lastPlace, range: _lastPlace.range ?? 1, sceneId: scene?.id, hidden });
   const content = placementDialogHtml({ ref, info: d, place, sceneName: scene?.name || '' });
   const p = await new Promise((resolve) => {
     let result = null;
@@ -364,7 +401,7 @@ export async function openNodePlaceDialog(nodeId) {
       sceneId: root.querySelector('[name="sceneId"]')?.value,
     });
     const dlg = adminDialog({
-      title: 'Place a node', content,
+      title, content,
       buttons: {
         cancel: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel' },
         place: { icon: '<i class="fas fa-map-pin"></i>', label: 'Place', callback: (html) => { result = read(html[0] ?? html); } },
@@ -393,11 +430,42 @@ export async function openNodePlaceDialog(nodeId) {
     }, { width: 500, classes: [...THEMED_DIALOG_CLASSES, 'ncm-plc-dialog'] });
     dlg.render(true);
   });
+  if (p) _lastPlace = { how: p.how, where: p.where, range: p.range, size: p.size, hidden: p.hidden };
+  return p;
+}
+
+/**
+ * The ACCESS entries for a payphone (its admin page, its pin menu). Same choices as an item's.
+ * @param {string} id
+ */
+export function payphoneAccessEntries(id) {
+  const ref = accessRef('payphone', id); if (!ref) return [];
+  const out = [{ head: 'Access' }];
+  if (isGM()) out.push({ label: 'Place on a scene…', icon: 'fas fa-map-pin', fn: () => openPayphonePlaceDialog(id) });
+  out.push({ label: 'Add to hotbar', icon: 'fas fa-bolt', fn: () => createAccessMacro(ref) });
+  if (isGM()) {
+    out.push({ label: 'Post to chat…', icon: 'fas fa-comment', fn: () => postAccessCard(ref) });
+    out.push({ label: 'Copy journal link', icon: 'fas fa-link', fn: () => copyAccessLink(ref) });
+    out.push({ label: 'Copy macro code', icon: 'fas fa-code', fn: () => copyAccessMacro(ref) });
+    out.push({ label: 'Make a macro', icon: 'fas fa-scroll', fn: () => createAccessMacro(ref, { assign: false }) });
+  }
+  return out;
+}
+
+/**
+ * Place a payphone as a pin / step-on area (its own scene preselected). Picking another scene MOVES the payphone.
+ * @param {string} id @param {{sceneId?: string}} [o]
+ */
+export async function openPayphonePlaceDialog(id, { sceneId } = {}) {
+  const svc = game.nightcity?.payphoneService;
+  const pp = svc?.get?.(id);
+  if (!pp) return ncmNotify.warn('That payphone no longer exists.');
+  const ref = accessRef('payphone', id);
+  const scene = game.scenes.get(sceneId) || game.scenes.get(pp.sceneId) || canvas?.scene || null;
+  const p = await askPlacement(ref, describeAccess(ref), scene, false, 'Place a payphone');
   if (!p) return null;
-  _lastPlace = { how: p.how, where: p.where, range: p.range, size: p.size, hidden: p.hidden };
-  // a node stands where it is placed; its own Hidden switch follows the placement's
-  if (p.sceneId !== node.sceneId || p.hidden !== node.hidden) await ns.saveNode({ ...node, sceneId: p.sceneId, hidden: p.hidden });
-  return game.nightcity?.terminalScenePins?.placeNode(nodeId, p);
+  if (p.sceneId !== pp.sceneId || (Number(p.range) || 0) !== pp.range) await svc.save({ ...pp, sceneId: p.sceneId, range: Number(p.range) || 0 });
+  return game.nightcity?.terminalScenePins?.placePayphone(id, p);
 }
 
 /** A small grouped menu of entries anchored under a button (generic — showAccessMenu builds an item's). */
@@ -434,22 +502,34 @@ export function showEntriesMenu(entries, anchor) {
 /** Wire everything that needs `ready`: the click door, the hotbar drop, the API. */
 export function registerAccessPoints() {
   const ns = (game.nightcity ??= {});
-  Object.assign(ns, { openAccess, describeAccess, createAccessMacro, postAccessCard, copyAccessLink, copyAccessMacro, accessRefForItem: refForItem, placeAccess: openPlaceDialog });
+  Object.assign(ns, { openAccess, describeAccess, createAccessMacro, postAccessCard, copyAccessLink, copyAccessMacro, accessRefForItem: refForItem, placeAccess: openPlaceDialog, payphoneAccessEntries, openPayphonePlaceDialog });
 
   // One click door for chat cards + journal chips (anywhere in the document).
   document.addEventListener('click', (ev) => {
     const el = ev.target.closest?.('[data-ncm-access]'); if (!el) return;
     ev.preventDefault(); ev.stopPropagation();
     let ref = null; try { ref = JSON.parse(el.dataset.ncmAccess); } catch { /* broken */ }
-    if (el.classList.contains('is-missing')) return void ui.notifications.warn('That access point no longer exists.');
+    if (el.classList.contains('is-missing')) return void ncmNotify.warn('That access point no longer exists.');
     openAccess(ref);
   }, true);
 
   // Drag onto the hotbar: an admin row ({type:'NCMAccess', ref}) or a converted item.
+  // Claimed in the CAPTURE phase on the hotbar itself (audit COMPAT-02): the Cyberpunk RED system registers its own
+  // `hotbarDrop` hook first and returns false for every drop, so ours never ran — a terminal became an item-sheet
+  // macro, and an NCMAccess drag threw inside the system's hook. Anything that is not ours passes through untouched.
+  document.addEventListener('drop', (ev) => {
+    if (!ev.target?.closest?.('#hotbar')) return;
+    let data = null;
+    try { data = JSON.parse(ev.dataTransfer?.getData('text/plain') || 'null'); } catch { return; }
+    const ref = hotbarRefFor(data);
+    if (!ref) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    createAccessMacro(ref, { slot: hotbarSlotOf(ev.target) });
+  }, true);
+  // Kept for a world where nothing pre-empts the hook (and for drops that do not come through the DOM).
   Hooks.on('hotbarDrop', (bar, data, slot) => {
-    let ref = null;
-    if (data?.type === 'NCMAccess') ref = accessRef(data.ref?.kind ?? data.kind, data.ref?.id ?? data.id);
-    else if (data?.type === 'Item' && data.uuid) { try { ref = refForItem(fromUuidSync(data.uuid)); } catch { ref = null; } }
+    const ref = hotbarRefFor(data);
     if (!ref) return;
     createAccessMacro(ref, { slot });
     return false;

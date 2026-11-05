@@ -16,6 +16,8 @@ import {
   visibleLines, sortLines, nextStarter, unreadFor, previewOf, titleFor, makeLine, goneLine, waitingOn, notifyPlan, tapLogLine, appendTapLog,
 } from '../utils/conversations.js';
 
+import { serializeMethods } from '../utils/serialize.js';
+
 const FOLDER = 'Conversations';
 const REPLY_MS = 8000;
 
@@ -38,8 +40,20 @@ export class ConversationService {
   // ─── reading ───
 
   _isConv(j) { return j?.getFlag?.(MODULE_ID, 'type') === 'conversation'; }
-  _journals() { return (game.journal?.contents || [...(game.journal || [])]).filter((j) => this._isConv(j)); }
-  _journal(id) { return this._journals().find((j) => j.getFlag(MODULE_ID, 'conversationId') === id) || null; }
+  // Audit PERF-10: every lookup scanned every journal in the world — several times per line on the GM. Once the
+  // journal hooks are wired (`wire`), the list and an id → journal map are kept until a journal is created, changed
+  // or deleted. Before that (or with conversations off) it reads fresh every time, as it always did.
+  _journals() {
+    if (this._jIndex) return this._jIndex.list;
+    const list = (game.journal?.contents || [...(game.journal || [])]).filter((j) => this._isConv(j));
+    if (this._indexWired) this._jIndex = { list, byId: new Map(list.map((j) => [j.getFlag(MODULE_ID, 'conversationId'), j])) };
+    return list;
+  }
+  _journal(id) {
+    const list = this._journals();
+    if (this._jIndex) return this._jIndex.byId.get(id) || null;
+    return list.find((j) => j.getFlag(MODULE_ID, 'conversationId') === id) || null;
+  }
 
   _view(j) {
     const f = j.flags?.[MODULE_ID] || {};
@@ -552,6 +566,13 @@ export class ConversationService {
 
   /** The Journal hooks: lines arriving, and the chat changing. */
   wire() {
+    // the journal index (PERF-10) is dropped on any journal change; registered first so every later hook reads fresh
+    const dropIndex = () => { this._jIndex = null; };
+    Hooks.on('createJournalEntry', dropIndex);
+    Hooks.on('updateJournalEntry', dropIndex);
+    Hooks.on('deleteJournalEntry', dropIndex);
+    this._jIndex = null;
+    this._indexWired = true;
     const bus = () => game.nightcity?.eventBus;
     const seen = (page, lines) => {
       const j = page.parent;
@@ -577,5 +598,10 @@ export class ConversationService {
 
   _dropSent(id, lineId) { if (this.pendingFor(id).some((p) => p.lineId === lineId)) this._setPending(id, lineId, null); }
 }
+
+// One conversation's tap log is written one line at a time (audit INT-05). `_tap` reads the log, appends and writes it
+// back, and it is fired without waiting — two lines close together both found no log page and made two, or one
+// overwrote the other's line.
+serializeMethods(ConversationService.prototype, ['_tap'], (args) => (args[0]?.id ? `convtap:${args[0].id}` : null));
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

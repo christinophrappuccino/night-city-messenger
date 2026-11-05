@@ -13,10 +13,13 @@
 .ncm-admin-panel .ncm-ph2-hint { margin: 0; font: italic 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
 
 /* sub-tabs (the Security nav's look) */
-.ncm-admin-panel .ncm-ph2-nav { position: sticky; top: -12px; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+.ncm-admin-panel .ncm-ph2 { container: ph2 / inline-size; }
+.ncm-admin-panel .ncm-ph2-nav { position: sticky; top: -12px; z-index: 5; display: flex; align-items: center; flex-wrap: nowrap; gap: 4px;
   margin: -12px -16px 0; padding: 8px 16px; background: var(--ncm-bg-canvas, var(--ncm-bg-deep)); border-bottom: 1px solid var(--ncm-border); }
 .ncm-admin-panel .ncm-ph2-nav > * { flex: none; }
 .ncm-admin-panel .ncm-ph2-nav .grow { flex: 1; }
+/* one line, always: in the panel the other sections fold to their icon (the name is the tooltip), the open one keeps its label */
+@container ph2 (max-width: 1000px) { .ncm-admin-panel button.ncm-ph2-navbtn:not(.on) .lb { display: none; } .ncm-admin-panel button.ncm-ph2-navbtn:not(.on) { padding: 0 9px !important; } }
 .ncm-admin-panel button.ncm-ph2-navbtn { appearance: none; width: auto !important; height: 30px !important; min-height: 0 !important; margin: 0 !important;
   display: inline-flex !important; align-items: center; gap: 6px; padding: 0 10px !important; border-radius: 2px !important; cursor: pointer; white-space: nowrap;
   background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important; line-height: 1 !important;
@@ -476,7 +479,8 @@
 .ncm-pn-warnmark { font-size: 10px; color: var(--ncm-attn); }
 .ncm-pn-note { color: var(--ncm-text-label); font-style: italic; }
 .ncm-pnum .sec { color: color-mix(in oklab, var(--ncm-secret) var(--ncm-ink), var(--ncm-text-heading)); }
-.mt, .ncm-pn-prow .mt, .ncm-pn-brow .mt { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+/* scoped to the phone tab (audit COMPAT-04: a bare .mt made every .mt in Foundry, any module, a flex box) */
+.ncm-pn .mt, .ncm-pn-prow .mt, .ncm-pn-brow .mt { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
 
 /* section heads take a tone */
 .ncm-pn-mod { --sk: var(--ncm-act); }

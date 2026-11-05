@@ -60,8 +60,8 @@
       {{#each groups}}
         {{!-- A closed group still shows its count + one chip per light kind that is on (needs-you first: lockout · trace · armed · heat · GM-unlocked). --}}
         <div class="ncm-term2-grp{{#if shut}} is-shut{{/if}}{{#if forced}} is-forced{{/if}}{{#if head.tone}} is-{{head.tone}}{{/if}}" data-action="tabAct" data-op="group" data-group-key="{{key}}" aria-expanded="{{#if shut}}false{{else}}true{{/if}}"{{#if forced}} data-tooltip="Open while a search or filter is on"{{/if}}>
-          <i class="fas fa-chevron-down ncm-term2-grp__chev"></i><i class="fas {{icon}} ncm-term2-grp__ic"></i><span class="ncm-term2-grp__t"{{#if head.chips.length}} data-tooltip="{{label}}"{{/if}}>{{label}}</span>
-          {{#if head.chips.length}}<span class="ncm-term2-gsum">{{#each head.chips}}<span class="ncm-term2-gsum__c is-{{kind}}" data-tooltip="{{tip}}" aria-label="{{tip}}">{{#if led}}<i class="ncm-term2-led is-{{kind}}"></i>{{else}}<i class="fas {{icon}}"></i>{{/if}}<b>{{count}}</b></span>{{/each}}</span>{{/if}}
+          <i class="fas fa-chevron-down ncm-term2-grp__chev"></i><i class="fas {{icon}} ncm-term2-grp__ic"></i><span class="ncm-term2-grp__t"{{#if head.chips.length}} data-tooltip="{{ncm-tip label}}"{{/if}}>{{label}}</span>
+          {{#if head.chips.length}}<span class="ncm-term2-gsum">{{#each head.chips}}<span class="ncm-term2-gsum__c is-{{kind}}" data-tooltip="{{ncm-tip tip}}" aria-label="{{tip}}">{{#if led}}<i class="ncm-term2-led is-{{kind}}"></i>{{else}}<i class="fas {{icon}}"></i>{{/if}}<b>{{count}}</b></span>{{/each}}</span>{{/if}}
           <span class="ncm-term2-n">{{count}}</span>
         </div>
         {{#if rows.length}}
@@ -70,17 +70,17 @@
             <div class="ncm-term2-ru{{#if isSelected}} is-sel{{/if}}{{#if picked}} is-picked{{/if}}" data-action="tabAct" data-op="select" data-item-id="{{id}}">
               <span class="ncm-term2-ck">{{#if picked}}<i class="fas fa-check"></i>{{/if}}</span>
               <span class="ncm-term2-scr"></span>
-              <span class="ncm-term2-ic{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{img}}'){{/if}}" data-tooltip="{{presetLabel}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
+              <span class="ncm-term2-ic{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{ncm-css-url img}}'){{/if}}" data-tooltip="{{ncm-tip presetLabel}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
               <div class="ncm-term2-ru__id">
                 <div class="ncm-term2-ru__nm">{{name}}</div>
-                <div class="ncm-term2-ru__sub">{{#if placeReal}}<span class="ncm-tagp ncm-term2-ru__pl" style="--tc:{{ncm-hue place}}" data-tooltip="{{place}}"><i class="fas {{placeIcon}}"></i><span>{{place}}</span></span>{{else}}<span class="ncm-term2-ru__none">{{place}}</span>{{/if}}<span class="ncm-term2-ru__n" data-tooltip="{{acctLabel}}" aria-label="{{acctLabel}}"><i class="fas fa-user"></i><b>{{accountCount}}</b></span></div>
+                <div class="ncm-term2-ru__sub">{{#if placeReal}}<span class="ncm-tagp ncm-term2-ru__pl" style="--tc:{{ncm-hue place}}" data-tooltip="{{ncm-tip place}}"><i class="fas {{placeIcon}}"></i><span>{{place}}</span></span>{{else}}<span class="ncm-term2-ru__none">{{place}}</span>{{/if}}<span class="ncm-term2-ru__n" data-tooltip="{{ncm-tip acctLabel}}" aria-label="{{acctLabel}}"><i class="fas fa-user"></i><b>{{accountCount}}</b></span></div>
                 <div class="ncm-term2-vent"></div>
               </div>
               <div class="ncm-term2-face">
-                <div class="ncm-term2-leds">{{#each leds}}<span class="ncm-term2-led{{#if cls}} is-{{cls}}{{/if}}" data-tooltip="{{tip}}"></span>{{/each}}</div>
-                <div class="ncm-term2-hbar is-{{heatTone}}" data-tooltip="Heat {{maxHeat}}">{{#each heatBars}}<i{{#if on}} class="on"{{/if}}></i>{{/each}}</div>
+                <div class="ncm-term2-leds">{{#each leds}}<span class="ncm-term2-led{{#if cls}} is-{{cls}}{{/if}}" data-tooltip="{{ncm-tip tip}}"></span>{{/each}}</div>
+                <div class="ncm-term2-hbar is-{{heatTone}}" data-tooltip="Heat {{ncm-tip maxHeat}}">{{#each heatBars}}<i{{#if on}} class="on"{{/if}}></i>{{/each}}</div>
               </div>
-              {{#if traceTag}}<span class="ncm-term2-trace" data-tooltip="{{traceTip}}">{{traceTag}}</span>{{/if}}
+              {{#if traceTag}}<span class="ncm-term2-trace" data-tooltip="{{ncm-tip traceTip}}">{{traceTag}}</span>{{/if}}
             </div>
           {{/each}}
         </div>
@@ -94,8 +94,8 @@
     <div class="ncm-term2-det" data-sel="{{sel.id}}">
       {{#with sel}}
         <div class="ncm-term2-hdr">
-          <span class="ncm-term2-ic ncm-term2-ic--lg{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{img}}'){{/if}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
-          <div class="ncm-term2-hdr__nm" data-tooltip="{{name}}">{{name}}</div>
+          <span class="ncm-term2-ic ncm-term2-ic--lg{{#if hasImg}} has-img{{/if}}" style="--tc:{{ncm-hue hueKey}}{{#if hasImg}};background-image:url('{{ncm-css-url img}}'){{/if}}">{{#unless hasImg}}<i class="{{icon}}"></i>{{/unless}}</span>
+          <div class="ncm-term2-hdr__nm" data-tooltip="{{ncm-tip name}}">{{name}}</div>
           <div class="ncm-term2-hdr__acts">
             <button type="button" class="ncm-term2-btn ncm-term2-btn--primary" data-action="tabAct" data-op="open" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>
             <button type="button" class="ncm-term2-btn ncm-term2-btn--icon" data-action="tabAct" data-op="configure" data-item-id="{{id}}" aria-label="Configure" data-tooltip="Configure"><i class="fas fa-gear"></i></button>
@@ -145,14 +145,14 @@
                 <div class="ncm-term2-ar{{#if open}} is-open{{/if}}{{#if lock.open}} is-unlocked{{/if}}" data-acct-row="{{foldKey}}" data-item-id="{{itemId}}" data-account-id="{{id}}" role="button" tabindex="0" aria-expanded="{{#if open}}true{{else}}false{{/if}}">
                   <span class="ncm-term2-an">
                     <i class="fas fa-chevron-right chev"></i>
-                    <span class="ncm-term2-aav{{#if portrait}} has-img{{/if}}" data-tooltip="{{displayName}}">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{avText}}{{/if}}</span>
+                    <span class="ncm-term2-aav{{#if portrait}} has-img{{/if}}" data-tooltip="{{ncm-tip displayName}}">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{avText}}{{/if}}</span>
                     <span class="ncm-term2-an__tx">
-                    <span class="l1"><span class="u">{{username}}</span>{{#if isAdmin}}<span class="ncm-term2-tg is-adm">Admin</span>{{/if}}{{#if hidden}}<span class="ncm-term2-tg is-hid" data-tooltip="Secret login only">Hidden</span>{{/if}}{{#if privateFromAdmin}}<span class="ncm-term2-tg is-hid" data-tooltip="Admin accounts cannot view it">Private</span>{{/if}}{{#if netGated}}<span class="ncm-term2-tg" style="--tc:{{ncm-hue netLabel}}" data-tooltip="Only reachable on {{netLabel}}">{{netLabel}}</span>{{/if}}</span>
+                    <span class="l1"><span class="u">{{username}}</span>{{#if isAdmin}}<span class="ncm-term2-tg is-adm">Admin</span>{{/if}}{{#if hidden}}<span class="ncm-term2-tg is-hid" data-tooltip="Secret login only">Hidden</span>{{/if}}{{#if privateFromAdmin}}<span class="ncm-term2-tg is-hid" data-tooltip="Admin accounts cannot view it">Private</span>{{/if}}{{#if netGated}}<span class="ncm-term2-tg" style="--tc:{{ncm-hue netLabel}}" data-tooltip="Only reachable on {{ncm-tip netLabel}}">{{netLabel}}</span>{{/if}}</span>
                     <span class="own">{{#if owner}}<i class="fas fa-link" data-tooltip="Linked identity"></i>{{owner.name}}{{else}}<span class="dim">no identity linked</span>{{/if}}</span>
                     </span>
                   </span>
-                  <span class="ncm-term2-lkw" data-tooltip="{{lock.tip}}"><i class="fas {{#if lock.open}}fa-lock-open{{else}}fa-lock{{/if}} lk"></i><span>{{#if lock.open}}<span class="ok">open</span>{{else}}{{#each lock.parts}}{{t}}{{#if dv}} <b>DV&nbsp;{{dv}}</b>{{/if}}{{#if conj}} <em>{{conj}}</em> {{/if}}{{/each}}{{/if}}</span></span>
-                  <span class="ncm-term2-st is-{{status.cls}}"{{#if status.tip}} data-tooltip="{{status.tip}}"{{/if}}>{{#if status.icon}}<i class="fas {{status.icon}}"></i>{{/if}}{{#if status.tries}}<span class="mono">{{status.tries}}</span> {{/if}}{{status.text}}{{#if status.left}}<span class="st2"><span class="mono"{{#if status.lockUntil}} data-lock-until="{{status.lockUntil}}"{{/if}}>{{status.left}}</span> left</span>{{/if}}</span>
+                  <span class="ncm-term2-lkw" data-tooltip="{{ncm-tip lock.tip}}"><i class="fas {{#if lock.open}}fa-lock-open{{else}}fa-lock{{/if}} lk"></i><span>{{#if lock.open}}<span class="ok">open</span>{{else}}{{#each lock.parts}}{{t}}{{#if dv}} <b>DV&nbsp;{{dv}}</b>{{/if}}{{#if conj}} <em>{{conj}}</em> {{/if}}{{/each}}{{/if}}</span></span>
+                  <span class="ncm-term2-st is-{{status.cls}}"{{#if status.tip}} data-tooltip="{{ncm-tip status.tip}}"{{/if}}>{{#if status.icon}}<i class="fas {{status.icon}}"></i>{{/if}}{{#if status.tries}}<span class="mono">{{status.tries}}</span> {{/if}}{{status.text}}{{#if status.left}}<span class="st2"><span class="mono"{{#if status.lockUntil}} data-lock-until="{{status.lockUntil}}"{{/if}}>{{status.left}}</span> left</span>{{/if}}</span>
                   <span class="ncm-term2-ll">{{#if lastWhen}}<span class="lw">{{lastWho}}</span><span class="lt">{{lastWhen}}</span>{{else}}<span class="lt dim">never</span>{{/if}}</span>
                 </div>
                 <div class="ncm-term2-ax" data-acct-facts="{{foldKey}}" data-item-id="{{itemId}}" data-account-id="{{id}}"{{#unless open}} hidden{{/unless}}>
@@ -161,7 +161,7 @@
                     <span class="k">Lock</span><span class="v lkf">{{#if lockFull.open}}<span class="ok">open — no login</span>{{else}}{{#each lockFull.parts}}{{t}}{{#if dv}} <b>DV&nbsp;{{dv}}</b>{{/if}}{{#if conj}} <em>{{conj}}</em> {{/if}}{{/each}}{{/if}}</span>
                     <span class="k">Mailbox</span><span class="v"><span class="mono">{{mail.count}}</span> messages · <span class="mono{{#if mail.unread}} un{{/if}}">{{mail.unread}}</span> unread · <span class="mono">{{mail.files}}</span> files</span>
                     <span class="k">Lockout rule</span><span class="v">{{#if rule}}<span class="mono">{{rule.max}}</span> tries → <span class="mono">{{rule.lockout}}</span> lockout{{#if rule.used}} <span class="used">· {{rule.used}} used</span>{{/if}}{{else}}<span class="dim">open account — no lockout</span>{{/if}}</span>
-                    <span class="k">Logins here</span><span class="v">{{#if logins.length}}<span class="lg">{{#each logins}}<span class="lgr"><span class="w">{{name}}{{#if player}} <span class="pl">({{player}})</span>{{/if}}</span><span class="t" data-tooltip="{{full}}">{{when}}</span><span class="r {{#if ok}}is-good{{else}}is-bad{{/if}}"><i class="fas {{#if ok}}fa-check{{else}}fa-xmark{{/if}}"></i>{{result}}</span></span>{{/each}}</span>{{else}}<span class="dim">nobody yet</span>{{/if}}</span>
+                    <span class="k">Logins here</span><span class="v">{{#if logins.length}}<span class="lg">{{#each logins}}<span class="lgr"><span class="w">{{name}}{{#if player}} <span class="pl">({{player}})</span>{{/if}}</span><span class="t" data-tooltip="{{ncm-tip full}}">{{when}}</span><span class="r {{#if ok}}is-good{{else}}is-bad{{/if}}"><i class="fas {{#if ok}}fa-check{{else}}fa-xmark{{/if}}"></i>{{result}}</span></span>{{/each}}</span>{{else}}<span class="dim">nobody yet</span>{{/if}}</span>
                   </div>
                   <div class="ncm-term2-axb">
                     <button type="button" class="ncm-term2-btn ncm-term2-btn--sm" data-action="tabAct" data-op="editLock" data-item-id="{{itemId}}" data-account-id="{{id}}"><i class="fas fa-lock"></i>{{#if lock.open}}Add a lock{{else}}Edit the lock{{/if}}</button>
@@ -186,7 +186,7 @@
               <span class="w">{{name}}{{#if player}} <span class="pl">({{player}})</span>{{/if}}</span>
               <span class="a"><i class="fas fa-arrow-right"></i>{{account}}</span>
               <span class="r {{#if ok}}is-good{{else}}is-bad{{/if}}"><i class="fas {{#if ok}}fa-check{{else}}fa-xmark{{/if}}"></i>{{result}}</span>
-              <span class="t" data-tooltip="{{full}}">{{when}}</span>
+              <span class="t" data-tooltip="{{ncm-tip full}}">{{when}}</span>
             </div>
           {{else}}
             <div class="ncm-term2-quiet">Nobody has logged in yet.</div>
@@ -200,13 +200,13 @@
             <div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Uplink</span><span class="ncm-term2-kv__v{{#unless uplinkName}} is-dim{{/unless}}"{{#if uplinkName}} style="--tc:{{ncm-hue uplinkName}}"{{/if}} data-tooltip="The machine's own connection">{{#if uplinkName}}{{uplinkName}}{{else}}Local only{{/if}}</span></div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Reach</span><span class="ncm-term2-kv__v{{#unless networkBinding}} is-dim{{/unless}}"{{#if networkBinding}} style="--tc:{{ncm-hue networkBinding}}"{{/if}} data-tooltip="Network players must be on to see this box">{{#if networkBinding}}{{networkBinding}}{{#if reachListed}} only{{/if}}{{else}}Anywhere{{/if}}</span></div>
-              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Exfil</span><span class="ncm-term2-kv__v" data-tooltip="{{exfil}}">{{exfil}}</span></div>
-              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Pinned</span><span class="ncm-term2-kv__v{{#unless pinLabel}} is-dim{{/unless}}"{{#if pinLabel}} style="--tc:{{ncm-hue pinLabel}}"{{/if}} data-tooltip="{{pinLabel}}">{{#if pinLabel}}{{pinLabel}}{{else}}Not on any scene{{/if}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Exfil</span><span class="ncm-term2-kv__v" data-tooltip="{{ncm-tip exfil}}">{{exfil}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Pinned</span><span class="ncm-term2-kv__v{{#unless pinLabel}} is-dim{{/unless}}"{{#if pinLabel}} style="--tc:{{ncm-hue pinLabel}}"{{/if}} data-tooltip="{{ncm-tip pinLabel}}">{{#if pinLabel}}{{pinLabel}}{{else}}Not on any scene{{/if}}</span></div>
             </div>
             <div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Preset</span><span class="ncm-term2-kv__v" style="--tc:{{ncm-hue presetLabel}}">{{presetLabel}}</span></div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Login</span><span class="ncm-term2-kv__v">{{loginLabel}}</span></div>
-              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Mailbox</span><span class="ncm-term2-kv__v" data-tooltip="{{mailboxStyle}}">{{mailboxLabel}}</span></div>
+              <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Mailbox</span><span class="ncm-term2-kv__v" data-tooltip="{{ncm-tip mailboxStyle}}">{{mailboxLabel}}</span></div>
               <div class="ncm-term2-kv"><span class="ncm-term2-kv__l">Sound</span><span class="ncm-term2-kv__v">{{soundLabel}}</span></div>
             </div>
           </div>

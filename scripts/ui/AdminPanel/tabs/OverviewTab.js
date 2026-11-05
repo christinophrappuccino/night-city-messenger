@@ -20,6 +20,7 @@
  *   - this.app.tabs.security     — heat / countdowns / plants gatherers (reused)
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { openGuide } from '../../../utils/guides.js';
 import { log, getPlayerCharacters, isSelectableCharacter, resolveDisplayName, formatCyberDate } from '../../../utils/helpers.js';
@@ -672,7 +673,7 @@ export class OverviewTab extends BaseTab {
   _liftLockout(actorId, targetId) {
     if (!actorId || !targetId) return;
     game.nightcity?.securityService?.clearFor?.(actorId, [targetId]);
-    ui.notifications.info('NCM | Lockout lifted.');
+    ncmNotify.info('NCM | Lockout lifted.');
     this.render(true);
   }
 
@@ -681,11 +682,11 @@ export class OverviewTab extends BaseTab {
     const tsvc = game.nightcity?.terminalService;
     const item = (tsvc?.collectTerminals?.() || []).find((i) => i.id === itemId);
     const acct = item ? tsvc.getAccount?.(item, accountId) : null;
-    if (!item || !acct) { ui.notifications.warn('NCM | That backdoor is already gone.'); return this.render(true); }
+    if (!item || !acct) { ncmNotify.warn('NCM | That backdoor is already gone.'); return this.render(true); }
     const ok = await adminConfirm({ title: 'Close the backdoor', content: `<p>Close the backdoor account <b>${esc(acct.username || acct.displayName)}</b> on <b>${esc(item.name)}</b> now? Anyone using it is shut out.</p>` });
     if (!ok) return;
     await tsvc.removeAccount(item, accountId);
-    ui.notifications.info('NCM | Backdoor closed.');
+    ncmNotify.info('NCM | Backdoor closed.');
     this.render(true);
   }
 
@@ -699,7 +700,7 @@ export class OverviewTab extends BaseTab {
   /** Open a player character's inbox — the picker over the players' characters, then the Agent viewer. */
   async _quickInbox() {
     const entries = this._pcEntries();
-    if (!entries.length) return ui.notifications.warn('NCM | No player characters in this world yet.');
+    if (!entries.length) return ncmNotify.warn('NCM | No player characters in this world yet.');
     const pick = await showNamePicker({ title: 'Open an inbox', hint: 'Whose Agent do you want to read?', entries, placeholder: 'search characters…' });
     if (pick?.id) game.nightcity?.openInbox?.(pick.id);
   }
@@ -708,7 +709,7 @@ export class OverviewTab extends BaseTab {
   async _quickPush() {
     const svc = this.masterContactService;
     const contacts = (svc?.getAll?.() || []).filter((c) => !c.sendOnly);
-    if (!contacts.length) return ui.notifications.warn('NCM | The directory is empty — add a contact first.');
+    if (!contacts.length) return ncmNotify.warn('NCM | The directory is empty — add a contact first.');
     const roleLabel = (c) => String(c.role || 'no role');
     const contact = await showNamePicker({
       title: 'Push a contact', hint: 'Pick who to share; then pick the character who gets them.',
@@ -717,12 +718,12 @@ export class OverviewTab extends BaseTab {
     });
     if (!contact?.id) return;
     const pcs = this._pcEntries();
-    if (!pcs.length) return ui.notifications.warn('NCM | No player characters to share with.');
+    if (!pcs.length) return ncmNotify.warn('NCM | No player characters to share with.');
     const pc = await showNamePicker({ title: `Share ${contact.name} with…`, hint: 'The character gets a copy in their contacts; sharing again is a no-op.', entries: pcs, placeholder: 'search characters…' });
     if (!pc?.id) return;
     const res = await svc.pushToPlayer(contact.id, pc.id);
-    if (res?.success) { ui.notifications.info(`NCM | ${contact.name} shared with ${pc.name}.`); this.app.render(true); }
-    else ui.notifications.warn(`NCM | Could not share ${contact.name}: ${res?.error || 'unknown error'}`);
+    if (res?.success) { ncmNotify.info(`NCM | ${contact.name} shared with ${pc.name}.`); this.app.render(true); }
+    else ncmNotify.warn(`NCM | Could not share ${contact.name}: ${res?.error || 'unknown error'}`);
   }
 
   /**
@@ -736,7 +737,7 @@ export class OverviewTab extends BaseTab {
     const mode = ts._mode === 'auto' ? (ts._autoResolved || 'real-time') : ts._mode;
     if (mode === 'manual') return ts.advanceManualTime(seconds);
     if (mode === 'world-time' || mode === 'simple-calendar') return game.time?.advance?.(seconds);
-    ui.notifications.warn(`NCM | The clock follows ${mode === 'disguised' ? 'disguised real time' : 'real-world time'} — it cannot be advanced. Switch the time provider in Set time.`);
+    ncmNotify.warn(`NCM | The clock follows ${mode === 'disguised' ? 'disguised real time' : 'real-world time'} — it cannot be advanced. Switch the time provider in Set time.`);
   }
 
   // ─── The line's clock: future rows move + labels tick between renders (DOM only, never a re-render) ───
@@ -810,14 +811,14 @@ export class OverviewTab extends BaseTab {
     const svc = this.messageService;
     const rows = (svc?.getQueue?.() || []).filter(q => (q.remote && q.userId === userId) || (actorId && q.fromActorId === actorId));
     const ids = [...new Set(rows.map(q => q.messageId).filter(Boolean))];
-    if (!ids.length) { ui.notifications.info('NCM | Nothing is held for them any more.'); return this.render(true); }
+    if (!ids.length) { ncmNotify.info('NCM | Nothing is held for them any more.'); return this.render(true); }
     let n = 0, bad = null;
     for (const id of ids) {
       const r = await svc.forceDeliver(id);
       if (r?.success) n++; else bad = bad || r?.error || 'delivery failed';
     }
-    if (n) ui.notifications.info(`NCM | Delivered ${n} held message${n === 1 ? '' : 's'}.`);
-    if (bad) ui.notifications.warn(`NCM | Not delivered: ${bad}`);
+    if (n) ncmNotify.info(`NCM | Delivered ${n} held message${n === 1 ? '' : 's'}.`);
+    if (bad) ncmNotify.warn(`NCM | Not delivered: ${bad}`);
     this.render(true);
   }
 
@@ -836,8 +837,8 @@ export class OverviewTab extends BaseTab {
     const group = svc?.getMasterGroup?.(groupId);
     const actor = game.actors?.get(actorId);
     const r = await svc?.pushGroupToPlayer?.(groupId, actorId);
-    if (!r?.success) ui.notifications.warn(`NCM | ${r?.error || 'Push failed.'}`);
-    else ui.notifications.info(`NCM | Shared "${group?.name || 'the group'}" with ${actor?.name || 'them'} (${r.shared} contacts).`);
+    if (!r?.success) ncmNotify.warn(`NCM | ${r?.error || 'Push failed.'}`);
+    else ncmNotify.info(`NCM | Shared "${group?.name || 'the group'}" with ${actor?.name || 'them'} (${r.shared} contacts).`);
     this.render(true);
   }
 
@@ -878,7 +879,7 @@ export class OverviewTab extends BaseTab {
     const { messageId, inboxId } = target.dataset;
     const box = this._scanMail().inboxes.find(b => b.ownerId === inboxId);
     const msg = box?.msgs.find(m => m.messageId === messageId);
-    if (!msg) return ui.notifications.warn('That message is gone.');
+    if (!msg) return ncmNotify.warn('That message is gone.');
     const opts = { mode: 'reply', originalMessage: msg };
     if (box.isContact) opts.fromContactId = box.ownerId; else opts.fromActorId = box.ownerId;
     game.nightcity?.openComposer?.(opts);

@@ -6,10 +6,11 @@
  *   already garbled, and type out like a real call; garbled words type as garble. Spec PHONE-REVISION.md §12, §17.
  */
 
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { CallHud } from './CallHud.js';
 import { typeOutMs } from '../../utils/callModel.js';
 import { resolveOperator } from '../../utils/helpers.js';
-import { OVERHEARD_WAYS } from '../../utils/overheard.js';
+import { OVERHEARD_WAYS, safeHeardHtml } from '../../utils/overheard.js';
 import { speak } from './speech.js';
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -27,14 +28,14 @@ export class OverheardHud {
   /** What the GM's client sent. */
   receive(d) {
     if (d.op === 'prompt') return this._prompt(d);
-    if (d.op === 'none') { ui.notifications?.info(d.way === 'scanner' ? 'Nothing on the air here.' : 'You pick up nothing.'); return; }
+    if (d.op === 'none') { ncmNotify.info(d.way === 'scanner' ? 'Nothing on the air here.' : 'You pick up nothing.'); return; }
     if (d.op === 'joined') { this.cur = { runId: d.runId, label: d.label, net: d.net, from: d.from, skill: d.skill, dv: d.dv, lines: new Map(), note: '', enhanced: 0, saved: false }; this._paint(); return; }
-    if (!this.cur || this.cur.runId !== d.runId) { if (d.op === 'saved' && d.ok) ui.notifications?.info('Saved to your EXFIL folder.'); return; }
-    if (d.op === 'line') { const had = this.cur.lines.has(d.line.i); this.cur.lines.set(d.line.i, d.line); this._subs(had || d.again ? null : d.line.id); if (d.line.tts && !d.again) speak(this._spoken(d.line)); return; }
+    if (!this.cur || this.cur.runId !== d.runId) { if (d.op === 'saved' && d.ok) ncmNotify.info('Saved to your EXFIL folder.'); return; }
+    if (d.op === 'line') { if (!d.line || typeof d.line !== 'object') return; d.line = { ...d.line, html: safeHeardHtml(d.line.html) }; const had = this.cur.lines.has(d.line.i); this.cur.lines.set(d.line.i, d.line); this._subs(had || d.again ? null : d.line.id); if (d.line.tts && !d.again) speak(this._spoken(d.line)); return; }
     if (d.op === 'click') { this.cur.note = 'A click on the line.'; this._subs(); return; }
     if (d.op === 'ended') { this.cur.note = 'The call has ended.'; this.cur.over = true; this._paint(); setTimeout(() => this._close(), 5000); return; }
     if (d.op === 'cut') { this.cur.note = 'The line went dead.'; this.cur.over = true; this._paint(); setTimeout(() => this._close(), 4000); return; }
-    if (d.op === 'saved') { this.cur.saved = !!d.ok; ui.notifications?.[d.ok ? 'info' : 'warn'](d.ok ? 'Saved to your EXFIL folder.' : 'It could not be saved.'); }
+    if (d.op === 'saved') { this.cur.saved = !!d.ok; ncmNotify[d.ok ? 'info' : 'warn'](d.ok ? 'Saved to your EXFIL folder.' : 'It could not be saved.'); }
   }
 
   /** Only the words they caught are read out. */
@@ -57,7 +58,7 @@ export class OverheardHud {
     let html = this.hud._callHtml({ call, role: 'caller' }, {});
     html = html.replaceAll('Holocall', 'Intercept').replace('Hang up', 'Stop listening');
     html = html.replace('<img src="NOFACE" alt="">', '<span class="ncm-ch-ini" aria-hidden="true"><span class="sw"><span class="tr"></span><span class="dot"></span><span class="dot b"></span></span><b><i class="fas fa-ear-listen"></i></b></span>');
-    this._mount().innerHTML = `<div class="ncm-r5-scene"><div class="ncm-call-hud ncm-r5-hud" style="--ch-ring:#F65261;--ch-live:#b87aff;--ch-key:#f7c948">${html}</div><div class="ncm-ch-subs ncm-r5-subs" data-ov-subs></div><div class="ncm-r4-tools"><button type="button" data-ov="enhance" data-tooltip="${esc(c.skill)} against DV ${esc(c.dv)}. Beat it by more and more words clear"><i class="fas fa-wand-magic-sparkles"></i> Enhance</button><button type="button" data-ov="save" data-tooltip="To your EXFIL folder, as garbled as you heard it, from the line you joined on"><i class="fas fa-floppy-disk"></i> Save</button></div></div>`;
+    this._mount().innerHTML = `<div class="ncm-r5-scene"><div class="ncm-call-hud ncm-r5-hud" style="--ch-ring:#F65261;--ch-live:#b87aff;--ch-key:#f7c948">${html}</div><div class="ncm-ch-subs ncm-r5-subs" data-ov-subs></div><div class="ncm-r4-tools"><button type="button" data-ov="enhance" data-tooltip="${tipText(c.skill)} against DV ${tipText(c.dv)}. Beat it by more and more words clear"><i class="fas fa-wand-magic-sparkles"></i> Enhance</button><button type="button" data-ov="save" data-tooltip="To your EXFIL folder, as garbled as you heard it, from the line you joined on"><i class="fas fa-floppy-disk"></i> Save</button></div></div>`;
     this._subs();
     clearInterval(this._tick);
     const t0 = performance.now();

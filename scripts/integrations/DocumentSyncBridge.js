@@ -28,6 +28,7 @@
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, resolveDisplayName } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
+import { wireMailRevision } from '../utils/mailRevision.js';
 
 export class DocumentSyncBridge {
 
@@ -48,6 +49,8 @@ export class DocumentSyncBridge {
     }
 
     this._eventBus = eventBus;
+    // The mail revision the admin scans are cached against moves on every journal / page / actor change (audit D5).
+    wireMailRevision();
 
     // ─── Scene Flag Changes ───────────────────────────────
     // Fires on ALL clients when any scene's flags change.
@@ -113,6 +116,13 @@ export class DocumentSyncBridge {
     this._hookIds.push(
       Hooks.on('updateSetting', (setting) => {
         this._onSettingUpdate(setting);
+      })
+    );
+    // The FIRST save of a world setting creates it (createSetting, not updateSetting). For the directory that is the
+    // GM's first contact — the one every other client would otherwise miss.
+    this._hookIds.push(
+      Hooks.on('createSetting', (setting) => {
+        if (setting?.key === `${MODULE_ID}.masterContacts`) this._onSettingUpdate(setting);
       })
     );
 
@@ -293,6 +303,7 @@ export class DocumentSyncBridge {
    * @private
    */
   static _onJournalPageCreated(page, userId) {
+    // (the rules for which pages toast are in isNewMailPage, below the class)
     const journal = page.parent;
     if (!journal) return;
 
@@ -311,11 +322,18 @@ export class DocumentSyncBridge {
     // Spam-routed mail is delivered silently (player discovers it in Spam).
     if (msgFlags.status?.spam) return;
 
+    // Copies that are not news are silent too (audit INT-07): a page that lands already read (a conversation tap log,
+    // an imported copy), a tap or exfil copy in the Exfil folder (the person who took it knows), and a file.
+    if (!isNewMailPage(msgFlags)) return;
+
     // Only the recipient gets the toast/sound. Mirror the socket path's
     // ownership gate (handleMessageNotification checks actor.isOwner) so a
     // player never sees toasts for NPC inboxes or another player's mail.
     const actor = inbox.isContact ? null : game.actors.get(inbox.ownerId);
     if (!actor?.isOwner) return;
+    // A GM owns every actor, so a SECOND GM was toasted for everyone's mail (INT-07). A GM hears only about their own
+    // assigned character here; the delivering GM's NPC-mail toast comes from MessageService.
+    if (game.user.isGM && game.user.character?.id !== inbox.ownerId) return;
 
     // Stored flags carry no fromName — resolve a display name so the toast
     // doesn't render "Unknown" (matches MESSAGE_RECEIVED payload contract).
@@ -438,6 +456,8 @@ export class DocumentSyncBridge {
 
       case 'masterContacts':
         log.debug('SyncBridge: Master contacts setting changed');
+        // Re-read the directory first, so every listener of the event sees the new list (audit DATA-07).
+        game.nightcity?.masterContactService?.reloadFromSetting?.();
         this._eventBus.emit(EVENTS.CONTACT_UPDATED ?? 'contact:updated', {
           source: 'document-sync',
           settingChanged: 'masterContacts',
@@ -488,4 +508,18 @@ export class DocumentSyncBridge {
       log.debug(`SyncBridge: Signal synced to ${refreshed.signalStrength}% for ${currentId}`);
     }
   }
+}
+
+/**
+ * Is a newly created inbox page NEWS for its owner — something to toast (audit INT-07)? Not when it lands already
+ * read (a conversation tap log, an imported copy), not a tap / exfil copy (`metadata.recovered`: the person who took
+ * it knows), not a file. Pure.
+ * @param {object} flags the page's NCM flag block
+ */
+export function isNewMailPage(flags) {
+  if (!flags) return false;
+  if (flags.status?.read) return false;
+  if (flags.metadata?.recovered) return false;
+  if (flags.envelope === 'file') return false;
+  return true;
 }

@@ -90,6 +90,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars — render checks did not run'); }
 else {
   Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   Handlebars.registerHelper('gt', (a, b) => Number(a) > Number(b));
   Handlebars.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));
   Handlebars.registerHelper('join', (arr, sep) => (Array.isArray(arr) ? arr.join(typeof sep === 'string' ? sep : ', ') : ''));
@@ -116,7 +117,7 @@ const ap = read('scripts/ui/AdminPanel/AdminPanelApp.js');
 ok(ap.includes('phone: new PhoneTab(this)') && ap.includes('...this.tabs.phone.prepareContext()') && ap.includes('EVENTS.CALL_RINGING'), 'panel: tab, context spread, live re-render');
 ok(read('templates/admin-panel/tab-contacts.hbs').includes('data-op="callAs"') && read('scripts/ui/AdminPanel/tabs/ContactsTab.js').includes("case 'callAs'"), 'Call as on Admin Contacts');
 const cs = read('scripts/services/CallService.js');
-ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSignal: !isGM() && this._noSignal()'), 'service: GM readers; an NPC caller ignores the GM\'s own signal');
+ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSignal: !isGM() && !from.wired && this._noSignal()'), 'service: GM readers; an NPC caller ignores the GM\'s own signal');
 
 // ═══ 5. Phase 2 — Listen in, transcripts, the notice ═══
 {

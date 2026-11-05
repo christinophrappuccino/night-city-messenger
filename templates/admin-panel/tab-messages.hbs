@@ -38,7 +38,7 @@
   <div class="ncm-msg2-min">
     <div class="nm">{{fromLabel}} <span class="to"><i class="fas fa-arrow-right-long"></i> {{toName}}</span></div>
     <div class="sj">{{subject}}</div>
-    {{#if flags.length}}<div class="fl">{{#each flags}}<span class="ncm-msg2-flag is-{{tone}}"{{#if tip}} data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
+    {{#if flags.length}}<div class="fl">{{#each flags}}<span class="ncm-msg2-flag is-{{tone}}"{{#if tip}} data-tooltip="{{ncm-tip tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
   </div>
   <div class="w">{{calWhen}}{{#if unread}}<span class="u"></span>{{/if}}</div>
 </div>
@@ -227,11 +227,11 @@
       {{#with all.cal}}
       <div class="ncm-msg2-list ncm-msg2-cal" data-cal-level="{{level}}">
         <div class="ncm-msg2-cal__crumb">
-          {{#each crumbs}}{{#unless @first}}<i class="fas fa-chevron-right ncm-msg2-cal__sep"></i>{{/unless}}{{#if here}}<span class="is-here">{{label}}</span>{{else}}<span class="ncm-msg2-cal__up" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calLevel" data-level="{{level}}" data-tooltip="Back to {{label}}">{{label}}</span>{{/if}}{{/each}}
+          {{#each crumbs}}{{#unless @first}}<i class="fas fa-chevron-right ncm-msg2-cal__sep"></i>{{/unless}}{{#if here}}<span class="is-here">{{label}}</span>{{else}}<span class="ncm-msg2-cal__up" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calLevel" data-level="{{level}}" data-tooltip="Back to {{ncm-tip label}}">{{label}}</span>{{/if}}{{/each}}
           <span class="ncm-msg2-cal__nav">
             {{#if canUp}}<span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calUp" data-tooltip="Up one level (Esc)" aria-label="Up one level"><i class="fas fa-turn-up"></i></span>{{/if}}
-            <span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="-1" data-tooltip="Previous {{level}} (←)" aria-label="Previous {{level}}"><i class="fas fa-chevron-left"></i></span>
-            <span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="1" data-tooltip="Next {{level}} (→)" aria-label="Next {{level}}"><i class="fas fa-chevron-right"></i></span>
+            <span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="-1" data-tooltip="Previous {{ncm-tip level}} (←)" aria-label="Previous {{level}}"><i class="fas fa-chevron-left"></i></span>
+            <span class="ncm-msg2-cal__nb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="1" data-tooltip="Next {{ncm-tip level}} (→)" aria-label="Next {{level}}"><i class="fas fa-chevron-right"></i></span>
           </span>
         </div>
         <div class="ncm-msg2-cal__quick">
@@ -244,10 +244,10 @@
           <div class="ncm-msg2-cal__hd"><b>{{head.title}}</b><span>{{head.subline}}</span></div>
           <div class="ncm-msg2-cal__ygrid" data-msg2-scroll="alist" data-sel="{{key}}">
             {{#each tiles}}
-            <div class="ncm-msg2-cal__mt{{#if now}} is-now{{/if}}{{#if empty}} is-empty{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calMonth" data-month="{{month}}" data-tooltip="{{label}}: {{n}} messages{{#if unread}} · {{unread}} unread{{/if}}{{#if failed}} · {{failed}} not delivered{{/if}}">
+            <div class="ncm-msg2-cal__mt{{#if now}} is-now{{/if}}{{#if empty}} is-empty{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calMonth" data-month="{{month}}" data-tooltip="{{ncm-tip label}}: {{ncm-tip n}} messages{{#if unread}} · {{ncm-tip unread}} unread{{/if}}{{#if failed}} · {{ncm-tip failed}} not delivered{{/if}}">
               <span class="m">{{label}}</span>
               <span class="bars">{{#each bars}}<i class="{{#if hot}}is-hot{{/if}}" style="height:{{h}}px"></i>{{/each}}</span>
-              <span class="ct"><span class="n">{{#if n}}{{n}}{{else}}—{{/if}}</span>{{#if failed}}<span class="ncm-msg2-cal__un is-bad" data-tooltip="{{failed}} not delivered">{{failed}}</span>{{/if}}{{#if unread}}<span class="ncm-msg2-cal__un" data-tooltip="{{unread}} unread">{{unread}}</span>{{/if}}</span>
+              <span class="ct"><span class="n">{{#if n}}{{n}}{{else}}—{{/if}}</span>{{#if failed}}<span class="ncm-msg2-cal__un is-bad" data-tooltip="{{ncm-tip failed}} not delivered">{{failed}}</span>{{/if}}{{#if unread}}<span class="ncm-msg2-cal__un" data-tooltip="{{ncm-tip unread}} unread">{{unread}}</span>{{/if}}</span>
             </div>
             {{/each}}
           </div>
@@ -258,10 +258,10 @@
           <div class="ncm-msg2-cal__mgrid">
             <div class="ncm-msg2-cal__dow">{{#each dowLabels}}<span>{{this}}</span>{{/each}}</div>
             <div class="ncm-msg2-cal__days">
-              {{#each cells}}{{#if out}}<div class="ncm-msg2-cal__dc is-out"></div>{{else}}<div class="ncm-msg2-cal__dc{{#if empty}} is-z{{/if}}{{#if today}} is-today{{/if}}" style="--v:{{v}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calDay" data-ms="{{ms}}" data-tooltip="{{n}} messages{{#if unread}} · {{unread}} unread{{/if}}{{#if failed}} · {{failed}} not delivered{{/if}}"><span class="d">{{day}}</span>{{#if n}}<span class="c">{{n}}</span>{{/if}}{{#if unread}}<i class="dot"></i>{{/if}}{{#if failed}}<i class="dot is-x"></i>{{/if}}</div>{{/if}}{{/each}}
+              {{#each cells}}{{#if out}}<div class="ncm-msg2-cal__dc is-out"></div>{{else}}<div class="ncm-msg2-cal__dc{{#if empty}} is-z{{/if}}{{#if today}} is-today{{/if}}" style="--v:{{v}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calDay" data-ms="{{ms}}" data-tooltip="{{ncm-tip n}} messages{{#if unread}} · {{ncm-tip unread}} unread{{/if}}{{#if failed}} · {{ncm-tip failed}} not delivered{{/if}}"><span class="d">{{day}}</span>{{#if n}}<span class="c">{{n}}</span>{{/if}}{{#if unread}}<i class="dot"></i>{{/if}}{{#if failed}}<i class="dot is-x"></i>{{/if}}</div>{{/if}}{{/each}}
             </div>
           </div>
-          <div class="ncm-msg2-cal__wk">{{#each weeks}}<span class="{{#if unread}}has-unread{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calWeek" data-start="{{start}}" data-tooltip="Week {{iso}}: {{n}} messages{{#if unread}} · {{unread}} unread{{/if}}">{{label}}{{#if n}} · {{n}}{{/if}}</span>{{/each}}</div>
+          <div class="ncm-msg2-cal__wk">{{#each weeks}}<span class="{{#if unread}}has-unread{{/if}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calWeek" data-start="{{start}}" data-tooltip="Week {{ncm-tip iso}}: {{ncm-tip n}} messages{{#if unread}} · {{ncm-tip unread}} unread{{/if}}">{{label}}{{#if n}} · {{n}}{{/if}}</span>{{/each}}</div>
           </div>
           {{!-- the grip: drag to give the list more or less room (the grid scrolls when squeezed); double-click resets; ↑ ↓ nudge --}}
           <div class="ncm-msg2-cal__grip" role="separator" aria-orientation="horizontal" tabindex="0" data-cal-grip data-tooltip="Drag up or down to resize the list · double-click resets · ↑ ↓ nudge" aria-label="Resize the list"><i></i></div>
@@ -272,8 +272,8 @@
           </div>
           {{/if}}
           {{#if isStrip}}
-          <div class="ncm-msg2-cal__strip">{{#each strip}}<div class="ncm-msg2-cal__dc{{#if empty}} is-z{{/if}}{{#if today}} is-today{{/if}}{{#if sel}} is-on{{/if}}" style="--v:{{v}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calDay" data-ms="{{ms}}" data-tooltip="{{wd}} {{day}}: {{n}} messages{{#if unread}} · {{unread}} unread{{/if}}{{#if failed}} · {{failed}} not delivered{{/if}}"><span class="wd">{{wd}}</span><span class="d">{{day}}</span>{{#if n}}<span class="c">{{n}}</span>{{/if}}{{#if unread}}<i class="dot"></i>{{/if}}{{#if failed}}<i class="dot is-x"></i>{{/if}}</div>{{/each}}</div>
-          <div class="ncm-msg2-cal__hd ncm-msg2-cal__hd--day"><b>{{head.title}}</b><span>{{head.subline}}</span>{{#if head.unread}}<span class="ncm-msg2-cal__un" data-tooltip="{{head.unread}} unread">{{head.unread}}</span>{{/if}}</div>
+          <div class="ncm-msg2-cal__strip">{{#each strip}}<div class="ncm-msg2-cal__dc{{#if empty}} is-z{{/if}}{{#if today}} is-today{{/if}}{{#if sel}} is-on{{/if}}" style="--v:{{v}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calDay" data-ms="{{ms}}" data-tooltip="{{ncm-tip wd}} {{ncm-tip day}}: {{ncm-tip n}} messages{{#if unread}} · {{ncm-tip unread}} unread{{/if}}{{#if failed}} · {{ncm-tip failed}} not delivered{{/if}}"><span class="wd">{{wd}}</span><span class="d">{{day}}</span>{{#if n}}<span class="c">{{n}}</span>{{/if}}{{#if unread}}<i class="dot"></i>{{/if}}{{#if failed}}<i class="dot is-x"></i>{{/if}}</div>{{/each}}</div>
+          <div class="ncm-msg2-cal__hd ncm-msg2-cal__hd--day"><b>{{head.title}}</b><span>{{head.subline}}</span>{{#if head.unread}}<span class="ncm-msg2-cal__un" data-tooltip="{{ncm-tip head.unread}} unread">{{head.unread}}</span>{{/if}}</div>
           <div class="ncm-msg2-cal__rows" data-msg2-scroll="alist" data-sel="{{key}}">
             {{#if isDay}}
             {{#each bands}}<div class="ncm-msg2-cal__hr">{{label}}</div>{{#each rows}}{{> ncmMsg2CalRow}}{{/each}}{{else}}<div class="ncm-msg2-quiet">No mail this day.</div>{{/each}}
@@ -286,7 +286,7 @@
         </div>
         <div class="ncm-msg2-cal__foot">
           <span class="ncm-msg2-cal__fb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="-1"><i class="fas fa-chevron-left"></i>{{prev.label}} · <b>{{prev.n}}</b></span>
-          <span class="h" data-tooltip="{{total}} in this {{level}} · {{@root.msg2.all.grand}} match in all">{{#if isYear}}{{hint}}{{else}}{{@root.msg2.all.shown}} of {{total}}{{#if undated}} · {{undated}} undated{{/if}}{{/if}}</span>
+          <span class="h" data-tooltip="{{ncm-tip total}} in this {{ncm-tip level}} · {{ncm-tip @root.msg2.all.grand}} match in all">{{#if isYear}}{{hint}}{{else}}{{@root.msg2.all.shown}} of {{total}}{{#if undated}} · {{undated}} undated{{/if}}{{/if}}</span>
           <span class="ncm-msg2-cal__fb" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="calStep" data-dir="1">{{next.label}} · <b>{{next.n}}</b><i class="fas fa-chevron-right"></i></span>
         </div>
       </div>
@@ -317,7 +317,7 @@
             {{#if group}}
             {{#if big}}
             <div class="ncm-msg2-jr__sum">
-              <span class="ncm-msg2-jr__bar">{{#each bar}}<i class="is-{{tone}}" style="width:{{pct}}%" data-tooltip="{{n}} {{k}}"></i>{{/each}}</span>
+              <span class="ncm-msg2-jr__bar">{{#each bar}}<i class="is-{{tone}}" style="width:{{pct}}%" data-tooltip="{{ncm-tip n}} {{ncm-tip k}}"></i>{{/each}}</span>
               <span class="ncm-msg2-jr__chips">{{#each chips}}<span class="ncm-msg2-jr__chip{{#if on}} is-on{{/if}} is-{{k}}" role="button" tabindex="0" data-action="tabAct" data-owner="messages" data-op="jrFilter" data-id="{{id}}" data-f="{{k}}">{{label}}<b>{{n}}</b></span>{{/each}}</span>
               {{#if searchable}}<label class="ncm-msg2-jr__find"><i class="fas fa-magnifying-glass"></i><input type="text" data-jr-search placeholder="Find a person…" aria-label="Find a person"></label>{{/if}}
             </div>
@@ -326,7 +326,7 @@
               <div class="ncm-msg2-jr__phead"><span>To</span><span>Sent</span><span>Delivered</span><span>Read</span><span>Replied</span></div>
               {{#each rcp}}
               <div class="ncm-msg2-jr__p ncm-msg2-dl__rcp is-{{cls}}" data-b="{{bucket}}" data-name="{{nameKey}}">
-                <span class="who">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}<span class="nm" data-tooltip="{{#if addr}}{{addr}} · {{/if}}{{word}}{{#if time}} {{time}}{{/if}}">{{name}}</span></span>
+                <span class="who">{{#if img}}<img class="ncm-msg2-av sm" src="{{img}}" alt="" style="--tc:{{ncm-hue name}}">{{else}}<span class="ncm-msg2-av sm" style="--tc:{{ncm-hue name}}">{{initials}}</span>{{/if}}<span class="nm" data-tooltip="{{#if addr}}{{ncm-tip addr}} · {{/if}}{{ncm-tip word}}{{#if time}} {{ncm-tip time}}{{/if}}">{{name}}</span></span>
                 {{#each segs}}<span class="seg is-{{s}}"><i class="fas {{icon}}"></i></span>{{/each}}
                 {{#if why}}<span class="note is-{{cls}}"><span>{{{why}}}</span>{{#if fix}}{{#with fix}} <button type="button" class="ncm-msg2-btn{{#unless quiet}} ncm-msg2-btn--primary{{/unless}}{{#if quiet}} ncm-msg2-btn--quiet{{/if}}" data-action="{{#if action}}{{action}}{{else}}tabAct{{/if}}" data-owner="messages"{{#if op}} data-op="{{op}}"{{/if}}{{#each data}} data-{{@key}}="{{this}}"{{/each}}><i class="fas {{icon}}"></i> {{label}}</button>{{/with}}{{/if}}</span>{{else}}{{#if fix}}<span class="note is-{{cls}}">{{#with fix}}<button type="button" class="ncm-msg2-btn{{#unless quiet}} ncm-msg2-btn--primary{{/unless}}{{#if quiet}} ncm-msg2-btn--quiet{{/if}}" data-action="{{#if action}}{{action}}{{else}}tabAct{{/if}}" data-owner="messages"{{#if op}} data-op="{{op}}"{{/if}}{{#each data}} data-{{@key}}="{{this}}"{{/each}}><i class="fas {{icon}}"></i> {{label}}</button>{{/with}}</span>{{/if}}{{/if}}
               </div>
@@ -349,7 +349,7 @@
             </div>
           </div>
           {{/with}}
-          {{#if flags.length}}<div class="ncm-msg2-facts">{{#each flags}}<span class="ncm-msg2-flag is-{{tone}}"{{#if tip}} data-tooltip="{{tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
+          {{#if flags.length}}<div class="ncm-msg2-facts">{{#each flags}}<span class="ncm-msg2-flag is-{{tone}}"{{#if tip}} data-tooltip="{{ncm-tip tip}}"{{/if}}><i class="fas {{icon}}"></i>{{label}}</span>{{/each}}</div>{{/if}}
           {{#if junk}}<div class="ncm-msg2-note ncm-msg2-note--junk"><i class="fas fa-ban"></i> Junk sender — {{junk.label}}{{#if (eq junk.reason 'listed')}}; new mail from it goes straight to Spam{{/if}}.</div>{{/if}}
           {{#if via}}<div class="ncm-msg2-note ncm-msg2-note--in">Sent from {{via.asName}}’s account on <b>{{via.machine}}</b>{{#if via.impersonated}}, typed by <b>{{via.typist}}</b>. {{via.toName}} sees it as from {{via.asName}}.{{else}} by its own user.{{/if}}</div>{{/if}}
         </div>
@@ -357,8 +357,8 @@
              The named buttons keep their words (ellipsized when cramped); the quieter ones are icon-only with a tooltip
              at 820px and show their label in the pop-out (.lb). --}}
         <div class="ncm-msg2-acts ncm-msg2-acts--line">
-          {{#if replyAs.length}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary ncm-msg2-btn--named" data-action="tabAct" data-owner="messages" data-op="actReply" data-message-id="{{messageId}}" data-tooltip="{{replyAsTip}}"><i class="fas fa-reply"></i><span class="lb lb--keep">Reply as{{#if replyAsMany}}…{{/if}}</span></button>{{/if}}
-          {{#if inboxes.length}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--named" data-action="tabAct" data-owner="messages" data-op="actInbox" data-message-id="{{messageId}}" data-tooltip="{{inboxTip}}"><i class="fas fa-inbox"></i><span class="lb lb--keep">Inbox{{#if inboxMany}}…{{/if}}</span></button>{{/if}}
+          {{#if replyAs.length}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary ncm-msg2-btn--named" data-action="tabAct" data-owner="messages" data-op="actReply" data-message-id="{{messageId}}" data-tooltip="{{ncm-tip replyAsTip}}"><i class="fas fa-reply"></i><span class="lb lb--keep">Reply as{{#if replyAsMany}}…{{/if}}</span></button>{{/if}}
+          {{#if inboxes.length}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--named" data-action="tabAct" data-owner="messages" data-op="actInbox" data-message-id="{{messageId}}" data-tooltip="{{ncm-tip inboxTip}}"><i class="fas fa-inbox"></i><span class="lb lb--keep">Inbox{{#if inboxMany}}…{{/if}}</span></button>{{/if}}
           {{#if openId}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-btn--quietact" data-action="shareMsgToChat" data-message-id="{{openId}}" data-tooltip="Share to chat" aria-label="Share to chat"><i class="fas fa-comment"></i><span class="lb">Share to chat</span></button>
           <button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-btn--quietact" data-action="tabAct" data-owner="messages" data-op="copyToTerminal" data-message-id="{{openId}}" data-tooltip="Copy to a terminal account" aria-label="Copy to a terminal"><i class="fas fa-terminal"></i><span class="lb">Copy to terminal</span></button>{{/if}}
           {{#with readToggle}}<button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon ncm-msg2-btn--quietact" data-action="tabAct" data-owner="messages" data-op="mailReadToggle" data-owner-id="{{owner}}" data-message-id="{{id}}" data-unread="{{#if unread}}1{{/if}}" data-tooltip="{{#if unread}}Mark read{{else}}Mark unread{{/if}}" aria-label="{{#if unread}}Mark read{{else}}Mark unread{{/if}}"><i class="fas {{#if unread}}fa-envelope-open{{else}}fa-envelope{{/if}}"></i><span class="lb">{{#if unread}}Mark read{{else}}Mark unread{{/if}}</span></button>{{/with}}

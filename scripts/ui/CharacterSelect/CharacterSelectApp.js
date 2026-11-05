@@ -7,6 +7,7 @@
  *   Search bar for GM with many characters. Smooth transition animations.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID } from '../../utils/constants.js';
 import { log, isGM, isHiddenCharacter } from '../../utils/helpers.js';
@@ -291,7 +292,7 @@ export class CharacterSelectApp extends BaseApplication {
   static _onJackIn(event, target) {
     if (this._jackingIn) return;
     if (!this._selectedId) {
-      ui.notifications.warn('NCM | Select a character first.');
+      ncmNotify.warn('NCM | Select a character first.');
       return;
     }
     if (this._selectedId === '__admin__') {

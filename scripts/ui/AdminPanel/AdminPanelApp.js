@@ -11,6 +11,7 @@
 import { wireAccessDrag } from '../../integrations/AccessPoints.js';
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
+import { escapeHtml as h } from '../../utils/notify.js';
 import { DateRangePicker } from '../components/DateRangePicker.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { ToolsTab } from './tabs/ToolsTab.js';
@@ -64,6 +65,10 @@ export class AdminPanelApp extends BaseApplication {
     if (this._securitySettingHook) {
       Hooks.off('updateSetting', this._securitySettingHook);
       this._securitySettingHook = null;
+    }
+    if (this._binHook) {
+      for (const h of ['createJournalEntryPage', 'deleteJournalEntryPage']) Hooks.off(h, this._binHook);
+      this._binHook = null;
     }
     this._tabFoldObs?.disconnect(); this._tabFoldObs = null;
     if (this._sceneHook) {
@@ -761,7 +766,7 @@ export class AdminPanelApp extends BaseApplication {
 
     // ── Page heads are one line; a description cut off by the ellipsis shows in full on hover ──
     for (const p of this.element?.querySelectorAll('.ncm-tabhd p') ?? []) {
-      if (!p.dataset.tooltip) p.dataset.tooltip = p.textContent.trim();
+      if (!p.dataset.tooltip) p.dataset.tooltip = h(p.textContent.trim());
     }
 
     // ── The search box being typed in keeps every key and its caret across the render ──
@@ -1069,6 +1074,11 @@ export class AdminPanelApp extends BaseApplication {
       if (this._activeTab === 'security') this._debouncedRender();
     };
     Hooks.on('updateSetting', this._securitySettingHook);
+    // The recycle bin is a GM-only journal now (audit D5): a page in or out of it refreshes the Security tab.
+    this._binHook = (page) => {
+      if (this._activeTab === 'security' && page?.parent?.getFlag?.(MODULE_ID, 'recycleBin')) this._debouncedRender();
+    };
+    for (const h of ['createJournalEntryPage', 'deleteJournalEntryPage']) Hooks.on(h, this._binHook);
     // World time (the Foundry clock + Simple Calendar) advancing: same reason. SC's own hook fires on a
     // calendar change even when Foundry's world time is untouched (its "date-time-change" event name).
     this._worldTimeHook = () => this._onGameClock(false);
@@ -1084,12 +1094,15 @@ export class AdminPanelApp extends BaseApplication {
     };
     for (const h of ['createScene', 'updateScene', 'deleteScene']) Hooks.on(h, this._sceneHook);
 
-    // Messages — with overview activity logging
+    // Messages — with overview activity logging.
+    // Every row is rendered as HTML ({{{html}}} in tab-overview.hbs), and the
+    // names in it are player-controlled (character, shard, contact, network
+    // names), so every interpolated value goes through h() (audit SEC-11).
     this.subscribe(EVENTS.MESSAGE_SENT, (data) => {
       const from = data?.fromName || game.actors.get(data?.fromActorId)?.name || 'Unknown';
       const to = data?.toName || game.actors.get(data?.toActorId)?.name || 'Unknown';
       this.tabs.overview.logActivity('msg', 'paper-plane',
-        `<strong>${from}</strong> sent message to <span class="ncm-ov-hl--cyan">${to}</span>`,
+        `<strong>${h(from)}</strong> sent message to <span class="ncm-ov-hl--cyan">${h(to)}</span>`,
         { actorId: data?.fromActorId });
       this._refreshIfTab('overview', 'messages');
     });
@@ -1097,7 +1110,7 @@ export class AdminPanelApp extends BaseApplication {
       const from = data?.fromName || game.actors.get(data?.fromActorId)?.name || 'Unknown';
       const to = data?.toName || game.actors.get(data?.toActorId)?.name || 'Unknown';
       this.tabs.overview.logActivity('msg', 'envelope',
-        `<strong>${to}</strong> received message from <span class="ncm-ov-hl--cyan">${from}</span>`,
+        `<strong>${h(to)}</strong> received message from <span class="ncm-ov-hl--cyan">${h(from)}</span>`,
         { actorId: data?.toActorId });
       this._refreshIfTab('overview', 'messages');
     });
@@ -1119,7 +1132,7 @@ export class AdminPanelApp extends BaseApplication {
       const contactName = data?.contactName || 'Unknown';
       const targetName = data?.targetActorName || game.actors.get(data?.targetActorId)?.name || 'Unknown';
       this.tabs.overview.logActivity('contact', 'user-plus',
-        `Contact <span class="ncm-ov-hl--purple">"${contactName}"</span> pushed to ${targetName}`,
+        `Contact <span class="ncm-ov-hl--purple">"${h(contactName)}"</span> pushed to ${h(targetName)}`,
         {});
       this._refreshIfTab('overview', 'contacts');
     });
@@ -1137,21 +1150,21 @@ export class AdminPanelApp extends BaseApplication {
       if (data?.type === 'nodes') return this._refreshIfTab('networks', 'overview');
       const netName = data?.networkName || data?.networkId || 'Unknown';
       this.tabs.overview.logActivity('net', 'wifi',
-        `Network switched to <span class="ncm-ov-hl--green">${netName}</span>`,
+        `Network switched to <span class="ncm-ov-hl--green">${h(netName)}</span>`,
         {});
       this._refreshIfTab('networks', 'overview');
     });
     this.subscribe(EVENTS.NETWORK_CONNECTED, (data) => {
       const netName = data?.networkName || data?.networkId || 'Unknown';
       this.tabs.overview.logActivity('net', 'plug',
-        `Connected to network <span class="ncm-ov-hl--green">${netName}</span>`,
+        `Connected to network <span class="ncm-ov-hl--green">${h(netName)}</span>`,
         {});
       this._refreshIfTab('networks', 'overview');
     });
     this.subscribe(EVENTS.NETWORK_DISCONNECTED, (data) => {
       const netName = data?.networkName || data?.networkId || 'Unknown';
       this.tabs.overview.logActivity('net', 'ban',
-        `Disconnected from network <span class="ncm-ov-hl--red">${netName}</span>`,
+        `Disconnected from network <span class="ncm-ov-hl--red">${h(netName)}</span>`,
         {});
       this._refreshIfTab('networks', 'overview');
     });
@@ -1165,7 +1178,7 @@ export class AdminPanelApp extends BaseApplication {
       const actorName = data.actorId ? game.actors?.get(data.actorId)?.name : 'GM';
       const shardName = data.itemId ? game.items?.get(data.itemId)?.name : 'Unknown';
       this.tabs.overview.logActivity('shard', 'unlock',
-        `<strong>${actorName || 'Unknown'}</strong> breached shard <span class="ncm-ov-hl--gold">"${shardName}"</span>`,
+        `<strong>${h(actorName || 'Unknown')}</strong> breached shard <span class="ncm-ov-hl--gold">"${h(shardName)}"</span>`,
         { itemId: data.itemId });
       this._refreshIfTab('overview', 'shards');
     });
@@ -1186,7 +1199,7 @@ export class AdminPanelApp extends BaseApplication {
       this.tabs.shards.logActivity('gm', 'plus', data, 'created');
       const shardName = data.itemId ? game.items?.get(data.itemId)?.name : 'New Shard';
       this.tabs.overview.logActivity('shard', 'database',
-        `Data shard <span class="ncm-ov-hl--gold">"${shardName}"</span> created`,
+        `Data shard <span class="ncm-ov-hl--gold">"${h(shardName)}"</span> created`,
         { itemId: data.itemId });
       this._refreshIfTab('overview', 'shards');
     });
@@ -1199,7 +1212,7 @@ export class AdminPanelApp extends BaseApplication {
       const actorName = data.actorId ? game.actors?.get(data.actorId)?.name : 'Unknown';
       const damage = data.damage || '?';
       this.tabs.overview.logActivity('alert', 'shield-virus',
-        `<span class="ncm-ov-hl--red">BLACK ICE</span> dealt ${damage} HP damage to <strong>${actorName}</strong>`,
+        `<span class="ncm-ov-hl--red">BLACK ICE</span> dealt ${h(damage)} HP damage to <strong>${h(actorName)}</strong>`,
         { actorId: data.actorId });
       this._refreshIfTab('overview');
     });
@@ -1207,7 +1220,7 @@ export class AdminPanelApp extends BaseApplication {
       this.tabs.shards.logActivity('success', 'coins', data, `claimed ${data.amount?.toLocaleString() ?? '?'} eb`);
       const actorName = data.actorId ? game.actors?.get(data.actorId)?.name : 'Unknown';
       this.tabs.overview.logActivity('shard', 'coins',
-        `<strong>${actorName}</strong> claimed <span class="ncm-ov-hl--gold">${data.amount?.toLocaleString() ?? '?'} eb</span>`,
+        `<strong>${h(actorName)}</strong> claimed <span class="ncm-ov-hl--gold">${h(data.amount?.toLocaleString() ?? '?')} eb</span>`,
         { actorId: data.actorId });
       this._refreshIfTab('overview', 'shards');
     });
@@ -1224,10 +1237,9 @@ export class AdminPanelApp extends BaseApplication {
    * @private
    */
   _refreshIfTab(...tabs) {
-    // Always refresh if on one of the target tabs
-    if (tabs.includes(this._activeTab)) {
-      this.render(true);
-    }
+    // Refresh if on one of the target tabs — once per burst (audit PERF-05: a group send to N people fired one full
+    // render per copy, each re-scanning every mailbox).
+    if (tabs.includes(this._activeTab)) this._debouncedRender();
   }
 
   // ═══════════════════════════════════════════════════════════

@@ -11,6 +11,7 @@
  * subtracts. No Luck.
  */
 
+import { tipText } from './notify.js';
 import { d10Odds } from './rolls.js';
 
 /** Tone thresholds (percent). */
@@ -180,7 +181,7 @@ export function lockOddsHtml(vm, o = {}) {
   } else {
     const c = vm.counts;
     body = `<div class="ncm-lodds__sum" style="--vc:${vc}"><span><b>${vm.realistic}</b> of ${vm.total} can realistically get in</span>
-      <span class="ncm-lodds__dist" data-tooltip="${c.hi} likely · ${c.mid} maybe · ${c.lo} long shot · ${c.none} can't">${vm.spread.map((s) => `<i class="${s.k}" style="width:${s.w}%"></i>`).join('')}</span></div>
+      <span class="ncm-lodds__dist" data-tooltip="${tipText(c.hi)} likely · ${tipText(c.mid)} maybe · ${tipText(c.lo)} long shot · ${tipText(c.none)} can't">${vm.spread.map((s) => `<i class="${s.k}" style="width:${s.w}%"></i>`).join('')}</span></div>
       <div class="ncm-lodds__keyrow"><span class="ncm-lodds__key"><span style="--kc:var(--ncm-good, var(--ncm-success))">likely ${c.hi}</span><span style="--kc:var(--ncm-attn, var(--ncm-warning))">maybe ${c.mid}</span><span style="--kc:var(--ncm-bad, var(--ncm-danger))">long shot ${c.lo}</span><span style="--kc:var(--ncm-text-muted)">can't ${c.none}</span></span></div>
       <div class="ncm-lodds__list">${vm.shown.map((r) => `<div class="ncm-lodds__r ${r.tone}${r.none ? ' is-none' : ''}">${face(r, hue)}<span class="nm">${esc(r.name)}${r.role ? ` <small>${esc(r.role)}</small>` : ''}</span>
         <span class="ncm-lodds__meter"><i style="--w:${r.pct || 0}%"></i></span><span class="p">${pct(r)}</span><span class="how">${esc(r.how)}</span></div>`).join('')}</div>

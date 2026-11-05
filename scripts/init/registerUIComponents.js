@@ -5,6 +5,7 @@
  * @description Registers scene controls, token HUD buttons, and UI launch functions.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, MODULE_TITLE } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { registerMinimizeControls } from '../utils/windowMinimize.js';
@@ -16,6 +17,20 @@ export function registerUIComponents(initializer) {
   });
 
   initializer.register('init', 20, 'Scene controls', () => {
+    // The button group needs a canvas layer of its OWN. It used to name core's shared 'controls' layer, and Foundry
+    // picks a group by its layer (SceneControls#initialize: the FIRST group on that layer wins), so a module that
+    // also uses 'controls' — Grid Scaler — opened instead of the messenger (tester 2026-11-03). An empty
+    // interaction layer: nothing is drawn on it, it only gives the group a unique name.
+    const IL = (typeof InteractionLayer !== 'undefined') ? InteractionLayer : foundry.canvas?.layers?.InteractionLayer;
+    let groupLayer = 'controls';
+    if (IL && globalThis.CONFIG?.Canvas?.layers) {
+      class NCMControlsLayer extends IL {
+        static get layerOptions() { return foundry.utils.mergeObject(super.layerOptions, { name: 'ncmControls' }); }
+      }
+      CONFIG.Canvas.layers.ncmControls = { layerClass: NCMControlsLayer, group: 'interface' };
+      groupLayer = 'ncmControls';
+    }
+
     Hooks.on('getSceneControlButtons', (controls) => {
       if (!game.nightcity) return;
 
@@ -76,7 +91,7 @@ export function registerUIComponents(initializer) {
         name: MODULE_ID,
         title: MODULE_TITLE,
         icon: 'fas fa-satellite-dish',
-        layer: 'controls',
+        layer: groupLayer,
         tools,
       });
     });
@@ -90,30 +105,30 @@ export function registerUIComponents(initializer) {
 
     // Stubs — replaced by actual Application classes in Phase 2+
     ns.openNCM = () => {
-      ui.notifications.info('Night City Messenger: Character Select (Phase 2)');
+      ncmNotify.info('Night City Messenger: Character Select (Phase 2)');
     };
     ns.openInbox = (actorId) => {
-      ui.notifications.info(`Night City Messenger: Inbox (Phase 2) — actorId: ${actorId ?? 'self'}`);
+      ncmNotify.info(`Night City Messenger: Inbox (Phase 2) — actorId: ${actorId ?? 'self'}`);
     };
     ns.composeMessage = (data) => {
-      ui.notifications.info('Night City Messenger: Composer (Phase 2)');
+      ncmNotify.info('Night City Messenger: Composer (Phase 2)');
     };
     ns.openContacts = (actorId) => {
-      ui.notifications.info('Night City Messenger: Contacts (Phase 2)');
+      ncmNotify.info('Night City Messenger: Contacts (Phase 2)');
     };
     ns.openAdmin = () => {
-      if (!game.user.isGM) return ui.notifications.warn('GM only');
-      ui.notifications.info('Night City Messenger: Admin Panel (Phase 5)');
+      if (!game.user.isGM) return ncmNotify.warn('GM only');
+      ncmNotify.info('Night City Messenger: Admin Panel (Phase 5)');
     };
     ns.openDataShard = (item) => {
-      ui.notifications.info('Night City Messenger: Data Shard (Phase 4)');
+      ncmNotify.info('Night City Messenger: Data Shard (Phase 4)');
     };
     ns.openNetworkManagement = () => {
-      if (!game.user.isGM) return ui.notifications.warn('GM only');
-      ui.notifications.info('Night City Messenger: Network Management (Phase 3)');
+      if (!game.user.isGM) return ncmNotify.warn('GM only');
+      ncmNotify.info('Night City Messenger: Network Management (Phase 3)');
     };
     ns.openThemeCustomizer = () => {
-      ui.notifications.info('Night City Messenger: Theme Customizer (Phase 5)');
+      ncmNotify.info('Night City Messenger: Theme Customizer (Phase 5)');
     };
 
     log.info('UI launch stubs registered');

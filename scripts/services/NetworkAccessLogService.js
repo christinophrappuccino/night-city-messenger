@@ -11,7 +11,7 @@
  */
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { log, isPrimaryGM } from '../utils/helpers.js';
 
 /**
  * @typedef {Object} AccessLogEntry
@@ -57,6 +57,7 @@ export class NetworkAccessLogService {
 
     this._loadFromSettings();
     this._wireEvents();
+    this._wireSettingReload();
     this._initialized = true;
     log.info(`NetworkAccessLogService initialized (${this._entries.length} entries loaded)`);
   }
@@ -249,6 +250,16 @@ export class NetworkAccessLogService {
   //  INTERNAL — Persistence
   // ═══════════════════════════════════════════════════════════
 
+  /** @private A GM that does not save keeps its view in step with the one that does. */
+  _wireSettingReload() {
+    if (this._reloadWired) return;
+    this._reloadWired = true;
+    Hooks.on('updateSetting', (setting) => {
+      if (setting?.key !== `${MODULE_ID}.networkAccessLog` || !game.user?.isGM || isPrimaryGM()) return;
+      this._loadFromSettings();
+    });
+  }
+
   /** @private */
   _loadFromSettings() {
     try {
@@ -273,7 +284,9 @@ export class NetworkAccessLogService {
 
   /** @private */
   _saveNow() {
-    if (!game.user?.isGM) return;
+    // ONE GM saves (audit leftover, dev 2026-11-05): every GM saved its own whole copy, so with two GMs online each
+    // save wiped the other's new lines. The others reload the saved log when it changes (`_wireSettingReload`).
+    if (!isPrimaryGM()) return;
     try {
       this.settingsManager?.set('networkAccessLog', this._entries);
       log.debug(`Access log: saved ${this._entries.length} entries`);

@@ -35,6 +35,7 @@
  * plumbing rather than a GM tool.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, LEGACY_MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 
@@ -128,9 +129,22 @@ export async function migrateWorldSettings() {
     const key = s.key.slice(prefix.length);
     const newKey = `${MODULE_ID}.${key}`;
     if (!game.settings.settings.has(newKey)) { result.skipped.push(key); continue; }
-    if (world.find(x => x.key === newKey)) continue;
     let value = s.value;
     if (typeof value === 'string') { try { value = JSON.parse(value); } catch { /* keep raw */ } }
+    // The schema version is the one key where "already there" must not win (audit DATA-09): an earlier build could
+    // stamp it on the empty new namespace while the GM said "Not now". Keep the LOWER of the two, so every upgrade
+    // the legacy data never had still runs.
+    if (key === 'dataSchemaVersion') {
+      const have = world.find(x => x.key === newKey);
+      if (have) {
+        let cur = have.value;
+        if (typeof cur === 'string') { try { cur = JSON.parse(cur); } catch { /* keep raw */ } }
+        const lower = Math.min(Number(cur) || 0, Number(value) || 0);
+        if (lower !== (Number(cur) || 0)) { await game.settings.set(MODULE_ID, key, lower); result.copied++; }
+        continue;
+      }
+    }
+    if (world.find(x => x.key === newKey)) continue;
     await game.settings.set(MODULE_ID, key, value);
     result.copied++;
   }
@@ -231,7 +245,7 @@ export async function runNamespaceMigration() {
 
   if (!(await confirmNamespaceMigration(found))) {
     log.warn(`Namespace migration declined — ${LEGACY_MODULE_ID} data left in place; you will be asked again next load.`);
-    ui.notifications?.warn('NCM | Module data was NOT migrated. Reload to be asked again.', { permanent: true });
+    ncmNotify.warn('NCM | Module data was NOT migrated. Reload to be asked again.', { permanent: true });
     return 'declined';
   }
 
@@ -243,9 +257,9 @@ export async function runNamespaceMigration() {
   if (settings.skipped.length) log.warn(`Namespace migration: ${settings.skipped.length} legacy setting(s) no longer registered, left in place: ${settings.skipped.join(', ')}`);
   if (docs.mismatched.length) {
     log.error(`Namespace migration: ${docs.mismatched.length} document(s) did not verify and KEEP their legacy flags: ${docs.mismatched.join('; ')}`);
-    ui.notifications?.error(`NCM | Migrated ${docs.migrated} document(s); ${docs.mismatched.length} did not verify (see console). Their legacy flags were kept.`, { permanent: true });
+    ncmNotify.error(`NCM | Migrated ${docs.migrated} document(s); ${docs.mismatched.length} did not verify (see console). Their legacy flags were kept.`, { permanent: true });
   } else {
-    ui.notifications?.info(`NCM | Module data migrated: ${settings.copied} setting(s), ${docs.migrated} document(s). Reloading…`, { permanent: true });
+    ncmNotify.info(`NCM | Module data migrated: ${settings.copied} setting(s), ${docs.migrated} document(s). Reloading…`, { permanent: true });
   }
   requestWorldReload();
   return 'migrated';

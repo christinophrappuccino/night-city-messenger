@@ -91,13 +91,18 @@ export function collectResettableSettings() {
  * @returns {{ journals: number, folders: number, pins: number, managedMacros: number,
  *             flagged: Array<{label: string, count: number}>, settings: number }}
  */
+/** An NCM access pin: a terminal, shard, network node or payphone (any of their flags). */
+function isNcmPin(d) {
+  return !!(d?.getFlag?.(MODULE_ID, 'terminalItemId') || d?.getFlag?.(MODULE_ID, 'accessUuid') || d?.getFlag?.(MODULE_ID, 'accessNode') || d?.getFlag?.(MODULE_ID, 'accessPayphone'));
+}
+
 export function gatherResetPlan() {
   const journals = collectNcmJournals();
   const folders = collectJournalFolderTree();
 
   let pins = 0;
   for (const scene of game.scenes ?? []) {
-    for (const note of scene.notes ?? []) if (note.getFlag?.(MODULE_ID, 'terminalItemId')) pins++;
+    for (const note of scene.notes ?? []) if (isNcmPin(note)) pins++;
   }
 
   const managedMacros = [...(game.macros ?? [])].filter(m => m.getFlag?.(MODULE_ID, 'managed') === true).length;
@@ -120,7 +125,7 @@ export function gatherResetPlan() {
         const sub = parent.getEmbeddedCollection?.(name);
         if (!sub) continue;
         for (const d of sub) {
-          if (name === 'Note' && d.getFlag?.(MODULE_ID, 'terminalItemId')) continue; // counted as a pin
+          if (name === 'Note' && isNcmPin(d)) continue; // counted as a pin
           if (hasModuleFlags(d)) n++;
         }
       }
@@ -170,11 +175,14 @@ export async function runFactoryReset({ resetSettings = true, reload = true } = 
 
   // 2. Terminal scene pins.
   for (const scene of game.scenes ?? []) {
-    const ids = [...(scene.notes ?? [])].filter(n => n.getFlag?.(MODULE_ID, 'terminalItemId')).map(n => n.id);
+    const ids = [...(scene.notes ?? [])].filter(n => isNcmPin(n)).map(n => n.id);
     if (ids.length) {
       await scene.deleteEmbeddedDocuments('Note', ids);
       result.pins += ids.length;
     }
+    // step-on areas (Regions) an access point made
+    const areas = [...(scene.regions ?? [])].filter(r => r.getFlag?.(MODULE_ID, 'access')).map(r => r.id);
+    if (areas.length) { await scene.deleteEmbeddedDocuments('Region', areas); result.pins += areas.length; }
   }
 
   // 3. Managed macros + their folders.
@@ -198,7 +206,7 @@ export async function runFactoryReset({ resetSettings = true, reload = true } = 
     // (a collection snapshot can still hold them until the delete settles).
     const isGone = (name, d) =>
       (name === 'macros' && d.getFlag?.(MODULE_ID, 'managed') === true) ||
-      (name === 'Note' && !!d.getFlag?.(MODULE_ID, 'terminalItemId'));
+      (name === 'Note' && !!isNcmPin(d));
     result.stripped += await stripModuleFlags(docs.filter(d => !isGone(collection, d)), (updates) => coll.documentClass.updateDocuments(updates));
     for (const parent of docs) {
       for (const name of embedded) {

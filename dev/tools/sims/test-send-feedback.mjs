@@ -43,6 +43,8 @@ const { SOCKET_OPS } = await import(pathToFileURL(`${ROOT}/scripts/utils/constan
 // ── A fake service instance: prototype methods, scripted collaborators ──
 function makeService() {
   const svc = Object.create(MessageService.prototype);
+  // the GM re-check of a player's recipients (audit leftover) has its own sim, test-relay-gates.mjs; this one has no directory
+  svc.checkRecipientsAsPlayer = async () => ({ ok: true });
   svc._messageQueue = [];
   svc.emitted = [];
   svc.sounds = [];
@@ -103,7 +105,7 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   ok(toasts.length === 0, 'a pending relay shows the result in the composer — no duplicate toast');
 }
 
-// ═══ 5. Someone else's ack is ignored; silence → RELAY_TIMEOUT ═══
+// ═══ 5. Someone else's ack is ignored; silence → held, not failed (B3: DATA-06) ═══
 {
   const saved = MessageService.RELAY_ACK_TIMEOUT_MS;
   MessageService.RELAY_ACK_TIMEOUT_MS = 40;
@@ -112,9 +114,10 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   await Promise.resolve();
   svc.handleDeliveryConfirmation({ messageId: 'm5', success: true, forUserId: 'u-other' });
   const r = await p;
-  ok(r.success === false && r.errorCode === 'RELAY_TIMEOUT', 'an ack addressed to another user is ignored, and no answer in time → RELAY_TIMEOUT');
-  ok(/Retry/.test(r.error), 'the timeout copy tells the player what to do');
+  ok(r.success === true && r.queued && r.reason === 'no_answer', 'an ack addressed to another user is ignored, and no answer in time → held (no refund), not failed');
+  ok((svc._messageQueue || []).some((d) => d.messageId === 'm5' && d.sendKey === 'm5'), 'the held copy keeps its id, so a resend cannot arrive twice');
   ok(!(svc._pendingRelays?.has('m5')), 'the pending entry is cleaned up after the timeout');
+  clearTimeout(svc._retryTimer);
   MessageService.RELAY_ACK_TIMEOUT_MS = saved;
 }
 
@@ -123,10 +126,10 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   const svc = makeService(); toasts.length = 0;
   svc.handleDeliveryConfirmation({ messageId: 'zz', success: false, error: 'No recipient inbox target', forUserId: 'u-other' });
   ok(toasts.length === 0, 'a failure for another user never toasts here (the old broadcast-to-everyone bug)');
-  svc.handleDeliveryConfirmation({ messageId: 'zz', success: false, error: 'No recipient inbox target', forUserId: 'u-player' });
+  await svc.handleDeliveryConfirmation({ messageId: 'zz', success: false, error: 'No recipient inbox target', forUserId: 'u-player' });
   ok(toasts.length === 1 && /No inbox exists/.test(toasts[0][1]), 'a late failure for ME falls back to a translated toast');
   toasts.length = 0;
-  svc.handleDeliveryConfirmation({ messageId: 'zz', success: true, forUserId: 'u-player' });
+  await svc.handleDeliveryConfirmation({ messageId: 'zz', success: true, forUserId: 'u-player' });
   ok(toasts.length === 0, 'a late success is logged, not toasted');
 }
 
@@ -135,14 +138,16 @@ const msg = (id) => ({ messageId: id, from: 'v@nc.net', fromName: 'V', to: 'rogu
   game.user = { id: 'u-gm', isGM: true };
   const svc = makeService(); toasts.length = 0;
   svc._deliverMessage = async () => ({ success: false, error: 'Could not access inbox journal' });
+  // who may send is test-mail-relays' job (A3d); this sim is about delivery
+  svc.checkRelaySender = async () => ({ ok: true });
   await svc.handleMessageRelay(msg('m7'), 'u-player');
-  const ack = svc.emitted.find(e => e.op === SOCKET_OPS.MESSAGE_DELIVERED);
+  const ack = svc.emitted.find(e => e.op === SOCKET_OPS.MESSAGE_DELIVERED && !e.data.accepted);   // the final answer, after 'accepted' (B3)
   ok(ack && ack.data.forUserId === 'u-player' && ack.data.success === false, 'GM emits MESSAGE_DELIVERED addressed to the relaying user');
   ok(toasts.some(t => t[0] === 'warn' && /V → Rogue/.test(t[1]) && /inbox journal/.test(t[1])), 'GM is warned with sender → recipient + the raw reason');
   toasts.length = 0; svc.emitted.length = 0;
   svc._deliverMessage = async () => ({ success: true });
   await svc.handleMessageRelay(msg('m8'), 'u-player');
-  ok(toasts.length === 0 && svc.emitted[0]?.data.success === true, 'a successful relay acks silently');
+  ok(toasts.length === 0 && svc.emitted.find(e => !e.data.accepted)?.data.success === true, 'a successful relay acks silently');
   game.user = { id: 'u-player', isGM: false };
 }
 

@@ -9,6 +9,7 @@
  * Context key `acc2`, built only while this tab is on screen.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { BaseTab } from '../BaseTab.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
@@ -83,6 +84,11 @@ export class AccessTab extends BaseTab {
       out.push({ key: `node:${n.id}`, kind: 'node', name: n.name, subline: [net?.name, game.scenes?.get(n.sceneId)?.name].filter(Boolean).join(' · '),
         img: `modules/${MODULE_ID}/assets/icons/nodes/${n.kind}.svg`, holder: '', playerHeld: false, found: true, ref: { kind: 'node', id: n.id } });
     }
+    // payphones: booths on a map, like nodes
+    for (const p of game.nightcity?.payphoneService?.getAll?.() ?? []) {
+      out.push({ key: `payphone:${p.id}`, kind: 'payphone', name: `Payphone, ${p.name}`, subline: [p.number, game.scenes?.get(p.sceneId)?.name].filter(Boolean).join(' · '),
+        img: `modules/${MODULE_ID}/assets/icons/payphone/payphone.svg`, holder: '', playerHeld: false, found: true, ref: { kind: 'payphone', id: p.id } });
+    }
     return out;
   }
 
@@ -106,11 +112,11 @@ export class AccessTab extends BaseTab {
     for (const scene of game.scenes ?? []) {
       const sc = byId.get(scene.id);
       for (const n of scene.notes ?? []) {
-        const nodeId = n.getFlag(MODULE_ID, 'accessNode');
-        if (nodeId) {
-          const ref = { kind: 'node', id: nodeId };
+        const nodeId = n.getFlag(MODULE_ID, 'accessNode'), ppId = n.getFlag(MODULE_ID, 'accessPayphone');
+        if (nodeId || ppId) {
+          const ref = nodeId ? { kind: 'node', id: nodeId } : { kind: 'payphone', id: ppId };
           const range = Number(n.getFlag(MODULE_ID, 'accessRange')) || 0;
-          pts.push({ id: `pin:${scene.id}:${n.id}`, how: 'pin', key: keyOf(ref), kind: 'node', ref, sceneId: scene.id, ...pct(sc, n.x, n.y), reach: range,
+          pts.push({ id: `pin:${scene.id}:${n.id}`, how: 'pin', key: keyOf(ref), kind: ref.kind, ref, sceneId: scene.id, ...pct(sc, n.x, n.y), reach: range,
             ring: range ? Math.min(160, ((range + 0.5) * 2 * sc.grid) / sc.dims.w * 100) : 0, where: scene.name,
             detail: range ? `in reach within ${range} square${range === 1 ? '' : 's'}` : 'anywhere on the scene', hidden: !!n.getFlag(MODULE_ID, 'accessHidden'),
             broken: !describeAccess(ref).found, docUuid: n.uuid, label: n.text || '' });
@@ -312,7 +318,7 @@ export class AccessTab extends BaseTab {
   /** Hide / reveal a pin or an area (TerminalScenePins.setHidden). */
   async _setHidden(uuid, hidden) {
     const doc = uuid ? await fromUuid(uuid) : null;
-    if (!doc) return ui.notifications.warn('That access point is gone.');
+    if (!doc) return ncmNotify.warn('That access point is gone.');
     await game.nightcity?.terminalScenePins?.setHidden(doc, hidden);
   }
 
@@ -324,6 +330,7 @@ export class AccessTab extends BaseTab {
     if (kind === 'chat') { ui.sidebar?.activateTab?.('chat'); return; }
     if (kind === 'area') { const ref = doc?.getFlag(MODULE_ID, 'access'); return ref && openAccess(ref); }
     if (kind === 'pin' && doc?.getFlag(MODULE_ID, 'accessNode')) return game.nightcity?.openNode?.(doc.getFlag(MODULE_ID, 'accessNode'));
+    if (kind === 'pin' && doc?.getFlag(MODULE_ID, 'accessPayphone')) return game.nightcity?.payphoneService?.open?.(doc.getFlag(MODULE_ID, 'accessPayphone'), { skipReach: true });
     if (kind === 'pin') {
       const item = doc ? (fromUuidSync(doc.getFlag(MODULE_ID, 'terminalItemUuid') || '') ?? game.items.get(doc.getFlag(MODULE_ID, 'terminalItemId'))) : null;
       return item && game.nightcity?.openTerminal?.(item);
@@ -332,7 +339,7 @@ export class AccessTab extends BaseTab {
 
   async _editPoint(ptId, uuid) {
     const doc = uuid ? await fromUuid(uuid) : null;
-    if (!doc) return ui.notifications.warn('That access point is gone.');
+    if (!doc) return ncmNotify.warn('That access point is gone.');
     if (this._kindOf(ptId) === 'link') return doc.parent?.sheet?.render(true, { pageId: doc.id });
     doc.sheet?.render(true);
   }
@@ -340,10 +347,10 @@ export class AccessTab extends BaseTab {
   async _removePoint(ptId, uuid) {
     const kind = this._kindOf(ptId);
     const doc = uuid ? await fromUuid(uuid) : null;
-    if (!doc) return ui.notifications.warn('That access point is already gone.');
+    if (!doc) return ncmNotify.warn('That access point is already gone.');
     if (kind === 'pin') return game.nightcity?.terminalScenePins?._confirmRemovePin?.(doc, game.nightcity?.terminalScenePins?._resolveItem?.(doc) ?? null);
     if (kind === 'link') {
-      ui.notifications.info('Journal links live in the page text — edit the page to remove it.');
+      ncmNotify.info('Journal links live in the page text — edit the page to remove it.');
       return doc.parent?.sheet?.render(true, { pageId: doc.id });
     }
     const what = kind === 'macro' ? { title: 'Delete macro', kind: 'Hotbar macro', icon: 'fas fa-bolt', goes: ['The macro (and its hotbar slots)'] }

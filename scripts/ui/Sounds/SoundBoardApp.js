@@ -9,6 +9,7 @@
  * Every change writes at once; the window repaints off the setting.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
 import { isGM } from '../../utils/helpers.js';
 import { adminConfirm } from '../../utils/adminTheme.js';
@@ -40,7 +41,7 @@ export class SoundBoardApp extends BaseApplication {
   static PARTS = { main: { template: TEMPLATES.SOUND_BOARD } };
 
   static open() {
-    if (!isGM()) return void ui.notifications.warn('Only the GM can change the sounds.');
+    if (!isGM()) return void ncmNotify.warn('Only the GM can change the sounds.');
     const existing = foundry.applications?.instances?.get?.('ncm-sound-board');
     if (existing) { existing.render(true); existing.bringToFront?.(); if (existing.minimized) existing.maximize?.(); return existing; }
     const app = new SoundBoardApp();
@@ -93,7 +94,7 @@ export class SoundBoardApp extends BaseApplication {
 
   static async _act(event, target) {
     try { await this._run(target.dataset.action, target.dataset); }
-    catch (e) { console.error('NCM | Sound board', e); ui.notifications.error(`NCM | Sounds: ${e.message}`); }
+    catch (e) { console.error('NCM | Sound board', e); ncmNotify.error(`NCM | Sounds: ${e.message}`); }
   }
 
   async _run(op, ds) {
@@ -103,7 +104,7 @@ export class SoundBoardApp extends BaseApplication {
       case 'play': return game.nightcity?.soundService?.preview(id);
       case 'browse': {
         const Picker = FP();
-        if (!Picker) return void ui.notifications.warn('The file picker is not available.');
+        if (!Picker) return void ncmNotify.warn('The file picker is not available.');
         const cur = ov[id]?.src || '';
         new Picker({
           type: 'audio', current: cur,
@@ -140,10 +141,10 @@ export class SoundBoardApp extends BaseApplication {
             const data = JSON.parse(await file.text());
             const sounds = sanitizeSoundOverrides(data?.sounds ?? data);
             const n = Object.keys(sounds).length;
-            if (!n) return void ui.notifications.warn('No sounds in that file.');
+            if (!n) return void ncmNotify.warn('No sounds in that file.');
             await this._write({ ...ov, ...sounds });
-            ui.notifications.info(`${n} sound${n === 1 ? '' : 's'} imported. The files must be where your players can load them.`);
-          } catch { ui.notifications.error('That is not a sounds file.'); }
+            ncmNotify.info(`${n} sound${n === 1 ? '' : 's'} imported. The files must be where your players can load them.`);
+          } catch { ncmNotify.error('That is not a sounds file.'); }
         });
         input.click();
         return;

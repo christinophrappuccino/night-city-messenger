@@ -80,6 +80,7 @@ let H = null;
 for (const p of [process.env.NCM_FOUNDRY_RESOURCES, 'C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json', 'C:/Program Files/FoundryVTT/resources/app/package.json', 'C:/Program Files/Foundry Virtual Tabletop/package.json'].filter(Boolean)) { try { H = createRequire(p)('handlebars'); break; } catch { /* keep looking */ } }
 if (H) {
   H.registerHelper('eq', (a, b) => a === b);
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.compile(vTpl);
   const row = vTpl.slice(vTpl.indexOf('{{#if isConversation}}'), vTpl.indexOf('{{> "modules/night-city-messenger/templates/message-viewer/partials/message-list-item.hbs"'));
   const html = H.compile(`${row}{{/if}}`)({ isConversation: true, id: 'c1', title: 'Crew <b>', unread: 2, selected: true, relTime: '2h ago', count: 3, preview: '<i>x</i>', faces: [{ name: 'V', initial: 'V', color: '#19f3f7', img: '' }] });

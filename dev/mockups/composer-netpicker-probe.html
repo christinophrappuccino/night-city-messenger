@@ -74,6 +74,8 @@ window.addEventListener('load', async () => {
   if (typeof Handlebars === 'undefined') { document.title = 'ERR no Handlebars'; return; }
   const H = Handlebars;
   H.registerHelper('eq', (a, b) => a === b);
+  H.registerHelper('ncm-tip', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]))); // mirrors scripts/utils/notify.js registerTipHelper
+  H.registerHelper('ncm-css-url', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[\\'"()]/g, (c) => '\\' + c.charCodeAt(0).toString(16) + ' '))); // preview twin of notify.js cssUrl (no scheme check)
   H.registerHelper('gt', (a, b) => a > b);
   H.registerHelper('gte', (a, b) => a >= b);
   H.registerHelper('ncm-net-icon', (t) => new H.SafeString(`<i class="fas ${t?.icon || 'fa-wifi'}"></i>`));

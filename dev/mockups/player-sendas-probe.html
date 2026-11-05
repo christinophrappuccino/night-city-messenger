@@ -42,6 +42,8 @@
   const sp = new URLSearchParams(location.search);
   const src = await (await fetch('../../templates/message-viewer/partials/identity-drawer.hbs')).text();
   Handlebars.registerHelper('eq', (a, b) => a === b);
+  Handlebars.registerHelper('ncm-tip', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]))); // mirrors scripts/utils/notify.js registerTipHelper
+  Handlebars.registerHelper('ncm-css-url', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[\\'"()]/g, (c) => '\\' + c.charCodeAt(0).toString(16) + ' '))); // preview twin of notify.js cssUrl (no scheme check)
   document.getElementById('host').innerHTML = Handlebars.compile(src)({
     viewingAsName: 'Vee Wraith', viewingAsInitial: 'V', viewingAsEmail: 'v.wraith@nightcity.net', viewingAsHandle: 'v.wraith',
     viewingAsRole: 'Solo 4', canChangeIdentity: true, netPillState: 'strong', currentNetwork: { name: 'CitiNet' }, signalStrength: 75,

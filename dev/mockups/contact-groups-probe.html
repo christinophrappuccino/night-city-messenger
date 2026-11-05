@@ -50,6 +50,8 @@
   const q = new URLSearchParams(location.search);
   const src = await fetch('../../templates/contact-manager/partials/contact-groups-panel.hbs').then(r => r.text());
   Handlebars.registerHelper('eq', (a, b) => a === b);
+  Handlebars.registerHelper('ncm-tip', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]))); // mirrors scripts/utils/notify.js registerTipHelper
+  Handlebars.registerHelper('ncm-css-url', (v, o) => (v && typeof v === 'object' && 'hash' in v && o === undefined ? '' : String(v ?? '').replace(/[\\'"()]/g, (c) => '\\' + c.charCodeAt(0).toString(16) + ' '))); // preview twin of notify.js cssUrl (no scheme check)
   const tpl = Handlebars.compile(src);
   const C = ['#19f3f7', '#f7c948', '#34d399', '#f65261', '#ffab00', '#a78bfa', '#60a5fa', '#f472b6', '#9aa0b4'];
   const ini = (n) => n.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();

@@ -113,6 +113,10 @@ globalThis.game = {
 const C = await imp('scripts/utils/constants.js');
 const M = await imp('scripts/ui/AdminPanel/tabs/messagesModel.js');
 const { MessagesTab } = await imp('scripts/ui/AdminPanel/tabs/MessagesTab.js');
+// This sim edits its fake journals directly, so Foundry's update hooks never fire: count every scan as after a
+// change (the D5 scan cache is tested in test-mail-scan-cache.mjs).
+{ const { bumpMailRevision } = await imp('scripts/utils/mailRevision.js');
+  for (const m of ['_scanInboxes', '_gatherActivity', '_sentViaIndex']) { const o = MessagesTab.prototype[m]; MessagesTab.prototype[m] = function (...a) { bumpMailRevision(); return o.apply(this, a); }; } }
 const { MessageService } = await imp('scripts/services/MessageService.js');
 const { ScopePicker } = await imp('scripts/utils/scopePicker.js');
 
@@ -656,6 +660,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!H) { fail++; console.error('FAIL: could not load Handlebars from a Foundry install — render checks did not run'); }
 else {
   H.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('gt', (a, b) => Number(a) > Number(b));
   // ncm-hue is registered globally in Foundry (scripts/utils/tagHue.js); the template uses it for people's hues.
   { const { registerTagHueHelper } = await import(new URL('../../../scripts/utils/tagHue.js', import.meta.url)); registerTagHueHelper(H); }

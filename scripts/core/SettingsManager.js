@@ -667,6 +667,12 @@ export class SettingsManager {
     game.settings.register(MODULE_ID, 'phoneOrgNames', {
       name: 'Organization names and their offices', hint: 'What the GM decided for an Organization that did not match an office.', scope: 'world', config: false, type: Object, default: {},
     });
+    game.settings.register(MODULE_ID, 'payphones', {
+      name: 'Payphones', hint: 'Every payphone: its number, scene, look and rules ({ [id]: payphone }). Written by the GM.', scope: 'world', config: false, type: Object, default: {},
+    });
+    game.settings.register(MODULE_ID, 'payphoneStyles', {
+      name: 'Saved payphone looks', hint: 'Booth looks the GM saved to reuse.', scope: 'world', config: false, type: Array, default: [],
+    });
     game.settings.register(MODULE_ID, 'phoneSpecial', {
       name: 'Calls — special numbers', hint: 'Numbers with their own rules, added to the ones every world starts with.',
       scope: 'world', config: false, type: Object, default: {},
@@ -880,6 +886,16 @@ export class SettingsManager {
       config: false,
       type: Array,
       default: [],
+    });
+
+    // Who is locked out of what, and the tries used, kept across reloads (audit D3). Written by the active GM only.
+    game.settings.register(MODULE_ID, 'securityLockouts', {
+      name: 'Security Lockouts',
+      hint: 'Saved lockouts and tries per character and target. Kept by the GM; expired entries drop out.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
     });
 
     game.settings.register(MODULE_ID, 'traceCountdowns', {

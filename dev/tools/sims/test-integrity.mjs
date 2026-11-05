@@ -367,6 +367,7 @@ if (!HB) {
 } else {
   const cmp = (fn) => function (a, b, o) { const r = fn(a, b); return o?.fn ? (r ? o.fn(this) : o.inverse(this)) : r; };
   HB.registerHelper('eq', cmp((a, b) => a === b)); HB.registerHelper('gt', cmp((a, b) => a > b)); HB.registerHelper('lt', cmp((a, b) => a < b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(HB); }
   HB.registerHelper('gte', cmp((a, b) => a >= b)); HB.registerHelper('lte', cmp((a, b) => a <= b)); HB.registerHelper('neq', cmp((a, b) => a !== b));
   HB.registerHelper('and', (...a) => a.slice(0, -1).every(Boolean)); HB.registerHelper('or', (...a) => a.slice(0, -1).some(Boolean));
   HB.registerHelper('not', (v) => !v); HB.registerHelper('add', (a, b) => (a || 0) + (b || 0));

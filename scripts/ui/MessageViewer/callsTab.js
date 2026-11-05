@@ -12,6 +12,7 @@
  *   number → a contact) and decodes CALL into DIAL ▸ on hover.
  */
 
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters } from '../../utils/helpers.js';
 import { showNamePicker } from '../../utils/namePicker.js';
@@ -94,7 +95,7 @@ function shownOther(row, book, home) {
 /** A number as coloured parts, with its place in words on hover. Escaped here, so templates print it raw. */
 export function numHtml(raw, ctx, { full = false } = {}) {
   const p = parseNumber(raw, ctx);
-  if (p.service) return `<span class="ncm-num" data-tooltip="${esc(p.entry?.name || p.service)}"><span class="x">${esc(p.service)}</span></span>`;
+  if (p.service) return `<span class="ncm-num" data-tooltip="${tipText(p.entry?.name || p.service)}"><span class="x">${esc(p.service)}</span></span>`;
   if (!p.done) return `<span class="ncm-num"><span class="l">${esc(raw)}</span></span>`;
   let rest = full ? fullForm(p) : seenFrom(p, ctx);
   const parts = [];
@@ -102,7 +103,7 @@ export function numHtml(raw, ctx, { full = false } = {}) {
   take('r', /^\+\d+\s/);
   if (p.ex) { take('c', /^[A-Z]{2,3}\s(?=[A-Z]{3}-)/); take('x', /^[A-Z]{3}-/); } else take('c', /^[A-Z]{2,3}-/);
   parts.push(`<span class="l">${esc(rest)}</span>`);
-  return `<span class="ncm-num" data-tooltip="${esc(placeOf(p, ctx))}">${parts.join('')}</span>`;
+  return `<span class="ncm-num" data-tooltip="${tipText(placeOf(p, ctx))}">${parts.join('')}</span>`;
 }
 
 const lineValue = (l, home) => l.normal || normaliseNumber(l.number, home);
@@ -323,7 +324,7 @@ export async function handleCallsAction(viewer, action, target) {
     case 'calls-backup': {
       const a = game.actors?.get(own?.actorId), em = game.nightcity?.emergencyService; if (!a || !em) return;
       const list = em.optionsFor(a);
-      if (!list.length) { ui.notifications?.warn('Your GM has given your organization nobody you can call.'); return; }
+      if (!list.length) { ncmNotify.warn('Your GM has given your organization nobody you can call.'); return; }
       const pick = list.length === 1 ? { id: list[0].name } : await showNamePicker({ admin: false, title: 'Call who?', hint: 'Your rank, or any group below it.', placeholder: 'search groups…', selected: em.defaultGroup(a)?.name, entries: list.map((r) => ({ id: r.name, name: r.name, sub: r.r1 === r.r2 ? `Rank ${r.r1}` : `Rank ${r.r1}-${r.r2}`, icon: 'fas fa-people-group' })) });
       if (pick?.id) game.nightcity?.emergencyHud?.backup(a, pick.id);
       return;
@@ -331,12 +332,12 @@ export async function handleCallsAction(viewer, action, target) {
     case 'calls-sharemine': {
       const num = target.dataset.number; if (!num || !own?.actorId) return;
       const pcs = getPlayerCharacters().filter((p) => p.actorId !== own.actorId);
-      if (!pcs.length) { ui.notifications?.info('There is nobody to share it with yet.'); return; }
+      if (!pcs.length) { ncmNotify.info('There is nobody to share it with yet.'); return; }
       const pick = await showNamePicker({ admin: false, title: 'Share this number', hint: 'They get the number on a contact. A second line does not say it is yours.', placeholder: 'search characters…', multi: true, doneLabel: 'Share',
         entries: pcs.map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '', sub: p.playerName || '' })) });
       if (!pick?.length) return;
       const r = await s.shareMine({ actorId: own.actorId, number: num, actorIds: pick.map((x) => x.id ?? x) });
-      if (!r.ok) ui.notifications?.warn(r.error); else ui.notifications?.info('Number shared.');
+      if (!r.ok) ncmNotify.warn(r.error); else ncmNotify.info('Number shared.');
       return;
     }
     case 'calls-savenum': {
@@ -344,7 +345,7 @@ export async function handleCallsAction(viewer, action, target) {
       const name = await themedPrompt({ title: 'Save this number', label: 'Save', icon: 'fas fa-address-book', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-address-book', title: num, field: { label: 'Name', name: 'name', value: '', placeholder: 'What to call them' } }), read: (root) => root.querySelector('input[name=name]')?.value?.trim() || null });
       if (!name) return;
       const r = await game.nightcity?.contactRepository?.addContact?.(own.actorId, { name, email: '', phone: num, tags: [] });
-      if (r && !r.success) ui.notifications?.warn(r.error || 'Could not save it.'); else ui.notifications?.info(`${name} saved.`);
+      if (r && !r.success) ncmNotify.warn(r.error || 'Could not save it.'); else ncmNotify.info(`${name} saved.`);
       return rerender();
     }
     case 'calls-addkind': st.addKind = target.dataset.k === 'burner' ? 'burner' : 'extra'; return rerender();
@@ -352,17 +353,17 @@ export async function handleCallsAction(viewer, action, target) {
       const yes = await themedConfirm({ title: 'Retire this line?', yes: 'Retire it', yesIcon: 'fas fa-ban', content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-ban', title: target.dataset.number, lead: 'The number retires for good, and it can never be given to anyone else. People who saved it will hear not in service.' }) });
       if (!yes) return;
       const r = await s.retireLine(target.dataset.number);
-      if (r && !r.ok) ui.notifications?.warn(r.error);
+      if (r && !r.ok) ncmNotify.warn(r.error);
       st.as = null; setTimeout(rerender, r?.relayed ? 600 : 0);
       return;
     }
     case 'calls-unrequest': await s.cancelRequest(own?.actorId); setTimeout(rerender, 300); return;
-    case 'calls-copy': try { await navigator.clipboard.writeText(target.dataset.number); ui.notifications?.info('Number copied.'); } catch { ui.notifications?.info(target.dataset.number); } return;
+    case 'calls-copy': try { await navigator.clipboard.writeText(target.dataset.number); ncmNotify.info('Number copied.'); } catch { ncmNotify.info(target.dataset.number); } return;
     case 'calls-set': {
       const number = target.dataset.number, cur = s.lineSettings(number);
       const next = target.dataset.k === 'vm' ? { ...cur, voicemail: { ...cur.voicemail, on: !cur.voicemail.on } } : { ...cur, voicemail: { ...cur.voicemail, dnd: !cur.voicemail.dnd } };
       const r = await s.saveLineSettings(number, next);
-      if (r && !r.ok) ui.notifications?.warn(r.error);
+      if (r && !r.ok) ncmNotify.warn(r.error);
       setTimeout(rerender, r?.relayed ? 400 : 0);
       return;
     }
@@ -391,16 +392,16 @@ export async function handleCallsAction(viewer, action, target) {
         : mode === 'add' ? await s.addLine({ actorId: own?.actorId, number, kind: st.addKind, label: st.addLabel })
         : asks ? await s.requestChange({ actorId: own.actorId, number })
           : await s.assignNumber({ actorId: own?.actorId, contactId: own?.contactId, number });
-      if (!r.ok) { ui.notifications?.warn(r.error); return; }
-      if (asks) ui.notifications?.info(overLimit ? `Asked your GM for ${number}.` : `Asked your GM for ${number}. You keep this number until they answer.`);
-      else if (r.relayed) ui.notifications?.info(`Number requested: ${number}. It is yours as soon as the GM's screen confirms it.`);
+      if (!r.ok) { ncmNotify.warn(r.error); return; }
+      if (asks) ncmNotify.info(overLimit ? `Asked your GM for ${number}.` : `Asked your GM for ${number}. You keep this number until they answer.`);
+      else if (r.relayed) ncmNotify.info(`Number requested: ${number}. It is yours as soon as the GM's screen confirms it.`);
       if (mode === 'add' && !overLimit) st.as = normaliseNumber(number, s.homeCode);
       st.view = 'main'; st.mode = null; st.typed = ''; st.path = null; st.level = null;
       setTimeout(rerender, r.relayed ? 600 : 0);
       return;
     }
     case 'calls-dial': return dial(viewer, target.dataset.number);
-    case 'calls-trace': { const r = await s.traceCall(target.dataset.call); if (r && !r.ok && r.error) ui.notifications?.warn(r.error); return setTimeout(rerender, 800); }
+    case 'calls-trace': { const r = await s.traceCall(target.dataset.call); if (r && !r.ok && r.error) ncmNotify.warn(r.error); return setTimeout(rerender, 800); }
     // voicemail
     case 'calls-vm-play': {
       const d = target.dataset;
@@ -440,13 +441,13 @@ export async function handleCallsAction(viewer, action, target) {
         if (clip?.blob?.size) r = await s.saveRecordedGreeting(number, settings, { base64: await blobToBase64(clip.blob), mime: clip.mime, ms: clip.ms });
         else {
           const cur = s.lineSettings(number).greeting;
-          if (!cur.audio) { ui.notifications?.warn('Record a greeting first.'); return; }
+          if (!cur.audio) { ncmNotify.warn('Record a greeting first.'); return; }
           r = await s.saveLineSettings(number, { ...settings, greeting: { ...settings.greeting, audio: cur.audio, duration: cur.duration } });
         }
       } else r = await s.saveLineSettings(number, settings);
       st.mlClip = null;
-      if (!r.ok) { ui.notifications?.warn(r.error); return; }
-      ui.notifications?.info(r.relayed ? 'Saved — it is yours as soon as the GM\'s screen confirms it.' : 'Your line is set.');
+      if (!r.ok) { ncmNotify.warn(r.error); return; }
+      ncmNotify.info(r.relayed ? 'Saved — it is yours as soon as the GM\'s screen confirms it.' : 'Your line is set.');
       st.view = 'main'; return setTimeout(rerender, r.relayed ? 600 : 0);
     }
     case 'calls-go': {
@@ -472,7 +473,7 @@ async function dial(viewer, raw) {
   const line = s.linesFor?.(own.actorId)?.find((l) => l.normal === st.as);
   const as = line?.contactId ? { contactId: line.contactId } : own.actorId ? { actorId: own.actorId, line: line && !line.main ? line.normal : null } : { contactId: own.contactId };
   const r = await s.placeCall(number, as);
-  if (!r.ok && r.error) ui.notifications?.warn(r.error);
+  if (!r.ok && r.error) ncmNotify.warn(r.error);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -552,17 +553,17 @@ function dirEntries(ctx) {
   for (const [c, e] of Object.entries(ctx.service)) if (e?.seen !== 'hidden' && e?.listed !== false) out.push({ tab: 'service', code: c, name: e?.name || c, sub: 'Works from anywhere', dial: c });
   return out;
 }
-const dirRow = (e, sub) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${esc(e.dial.trim())}"><code>${esc(e.code)}</code><span class="nm">${esc(e.name)}</span>${sub && e.sub ? `<small>${esc(e.sub)}</small>` : ''}</button>`;
+const dirRow = (e, sub) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${tipText(e.dial.trim())}"><code>${esc(e.code)}</code><span class="nm">${esc(e.name)}</span>${sub && e.sub ? `<small>${esc(e.sub)}</small>` : ''}</button>`;
 function dirPanel(ctx, tab, entries = dirEntries(ctx)) {
   const all = entries.filter((e) => e.tab === tab);
   if (tab === 'home') return [...new Set(all.map((e) => e.group))].map((g) => `<div class="ncm-calls-row"><span class="lbl">${esc(g)}</span><span class="ln"></span></div><div class="ncm-calls-xgrid">${all.filter((e) => e.group === g).map((e) => dirRow(e)).join('')}</div>`).join('');
   if (tab === 'other') return '<p class="ncm-calls-xhint">Long-distance numbers start with the region\'s + code, then the city.</p>' + [...new Set(all.map((e) => e.rc))].sort((a, b) => Number(b === ctx.home.rc) - Number(a === ctx.home.rc)).map((rc) => { const rows = all.filter((e) => e.rc === rc), near = rc === ctx.home.rc; return `<details class="ncm-calls-xreg"${near ? ' open' : ''}><summary><code>${near ? 'Nearby' : '+' + esc(rc)}</code>${esc(rows[0].region)}<small>${rows.length}${rows.length === 1 ? ' city' : ' cities'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => dirRow(e)).join('')}</div></details>`; }).join('');
-  if (tab === 'corps') return '<p class="ncm-calls-xhint">Main numbers ring a switchboard. Add an extension to reach a desk.</p>' + [...new Set(all.map((e) => e.corp))].sort((a, b) => a.localeCompare(b)).map((c) => { const rows = all.filter((e) => e.corp === c).sort((a, b) => Number(b.hq) - Number(a.hq)); const here = rows.find((e) => e.city === ctx.home.city); return `<details class="ncm-calls-xreg"><summary><code>${esc(rows[0].code)}</code>${esc(c)}${here ? `<em>In ${esc(here.cityName)}</em>` : ''}<small>${rows.length}${rows.length === 1 ? ' office' : ' offices'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${esc(e.dial.trim())}"><code>${esc(e.city)}</code><span class="nm">${esc(e.cityName)}${e.hq ? ' <i class="hq">HQ</i>' : ''}</span></button>`).join('')}</div></details>`; }).join('');
+  if (tab === 'corps') return '<p class="ncm-calls-xhint">Main numbers ring a switchboard. Add an extension to reach a desk.</p>' + [...new Set(all.map((e) => e.corp))].sort((a, b) => a.localeCompare(b)).map((c) => { const rows = all.filter((e) => e.corp === c).sort((a, b) => Number(b.hq) - Number(a.hq)); const here = rows.find((e) => e.city === ctx.home.city); return `<details class="ncm-calls-xreg"><summary><code>${esc(rows[0].code)}</code>${esc(c)}${here ? `<em>In ${esc(here.cityName)}</em>` : ''}<small>${rows.length}${rows.length === 1 ? ' office' : ' offices'}</small></summary><div class="ncm-calls-xgrid">${rows.map((e) => `<button type="button" class="ncm-calls-xrow" data-xpick="${esc(e.dial)}" data-tooltip="Start dialling ${tipText(e.dial.trim())}"><code>${esc(e.city)}</code><span class="nm">${esc(e.cityName)}${e.hq ? ' <i class="hq">HQ</i>' : ''}</span></button>`).join('')}</div></details>`; }).join('');
   return `<div class="ncm-calls-xgrid ncm-calls-xgrid--one">${all.map((e) => dirRow(e, true)).join('')}</div>`;
 }
 function dirHtml(ctx) {
   const all = dirEntries(ctx), n = (t) => all.filter((e) => e.tab === t).length, homeName = ctx.regions[ctx.home.rc]?.cities?.[ctx.home.city]?.name || 'Home';
-  const tab = (k, t, h, on) => `<button type="button" role="tab" aria-selected="${!!on}" class="${on ? 'on' : ''}" data-xtab="${k}" data-tooltip="${esc(h)}">${esc(t)}<small>${n(k)}</small></button>`;
+  const tab = (k, t, h, on) => `<button type="button" role="tab" aria-selected="${!!on}" class="${on ? 'on' : ''}" data-xtab="${k}" data-tooltip="${tipText(h)}">${esc(t)}<small>${n(k)}</small></button>`;
   return `<div class="ncm-calls-xlist"><div class="ncm-calls-xhd"><h3>Directory</h3><input type="text" data-xfind placeholder="Find a place, code or corp" aria-label="Find a place, code or corp" autocomplete="off" spellcheck="false" data-tooltip="Searches every tab, by name or code"><button type="button" class="ncm-calls-btn" data-xclose data-tooltip="Back to the dial pad">Close</button></div><div class="ncm-calls-xtabs" role="tablist" aria-label="Directory">${tab('home', homeName, 'Districts in ' + homeName, true)}${tab('other', 'Other places', 'Regions and cities, with their codes')}${tab('corps', 'Corporations', 'Main numbers at each office')}${tab('service', 'Service', 'Words you can dial from anywhere')}</div><div class="ncm-calls-xpanel" role="tabpanel">${dirPanel(ctx, 'home', all)}</div></div>`;
 }
 
@@ -713,11 +714,11 @@ export function wireCallsTab(viewer, html) {
         await rec.start({ maxMs: 20000, onTick: (ms) => { if (recTime) recTime.textContent = `${formatDuration(ms / 1000)} / 0:20`; },
           onLimit: () => recBtn.click() });
         recBtn.innerHTML = '<i class="fas fa-square"></i> Stop'; ml.classList.add('is-recording');
-      } catch (err) { ui.notifications?.warn(err.message); rec = null; }
+      } catch (err) { ncmNotify.warn(err.message); rec = null; }
     });
     playBtn?.addEventListener('click', () => {
       const src = st.mlClip?.blob ? URL.createObjectURL(st.mlClip.blob) : playBtn.dataset.src;
-      if (src) playAudio(src); else ui.notifications?.info('Nothing recorded yet.');
+      if (src) playAudio(src); else ncmNotify.info('Nothing recorded yet.');
     });
     const sel = ml.querySelector('[data-calls-ml-voice]');
     if (sel) voices().then((list) => {

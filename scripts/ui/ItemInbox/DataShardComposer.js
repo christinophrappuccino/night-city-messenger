@@ -10,6 +10,7 @@
  *   Spreadsheet is the one type still without a form (grid editor pending).
  */
 
+import { ncmNotify, tipText, cssUrl } from '../../utils/notify.js';
 import { MODULE_ID, DEFAULTS, CONTENT_TYPES, TEMPLATES, SKILL_MAP, CHAT_EMOJI } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -1178,7 +1179,7 @@ export class DataShardComposer extends BaseApplication {
     const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
     const s = Number(c.strength || 0);
     const pips = [1, 2, 3, 4].map(v =>
-      `<button type="button" class="ncm-credcard__pip${v <= s ? ' on' : ''}" data-action="wzPip" data-v="${v}" data-tooltip="Strength ${v}/4"></button>`).join('');
+      `<button type="button" class="ncm-credcard__pip${v <= s ? ' on' : ''}" data-action="wzPip" data-v="${v}" data-tooltip="Strength ${tipText(v)}/4"></button>`).join('');
     return `<div class="ncm-cl-row ncm-credcard${c.encrypted ? ' is-encrypted' : ''}">` +
       `<input type="hidden" name="credEntries__strength-${idx}" value="${esc(c.strength)}">` +
       `<input type="checkbox" name="credEntries__encrypted-${idx}"${c.encrypted ? ' checked' : ''} class="ncm-wz-flag">` +
@@ -1215,7 +1216,7 @@ export class DataShardComposer extends BaseApplication {
       flags +
       `<input type="hidden" name="galImages__loopedTime-${idx}" value="${esc(g.loopedTime)}">` +
       `<input type="hidden" name="galImages__sceneId-${idx}" value="${esc(g.sceneId)}">` +
-      `<div class="ncm-galcard__thumbwrap" data-action="galCardThumb" data-tooltip="${g.url ? 'Click to enlarge' : 'Click to pick an image'}">` +
+      `<div class="ncm-galcard__thumbwrap" data-action="galCardThumb" data-tooltip="${tipText(g.url ? 'Click to enlarge' : 'Click to pick an image')}">` +
         `<img class="ncm-cl-thumb ncm-galcard__thumb" src="${esc(g.url)}" alt=""${g.url ? '' : ' style="display:none"'}>` +
         `<span class="ncm-galcard__empty"${g.url ? ' style="display:none"' : ''}><i class="fas fa-folder-open"></i> PICK IMAGE</span>` +
         `<span class="ncm-galcard__drag" draggable="true" data-tooltip="Drag to reorder — order is display order"><i class="fas fa-grip-vertical"></i></span>` +
@@ -1487,7 +1488,7 @@ export class DataShardComposer extends BaseApplication {
     const block = this._collectDocRow(row);
     if (!block || block.kind) return false;
     const parts = splitBlockParagraphs(block);
-    if (parts.length < 2) { ui.notifications.info('NCM | This block holds a single paragraph — nothing to split.'); return false; }
+    if (parts.length < 2) { ncmNotify.info('NCM | This block holds a single paragraph — nothing to split.'); return false; }
     row.insertAdjacentHTML('afterend', parts.map(b => this._docBlockHtml(b)).join(''));
     let n = row.nextElementSibling;
     for (let i = 0; i < parts.length && n; i++, n = n.nextElementSibling) this._docMarkParas(n);
@@ -1538,7 +1539,7 @@ export class DataShardComposer extends BaseApplication {
       }
     }
     entries.sort((a, b) => a.name.localeCompare(b.name));
-    if (!entries.length) { ui.notifications.warn('NCM | No journal text pages in this world to import.'); return; }
+    if (!entries.length) { ncmNotify.warn('NCM | No journal text pages in this world to import.'); return; }
     const pick = await showNamePicker({
       title: 'Import from Journal',
       hint: 'Pick a journal page. Headings start sections; lists, images and quotes become their own blocks; paragraphs between headings stay together.',
@@ -1549,7 +1550,7 @@ export class DataShardComposer extends BaseApplication {
     try { page = await fromUuid(pick.id); } catch { page = null; }
     const html = page?.text?.content || '';
     const blocks = htmlToBlocks(html, { enrichers: true });
-    if (!blocks.length) { ui.notifications.warn(`NCM | "${pick.name}" has no text to import.`); return; }
+    if (!blocks.length) { ncmNotify.warn(`NCM | "${pick.name}" has no text to import.`); return; }
     const existing = this._collectDocBlocks();
     let mode = 'replace';
     if (existing.length) {
@@ -1573,7 +1574,7 @@ export class DataShardComposer extends BaseApplication {
     this._docRebuild(mode === 'append' ? [...existing, ...blocks] : blocks);
     const title = this.element?.querySelector('[name="docTitle"]');
     if (title && !title.value.trim() && page?.name) title.value = page.name;
-    ui.notifications.info(`NCM | Imported ${blocks.length} block${blocks.length === 1 ? '' : 's'} from "${pick.name}".`);
+    ncmNotify.info(`NCM | Imported ${blocks.length} block${blocks.length === 1 ? '' : 's'} from "${pick.name}".`);
     this._renderPreview();
     this._syncCmpChips();
   }
@@ -1647,7 +1648,7 @@ export class DataShardComposer extends BaseApplication {
       const kinds = Object.entries(RECORD_FIELD_KINDS).filter(([, v]) => v.group === g);
       if (!kinds.length) continue;
       out += kinds.map(([k, v]) =>
-        `<button type="button" class="ncm-recaddf" data-action="recAddField" data-kind="${k}" data-tooltip="Add ${Handlebars.escapeExpression(v.label)}"><i class="${v.icon}"></i>${Handlebars.escapeExpression(v.label)}</button>`
+        `<button type="button" class="ncm-recaddf" data-action="recAddField" data-kind="${k}" data-tooltip="Add ${tipText(v.label)}"><i class="${v.icon}"></i>${Handlebars.escapeExpression(v.label)}</button>`
       ).join('');
     }
     return out + '</div>';
@@ -1760,7 +1761,7 @@ export class DataShardComposer extends BaseApplication {
   /** Export the current subjects as a CSV (name/status/flagged + one column per field kind present). */
   static _onRecExportCsv() {
     const records = this._collectRecords();
-    if (!records.length) { ui.notifications.warn('NCM | No subjects to export.'); return; }
+    if (!records.length) { ncmNotify.warn('NCM | No subjects to export.'); return; }
     // Column set: the special trio + every distinct field present, keyed by
     // kind + its effective label (so two labeled dates → two columns, no
     // collision), in registry order. Header = the field's display label.
@@ -1807,9 +1808,9 @@ export class DataShardComposer extends BaseApplication {
       const reader = new FileReader();
       reader.onload = () => {
         try { this._recApplyCsv(String(reader.result || '')); }
-        catch (err) { ui.notifications.error(`NCM | CSV import failed: ${err.message}`); }
+        catch (err) { ncmNotify.error(`NCM | CSV import failed: ${err.message}`); }
       };
-      reader.onerror = () => ui.notifications.error('NCM | Could not read the file.');
+      reader.onerror = () => ncmNotify.error('NCM | Could not read the file.');
       reader.readAsText(file);
     });
     input.click();
@@ -1818,7 +1819,7 @@ export class DataShardComposer extends BaseApplication {
   /** Parse a records CSV → rebuild the subject cards. First row = headers. */
   _recApplyCsv(text) {
     const grid = this._parseCsv(text);
-    if (grid.length < 2) { ui.notifications.warn('NCM | The CSV needs a header row + at least one subject.'); return; }
+    if (grid.length < 2) { ncmNotify.warn('NCM | The CSV needs a header row + at least one subject.'); return; }
     const cols = grid[0].map(h => this._recCsvResolveHeader(String(h).trim()));
     const records = [];
     for (const cells of grid.slice(1)) {
@@ -1840,11 +1841,11 @@ export class DataShardComposer extends BaseApplication {
       });
       if (rec.name || rec.status || rec.fields.length) records.push(rec);
     }
-    if (!records.length) { ui.notifications.warn('NCM | No subjects found in the CSV.'); return; }
+    if (!records.length) { ncmNotify.warn('NCM | No subjects found in the CSV.'); return; }
     const list = this.element?.querySelector('[data-rec-list]');
     if (!list) return;
     list.innerHTML = records.map(r => this._recordCardHtml(r)).join('');
-    ui.notifications.info(`NCM | Imported ${records.length} subject(s).`);
+    ncmNotify.info(`NCM | Imported ${records.length} subject(s).`);
     this._renderPreview();
   }
 
@@ -2222,7 +2223,7 @@ export class DataShardComposer extends BaseApplication {
   /** Import a schedule CSV — replaces the card list; new categories join the strip. */
   _calApplyCsv(text) {
     const grid = this._parseCsv(text);
-    if (grid.length < 2) { ui.notifications.warn('NCM | The CSV needs a header row + at least one event.'); return; }
+    if (grid.length < 2) { ncmNotify.warn('NCM | The CSV needs a header row + at least one event.'); return; }
     const heads = grid[0].map(h => String(h).trim().toLowerCase());
     const events = [];
     for (const cells of grid.slice(1, DataShardComposer.SS_IMPORT_ROW_CAP + 1)) {
@@ -2253,9 +2254,9 @@ export class DataShardComposer extends BaseApplication {
       for (const k of ['location', 'who', 'note', 'category']) if (!ev[k]) delete ev[k];
       if (ev.title || ev.when || ev.location) events.push(ev);
     }
-    if (!events.length) { ui.notifications.warn('NCM | No events found in the CSV.'); return; }
+    if (!events.length) { ncmNotify.warn('NCM | No events found in the CSV.'); return; }
     if (grid.length - 1 > DataShardComposer.SS_IMPORT_ROW_CAP) {
-      ui.notifications.warn(`NCM | Import capped at the first ${DataShardComposer.SS_IMPORT_ROW_CAP} events.`);
+      ncmNotify.warn(`NCM | Import capped at the first ${DataShardComposer.SS_IMPORT_ROW_CAP} events.`);
     }
     // New categories join the strip with auto-cycled colors.
     const strip = this.element?.querySelector('[data-cal-cats]');
@@ -2276,7 +2277,7 @@ export class DataShardComposer extends BaseApplication {
     this._calSyncCatRows();
     this._calRepaintAll();
     this._calSortCards();
-    ui.notifications.info(`NCM | Imported ${events.length} event(s).`);
+    ncmNotify.info(`NCM | Imported ${events.length} event(s).`);
     this._renderPreview();
   }
 
@@ -2505,7 +2506,7 @@ export class DataShardComposer extends BaseApplication {
 
   static _onCalExportCsv() {
     const { events } = this._collectCalendar({});
-    if (!events.length) { ui.notifications.warn('NCM | No events to export.'); return; }
+    if (!events.length) { ncmNotify.warn('NCM | No events to export.'); return; }
     const headers = ['title', 'when', 'location', 'who', 'note', 'category', 'locked', 'unlockSkill', 'unlockDV', 'traceOnFail', 'sceneId'];
     const cell = (v) => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const lines = [headers.join(',')];
@@ -2530,9 +2531,9 @@ export class DataShardComposer extends BaseApplication {
       const reader = new FileReader();
       reader.onload = () => {
         try { this._calApplyCsv(String(reader.result || '')); }
-        catch (err) { ui.notifications.error(`NCM | CSV import failed: ${err.message}`); }
+        catch (err) { ncmNotify.error(`NCM | CSV import failed: ${err.message}`); }
       };
-      reader.onerror = () => ui.notifications.error('NCM | Could not read the file.');
+      reader.onerror = () => ncmNotify.error('NCM | Could not read the file.');
       reader.readAsText(file);
     });
     input.click();
@@ -2569,7 +2570,7 @@ export class DataShardComposer extends BaseApplication {
     }
     const bal = el.querySelector('[name="bankBalance"]');
     if (bal) { bal.value = net; bal.dispatchEvent(new Event('input', { bubbles: true })); }
-    ui.notifications.info(`NCM | Balance synced to ${net.toLocaleString()} from ${txns.length} transaction(s).`);
+    ncmNotify.info(`NCM | Balance synced to ${net.toLocaleString()} from ${txns.length} transaction(s).`);
     this._renderPreview();
   }
 
@@ -3167,7 +3168,7 @@ export class DataShardComposer extends BaseApplication {
     const btn = (tool, icon, title, color) =>
       `<button type="button" class="ncm-schem-tool${this._schemTool === tool ? ' is-active' : ''}" ` +
       `data-schem-tool="${esc(tool)}"${color ? ` data-ct-color="${esc(color)}"` : ''} ` +
-      `data-tooltip="${esc(title)}"><i class="${esc(icon)}"></i></button>`;
+      `data-tooltip="${tipText(title)}"><i class="${esc(icon)}"></i></button>`;
     let html = btn('select', 'fas fa-arrow-pointer', 'Select / move a pin') +
                btn('route', 'fas fa-route', 'Route: click two pins to link');
     html += '<span class="ncm-schem-tool__div"></span>';
@@ -3548,19 +3549,19 @@ export class DataShardComposer extends BaseApplication {
     this._netDraft = null;
     this._selectedType = this.editData.contentType || CONTENT_TYPES.MESSAGE;
     this.render();
-    if (msg) ui.notifications.info(`NCM | ${msg}`);
+    if (msg) ncmNotify.info(`NCM | ${msg}`);
   }
 
   static _onLoadExample() {
     const seed = BUILTIN_EXAMPLES[this._selectedType];
-    if (!seed) { ui.notifications.warn('NCM | No example for this type yet.'); return; }
+    if (!seed) { ncmNotify.warn('NCM | No example for this type yet.'); return; }
     this._loadEntrySeed(seed, 'Example loaded — every field is editable.');
   }
 
   static _onTplLoad() {
     const sel = this.element?.querySelector('[name="tplSelect"]');
     const tpl = getEntryTemplates().find(t => t.id === sel?.value);
-    if (!tpl) { ui.notifications.warn('NCM | Pick a saved template first.'); return; }
+    if (!tpl) { ncmNotify.warn('NCM | Pick a saved template first.'); return; }
     this._loadEntrySeed(tpl.entry, `Template "${tpl.name}" loaded.`);
   }
 
@@ -3581,7 +3582,7 @@ export class DataShardComposer extends BaseApplication {
       close: async () => {
         if (!name) return;
         await saveEntryTemplate(name, entryData);
-        ui.notifications.info(`NCM | Template "${name}" saved (world-wide).`);
+        ncmNotify.info(`NCM | Template "${name}" saved (world-wide).`);
         this.render();
       },
     }).render(true);
@@ -3591,11 +3592,11 @@ export class DataShardComposer extends BaseApplication {
     if (!isGM()) return;
     const sel = this.element?.querySelector('[name="tplSelect"]');
     const tpl = getEntryTemplates().find(t => t.id === sel?.value);
-    if (!tpl) { ui.notifications.warn('NCM | Pick a saved template first.'); return; }
+    if (!tpl) { ncmNotify.warn('NCM | Pick a saved template first.'); return; }
     const ok = await adminConfirm({ title: 'Delete Template', content: `<p>Delete the template <b>${Handlebars.escapeExpression(tpl.name)}</b>?</p>` });
     if (!ok) return;
     await deleteEntryTemplate(tpl.id);
-    ui.notifications.info(`NCM | Template "${tpl.name}" deleted.`);
+    ncmNotify.info(`NCM | Template "${tpl.name}" deleted.`);
     this.render();
   }
 
@@ -3612,11 +3613,11 @@ export class DataShardComposer extends BaseApplication {
       try {
         const payload = JSON.parse(await file.text());
         const { imported, skipped } = await importEntryTemplates(payload);
-        ui.notifications.info(`NCM | Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (duplicates/invalid).` : ''}`);
+        ncmNotify.info(`NCM | Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (duplicates/invalid).` : ''}`);
         this.render();
       } catch (err) {
         log.error(`Entry-template import failed: ${err.message}`);
-        ui.notifications.error(err.message || 'Failed to parse JSON file.');
+        ncmNotify.error(err.message || 'Failed to parse JSON file.');
       } finally {
         input.remove();
       }
@@ -3626,9 +3627,9 @@ export class DataShardComposer extends BaseApplication {
 
   static _onTplExport() {
     const count = getEntryTemplates().length;
-    if (!count) { ui.notifications.warn('NCM | No saved templates to export.'); return; }
+    if (!count) { ncmNotify.warn('NCM | No saved templates to export.'); return; }
     exportEntryTemplates();
-    ui.notifications.info(`NCM | Exported ${count} template(s).`);
+    ncmNotify.info(`NCM | Exported ${count} template(s).`);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -3654,11 +3655,11 @@ export class DataShardComposer extends BaseApplication {
       // "from" is an owner NODE (SECCAM-B2, root, kowalski), not an Agent; the
       // link-or-create would pollute the directory with cameras and daemons.
       if (entryData.envelope !== 'file') await this._syncFromToMasterList(entryData.from);
-      ui.notifications.info(`NCM | ${res.label} ${res.edited ? 'updated' : 'added'}.`);
+      ncmNotify.info(`NCM | ${res.label} ${res.edited ? 'updated' : 'added'}.`);
       if (typeof this.onSave === 'function') this.onSave();
       this.close();
     } else {
-      ui.notifications.error(`NCM | Failed: ${res?.error || 'Unknown error'}`);
+      ncmNotify.error(`NCM | Failed: ${res?.error || 'Unknown error'}`);
     }
   }
 
@@ -3723,7 +3724,7 @@ export class DataShardComposer extends BaseApplication {
         notes: `Created from a ${this._isTerminal ? 'terminal' : 'data shard'} entry on "${this._item?.name || 'unknown item'}".`,
       });
       if (created?.success) {
-        ui.notifications.info(`NCM | New sender — created master contact "${created.contact.name}" (${email}) as SEND-ONLY.`);
+        ncmNotify.info(`NCM | New sender — created master contact "${created.contact.name}" (${email}) as SEND-ONLY.`);
       }
     } catch (err) {
       log.warn(`From→master-list sync skipped: ${err.message}`);
@@ -3801,7 +3802,7 @@ export class DataShardComposer extends BaseApplication {
         const sel = scope === 'shared' ? data.fileFolderShared : data.fileFolderAccount;
         path = sel === '__new__' ? (data.fileFolderNew || '') : (sel || '');
         entryData.accountId = scope === 'shared' ? SHARED_SCOPE : (this._target.homeAccountId || this._target.accountId);
-        if (sel === '__new__' && validate && !normalizeFolderPath(path)) { ui.notifications.warn('Name the new folder, or pick an existing one.'); return null; }
+        if (sel === '__new__' && validate && !normalizeFolderPath(path)) { ncmNotify.warn('Name the new folder, or pick an existing one.'); return null; }
       }
       entryData.file = {
         filename: (data.fileName || '').trim(),
@@ -3847,13 +3848,13 @@ export class DataShardComposer extends BaseApplication {
     switch (type) {
       case CONTENT_TYPES.MESSAGE:
         if (validate && !entryData.subject?.trim() && !entryData.body?.trim()) {
-          ui.notifications.warn('NCM | Entry needs a subject or body.'); return null;
+          ncmNotify.warn('NCM | Entry needs a subject or body.'); return null;
         }
         break;
       case CONTENT_TYPES.EDDIES:
         entryData.subject = data.eddiesTitle || 'Eddies Dead Drop';
         entryData.contentData = { amount: parseInt(data.eddiesAmount) || 0, claimed: false, claimedBy: null, claimedAt: null, note: data.eddiesNote || '', splitEnabled: false };
-        if (validate && entryData.contentData.amount <= 0) { ui.notifications.warn('NCM | Eddies amount must be greater than 0.'); return null; }
+        if (validate && entryData.contentData.amount <= 0) { ncmNotify.warn('NCM | Eddies amount must be greater than 0.'); return null; }
         break;
       case CONTENT_TYPES.DOSSIER: {
         const faceLocked = !!data.dossierFaceLocked;
@@ -3947,7 +3948,7 @@ export class DataShardComposer extends BaseApplication {
       case CONTENT_TYPES.CALENDAR: {
         entryData.subject = data.calTitle || 'Schedule';
         entryData.contentData = this._collectCalendar(data);
-        if (validate && !entryData.contentData.events.length) { ui.notifications.warn('NCM | Add at least one event.'); return null; }
+        if (validate && !entryData.contentData.events.length) { ncmNotify.warn('NCM | Add at least one event.'); return null; }
         break;
       }
       case CONTENT_TYPES.SYSLOG: {
@@ -3960,7 +3961,7 @@ export class DataShardComposer extends BaseApplication {
           lines,
         };
         if (data.syslogPrompt) entryData.contentData.prompt = data.syslogPrompt;
-        if (validate && !lines.length) { ui.notifications.warn('NCM | Add at least one log line.'); return null; }
+        if (validate && !lines.length) { ncmNotify.warn('NCM | Add at least one log line.'); return null; }
         break;
       }
       case CONTENT_TYPES.CREDENTIALS: {
@@ -3968,7 +3969,7 @@ export class DataShardComposer extends BaseApplication {
         const entries = this._collectList('credEntries', CRED_ENTRY_FIELDS)
           .map(e => ({ ...e, strength: e.strength ? Number(e.strength) : undefined }));
         entryData.contentData = { autoReuse: !!data.credAutoReuse, entries };
-        if (validate && !entries.length) { ui.notifications.warn('NCM | Add at least one credential.'); return null; }
+        if (validate && !entries.length) { ncmNotify.warn('NCM | Add at least one credential.'); return null; }
         break;
       }
       case CONTENT_TYPES.SPREADSHEET: {
@@ -3979,7 +3980,7 @@ export class DataShardComposer extends BaseApplication {
         entryData.contentData.declassifyDV = parseInt(data.ssDeclassifyDV) || 9;
         entryData.contentData.traceOnFail = !!data.ssDeclassifyTrace;
         if (validate && !entryData.contentData.columns.some(c => c.label.trim())) {
-          ui.notifications.warn('NCM | Give at least one column a label.'); return null;
+          ncmNotify.warn('NCM | Give at least one column a label.'); return null;
         }
         break;
       }
@@ -4008,7 +4009,7 @@ export class DataShardComposer extends BaseApplication {
           traceOnFail: !!data.galUnlockTrace,
           images,
         };
-        if (validate && !images.length) { ui.notifications.warn('NCM | Add at least one image.'); return null; }
+        if (validate && !images.length) { ncmNotify.warn('NCM | Add at least one image.'); return null; }
         break;
       }
       case CONTENT_TYPES.DOCUMENT: {
@@ -4025,7 +4026,7 @@ export class DataShardComposer extends BaseApplication {
           traceOnFail: !!data.docDeclassifyTrace,
           paragraphs,
         };
-        if (validate && !paragraphs.length) { ui.notifications.warn('NCM | Add at least one paragraph.'); return null; }
+        if (validate && !paragraphs.length) { ncmNotify.warn('NCM | Add at least one paragraph.'); return null; }
         break;
       }
       case CONTENT_TYPES.CHATLOG: {
@@ -4040,7 +4041,7 @@ export class DataShardComposer extends BaseApplication {
           app: data.chatApp || '', channel: data.chatChannel || '',
           participants, messages,
         };
-        if (validate && !messages.length) { ui.notifications.warn('NCM | Add at least one message.'); return null; }
+        if (validate && !messages.length) { ncmNotify.warn('NCM | Add at least one message.'); return null; }
         break;
       }
       case CONTENT_TYPES.RECORD: {
@@ -4051,7 +4052,7 @@ export class DataShardComposer extends BaseApplication {
           searchable: !!data.recSearchable,
           records,
         };
-        if (validate && !records.length) { ui.notifications.warn('NCM | Add at least one subject.'); return null; }
+        if (validate && !records.length) { ncmNotify.warn('NCM | Add at least one subject.'); return null; }
         break;
       }
       case CONTENT_TYPES.SCHEMATIC: {
@@ -4062,7 +4063,7 @@ export class DataShardComposer extends BaseApplication {
           docRef: data.schemDocRef || '', linkedSceneId: data.schemSceneId || null,
           annotations, routes,
         };
-        if (validate && !entryData.contentData.imageUrl) { ui.notifications.warn('NCM | A schematic needs an image.'); return null; }
+        if (validate && !entryData.contentData.imageUrl) { ncmNotify.warn('NCM | A schematic needs an image.'); return null; }
         break;
       }
       case CONTENT_TYPES.NOTE: {
@@ -4071,7 +4072,7 @@ export class DataShardComposer extends BaseApplication {
           title: data.noteTitle || '', text: (data.noteText || '').trim(),
           color: data.noteColor || 'gold', pinned: !!data.notePinned,
         };
-        if (validate && !entryData.contentData.text) { ui.notifications.warn('NCM | The note is blank.'); return null; }
+        if (validate && !entryData.contentData.text) { ncmNotify.warn('NCM | The note is blank.'); return null; }
         break;
       }
       case CONTENT_TYPES.MALWARE: {
@@ -4090,7 +4091,7 @@ export class DataShardComposer extends BaseApplication {
           iceActorId: data.malIceActorId || null,
           deployed: false, deployedBy: null, tripped: false,
         };
-        if (validate && !data.malName?.trim()) { ui.notifications.warn('NCM | Name the file.'); return null; }
+        if (validate && !data.malName?.trim()) { ncmNotify.warn('NCM | Name the file.'); return null; }
         break;
       }
     }
@@ -4360,7 +4361,7 @@ export class DataShardComposer extends BaseApplication {
 
   static _onSsFormat(event, target) {
     const td = this._ssActiveTd();
-    if (!td) { ui.notifications.warn('NCM | Click a cell first, then format it.'); return; }
+    if (!td) { ncmNotify.warn('NCM | Click a cell first, then format it.'); return; }
     const toggle = (key, cls) => {
       if (td.dataset[key]) { delete td.dataset[key]; td.classList.remove(cls); }
       else { td.dataset[key] = '1'; td.classList.add(cls); }
@@ -4386,7 +4387,7 @@ export class DataShardComposer extends BaseApplication {
 
   static _onSsColor(event, target) {
     const td = this._ssActiveTd();
-    if (!td) { ui.notifications.warn('NCM | Click a cell first, then color it.'); return; }
+    if (!td) { ncmNotify.warn('NCM | Click a cell first, then color it.'); return; }
     const kind = target.dataset.kind; // 'color' (text) | 'bg' (fill)
     const prefix = kind === 'bg' ? 'ncm-ct-bg--' : 'ncm-ct-c--';
     if (td.dataset[kind]) td.classList.remove(`${prefix}${td.dataset[kind]}`);
@@ -4450,9 +4451,9 @@ export class DataShardComposer extends BaseApplication {
       const reader = new FileReader();
       reader.onload = () => {
         try { this._ssApplyCsv(String(reader.result || ''), file.name); }
-        catch (err) { ui.notifications.error(`NCM | CSV import failed: ${err.message}`); }
+        catch (err) { ncmNotify.error(`NCM | CSV import failed: ${err.message}`); }
       };
-      reader.onerror = () => ui.notifications.error('NCM | Could not read the file.');
+      reader.onerror = () => ncmNotify.error('NCM | Could not read the file.');
       reader.readAsText(file);
     });
     input.click();
@@ -4461,7 +4462,7 @@ export class DataShardComposer extends BaseApplication {
   /** Parse CSV text → grid, infer column types, rebuild the editor. */
   _ssApplyCsv(text, fileName) {
     const grid = this._parseCsv(text);
-    if (!grid.length) { ui.notifications.warn('NCM | The file is empty.'); return; }
+    if (!grid.length) { ncmNotify.warn('NCM | The file is empty.'); return; }
 
     const hasHeader = this.element?.querySelector('[name="ssCsvHeader"]')?.checked !== false;
     const width = Math.max(...grid.map(r => r.length));
@@ -4469,7 +4470,7 @@ export class DataShardComposer extends BaseApplication {
     let dataRows = (hasHeader ? grid.slice(1) : grid).map(pad);
     const cap = DataShardComposer.SS_IMPORT_ROW_CAP;
     if (dataRows.length > cap) {
-      ui.notifications.warn(`NCM | ${dataRows.length} rows — keeping the first ${cap}.`);
+      ncmNotify.warn(`NCM | ${dataRows.length} rows — keeping the first ${cap}.`);
       dataRows = dataRows.slice(0, cap);
     }
     const headerRow = hasHeader ? pad(grid[0]) : [];
@@ -4484,7 +4485,7 @@ export class DataShardComposer extends BaseApplication {
 
     const fmt = this.element?.querySelector('[name="ssFormat"]');
     if (fmt && !fmt.value) fmt.value = fileName || '';
-    ui.notifications.info(`NCM | Imported ${dataRows.length} row(s) × ${width} column(s).`);
+    ncmNotify.info(`NCM | Imported ${dataRows.length} row(s) × ${width} column(s).`);
     this._renderPreview();
   }
 
@@ -5306,7 +5307,7 @@ export class DataShardComposer extends BaseApplication {
     const stage = el.querySelector('[data-loc-stage]'); if (!stage) return;
     const src = (el.querySelector('[name="locationImage"]')?.value || '').trim();
     stage.classList.toggle('has-img', !!src);
-    stage.style.backgroundImage = src ? `url('${src.replace(/'/g, "\\'")}')` : '';
+    stage.style.backgroundImage = src ? `url('${cssUrl(src)}')` : '';
   }
 
   _locPaintScene() {
@@ -5620,7 +5621,7 @@ export class DataShardComposer extends BaseApplication {
           const res = await FilePicker.browse(fp.activeSource || 'data', path);
           const isImg = /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i;
           const files = (res?.files || []).filter(f => isImg.test(f));
-          if (!files.length) { ui.notifications.warn('NCM | No image files in that folder.'); return; }
+          if (!files.length) { ncmNotify.warn('NCM | No image files in that folder.'); return; }
           // A single untouched blank seed row makes way for the import.
           const rows = container.querySelectorAll('.ncm-cl-row');
           if (rows.length === 1 && !rows[0].querySelector('[name^="galImages__url-"]')?.value.trim()) rows[0].remove();
@@ -5628,10 +5629,10 @@ export class DataShardComposer extends BaseApplication {
           container.insertAdjacentHTML('beforeend', files.map((f, i) => this._galCardHtml(base + i, { url: f })).join(''));
           this._renumberList(container);
           this._renderPreview();
-          ui.notifications.info(`NCM | Imported ${files.length} image${files.length === 1 ? '' : 's'}.`);
+          ncmNotify.info(`NCM | Imported ${files.length} image${files.length === 1 ? '' : 's'}.`);
         } catch (err) {
           log.warn(`Gallery folder import failed: ${err.message}`);
-          ui.notifications.error('NCM | Folder import failed.');
+          ncmNotify.error('NCM | Folder import failed.');
         }
       },
     });

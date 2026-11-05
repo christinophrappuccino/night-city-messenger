@@ -241,6 +241,7 @@ const { buildPreview } = await import(pathToFileURL(`${ROOT}/scripts/ui/MessageC
   if (Handlebars) {
     const H = Handlebars.create();
     H.registerHelper('eq', (a, b) => a === b); H.registerHelper('gt', (a, b) => a > b); H.registerHelper('gte', (a, b) => a >= b);
+    { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
     H.registerHelper('ncm-net-icon', () => new H.SafeString('<i class="fas fa-wifi"></i>'));
     H.registerHelper('ncm-anon-avatar', (s) => new H.SafeString(`<span class="ncm-anon-av" data-anon-style="${s}"></span>`));
     H.registerHelper('ncm-term', (form, cs, o) => { const h = (o && o.hash) || (cs && cs.hash) || {}; return `${h.pre || ''}${h.a ? 'a ' : ''}data shard${h.post || ''}`; });

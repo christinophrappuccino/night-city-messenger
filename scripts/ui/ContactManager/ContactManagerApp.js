@@ -17,6 +17,7 @@
  *     - Context-aware footer shortcuts
  */
 
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, EVENTS } from '../../utils/constants.js';
 import { d10Odds } from '../../utils/rolls.js';
 import { log, isPersonActor } from '../../utils/helpers.js';
@@ -1186,8 +1187,8 @@ export class ContactManagerApp extends BaseApplication {
     const group = await editGroupDialog({}, { memberSource: () => this._groupMemberSource(), admin: false });
     if (!group) return;
     const r = await this.contactGroupService?.saveActorGroup(this.actorId, group);
-    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
-    ui.notifications.info(`NCM | Group "${group.name}" saved (${group.members.length} members).`);
+    if (!r?.success) return ncmNotify.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    ncmNotify.info(`NCM | Group "${group.name}" saved (${group.members.length} members).`);
     this.render();
   }
 
@@ -1199,7 +1200,7 @@ export class ContactManagerApp extends BaseApplication {
     const group = await editGroupDialog(existing, { memberSource: () => this._groupMemberSource(), admin: false });
     if (!group) return;
     const r = await this.contactGroupService.saveActorGroup(this.actorId, group);
-    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    if (!r?.success) return ncmNotify.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
     this.render();
   }
 
@@ -1210,7 +1211,7 @@ export class ContactManagerApp extends BaseApplication {
     if (!existing) return;
     const yes = await adminConfirm({
       title: 'Delete group',
-      content: `<p>Delete the group <b>${existing.name}</b>? The contacts in it stay in your list.</p>`,
+      content: `<p>Delete the group <b>${escapeHtml(existing.name)}</b>? The contacts in it stay in your list.</p>`,
     });
     if (!yes) return;
     await this.contactGroupService.deleteActorGroup(this.actorId, id);
@@ -1278,7 +1279,7 @@ export class ContactManagerApp extends BaseApplication {
     const contact = this._contacts.find(c => c.id === contactId);
     const confirmed = await playerConfirm({
       title: 'Delete Contact',
-      content: `<p>Remove <strong>${contact?.name || 'this contact'}</strong> from your contacts?</p>`,
+      content: `<p>Remove <strong>${escapeHtml(contact?.name || 'this contact')}</strong> from your contacts?</p>`,
     });
     if (!confirmed) return;
 
@@ -1288,7 +1289,7 @@ export class ContactManagerApp extends BaseApplication {
       if (this.editingContactId === contactId) this.editingContactId = null;
       this.render();
     } else {
-      ui.notifications.error(`Failed to delete contact: ${result.error}`);
+      ncmNotify.error(`Failed to delete contact: ${result.error}`);
     }
   }
 
@@ -1379,7 +1380,7 @@ export class ContactManagerApp extends BaseApplication {
     }
 
     if (!data.name) {
-      ui.notifications.warn('Contact name is required.');
+      ncmNotify.warn('Contact name is required.');
       return;
     }
 
@@ -1390,22 +1391,22 @@ export class ContactManagerApp extends BaseApplication {
         if (result.success) {
           this.isAdding = false;
           this.selectedContactId = result.contact.id;
-          ui.notifications.info(`Contact "${data.name}" added.`);
+          ncmNotify.info(`Contact "${data.name}" added.`);
         }
       } else if (this.editingContactId) {
         result = await this.contactRepo.updateContact(this.actorId, this.editingContactId, data);
         if (result.success) {
           this.editingContactId = null;
-          ui.notifications.info(`Contact "${data.name}" updated.`);
+          ncmNotify.info(`Contact "${data.name}" updated.`);
         }
       }
       if (!result?.success) {
-        ui.notifications.error(result?.error || 'Failed to save contact.');
+        ncmNotify.error(result?.error || 'Failed to save contact.');
       }
       this.render();
     } catch (error) {
       console.error(`${MODULE_ID} | ContactManagerApp._onSaveContact:`, error);
-      ui.notifications.error('Failed to save contact.');
+      ncmNotify.error('Failed to save contact.');
     }
   }
 
@@ -1435,10 +1436,10 @@ export class ContactManagerApp extends BaseApplication {
     const result = await contactRepo?.gmOverrideVerification(this.actorId, contactId, true);
     if (result?.success) {
       const contact = this._contacts.find(c => c.id === contactId);
-      ui.notifications.info(`Contact "${contact?.name || contactId}" force-verified.`);
+      ncmNotify.info(`Contact "${contact?.name || contactId}" force-verified.`);
       this.render(true);
     } else {
-      ui.notifications.error(result?.error || 'Failed to verify contact.');
+      ncmNotify.error(result?.error || 'Failed to verify contact.');
     }
   }
 
@@ -1451,7 +1452,7 @@ export class ContactManagerApp extends BaseApplication {
     const contact = this._contacts.find(c => c.id === contactId);
     const confirmed = await playerConfirm({
       title: 'Revoke Verification',
-      content: `<p>Revoke verification for <strong>${contact?.name || 'this contact'}</strong>?`
+      content: `<p>Revoke verification for <strong>${escapeHtml(contact?.name || 'this contact')}</strong>?`
         + `<br>The player will no longer be able to message them.</p>`,
     });
     if (!confirmed) return;
@@ -1459,10 +1460,10 @@ export class ContactManagerApp extends BaseApplication {
     const contactRepo = game.nightcity?.contactRepository;
     const result = await contactRepo?.gmOverrideVerification(this.actorId, contactId, false);
     if (result?.success) {
-      ui.notifications.info(`Verification revoked for "${contact?.name}".`);
+      ncmNotify.info(`Verification revoked for "${contact?.name}".`);
       this.render(true);
     } else {
-      ui.notifications.error(result?.error || 'Failed to unverify contact.');
+      ncmNotify.error(result?.error || 'Failed to unverify contact.');
     }
   }
 
@@ -1477,7 +1478,7 @@ export class ContactManagerApp extends BaseApplication {
 
     const contact = this._contacts.find(c => c.id === contactId);
     if (!contact?.email) {
-      ui.notifications.warn('Contact has no email address.');
+      ncmNotify.warn('Contact has no email address.');
       return;
     }
     if (game.nightcity?.composeMessage) {
@@ -1517,7 +1518,7 @@ export class ContactManagerApp extends BaseApplication {
 
     const portraitService = this.portraitService;
     if (!portraitService?.canUploadPortrait(this.actorId)) {
-      ui.notifications.warn('You do not have permission to modify this contact.');
+      ncmNotify.warn('You do not have permission to modify this contact.');
       return;
     }
 
@@ -1527,10 +1528,10 @@ export class ContactManagerApp extends BaseApplication {
     );
 
     if (result.success) {
-      ui.notifications.info('Portrait updated.');
+      ncmNotify.info('Portrait updated.');
       this.render();
     } else if (result.error && result.error !== 'No file selected' && result.error !== 'Upload cancelled') {
-      ui.notifications.error(`Portrait upload failed: ${result.error}`);
+      ncmNotify.error(`Portrait upload failed: ${result.error}`);
     }
   }
 
@@ -1544,7 +1545,7 @@ export class ContactManagerApp extends BaseApplication {
 
     const result = await portraitService.removePortrait(this.actorId, contactId);
     if (result.success) {
-      ui.notifications.info('Portrait removed.');
+      ncmNotify.info('Portrait removed.');
       this.render();
     }
   }
@@ -1556,14 +1557,14 @@ export class ContactManagerApp extends BaseApplication {
 
     const actor = game.user?.character;
     if (!actor) {
-      ui.notifications.warn('Select a character to attempt the breach.');
+      ncmNotify.warn('Select a character to attempt the breach.');
       return;
     }
 
     const breachService = this.contactBreachService;
     const skillService = game.nightcity?.skillService;
     if (!breachService || !skillService) {
-      ui.notifications.error('Breach service not available.');
+      ncmNotify.error('Breach service not available.');
       return;
     }
 
@@ -1576,7 +1577,7 @@ export class ContactManagerApp extends BaseApplication {
     const nowMs = (Number(game.nightcity?.timeService?.getCurrentTimeMs?.()) || Date.now());   // breachLockoutUntil is game time (ContactBreachService._nowMs)
     if (contact.breachLockoutUntil && nowMs < contact.breachLockoutUntil) {
       const remaining = Math.ceil((contact.breachLockoutUntil - nowMs) / 60000);
-      ui.notifications.warn(`ICE lockout active — ${remaining} minute${remaining !== 1 ? 's' : ''} remaining.`);
+      ncmNotify.warn(`ICE lockout active — ${remaining} minute${remaining !== 1 ? 's' : ''} remaining.`);
       return;
     }
 
@@ -1643,7 +1644,7 @@ export class ContactManagerApp extends BaseApplication {
     } else if (result.error) {
       overlayEl.classList?.remove('ncm-ice--breaching');
       this._breachInProgress = false;
-      ui.notifications.error(result.error);
+      ncmNotify.error(result.error);
       this.render();
     } else {
       // ── Phase 2b: FAILURE — corruption + denied ──
@@ -1657,7 +1658,7 @@ export class ContactManagerApp extends BaseApplication {
   static async _onSetTrustLevel(event, target) {
     event.stopPropagation();
     if (!game.user.isGM) {
-      ui.notifications.warn('Only the GM can modify trust levels.');
+      ncmNotify.warn('Only the GM can modify trust levels.');
       return;
     }
 
@@ -1674,7 +1675,7 @@ export class ContactManagerApp extends BaseApplication {
 
     const result = await contactRepo.setTrust(this.actorId, contactId, trustValue);
     if (!result.success) {
-      ui.notifications.error(`Failed to update trust: ${result.error}`);
+      ncmNotify.error(`Failed to update trust: ${result.error}`);
       return;
     }
 
@@ -1701,7 +1702,7 @@ export class ContactManagerApp extends BaseApplication {
 
     const breachService = this.contactBreachService;
     if (!breachService) {
-      ui.notifications.error('Breach service not available.');
+      ncmNotify.error('Breach service not available.');
       return;
     }
 
@@ -1712,7 +1713,7 @@ export class ContactManagerApp extends BaseApplication {
       this._pendingReveal = true;
       this.render();
     } else {
-      ui.notifications.error(`Force decrypt failed: ${result.error}`);
+      ncmNotify.error(`Force decrypt failed: ${result.error}`);
     }
   }
 

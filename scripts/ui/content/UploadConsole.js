@@ -15,6 +15,7 @@
  *   flourishes to an instant resolve.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { log } from '../../utils/helpers.js';
 import { streamHackCode } from './HackFX.js';
 
@@ -41,7 +42,7 @@ export function runUploadConsole({ programs = [], accounts = [], terminalName = 
   tag = 'UPLOAD', sub = null, goLabel = 'FORGE &amp; UPLOAD', delivery = true, outcomeFor = null, deliveryHint = 'where it lands · when it fires' } = {}) {
   return new Promise((resolve) => {
     if (!programs.length) {
-      try { ui.notifications?.info?.('NCM | You are not carrying anything uploadable.'); } catch { /* no ui */ }
+      try { ncmNotify.info?.('NCM | You are not carrying anything uploadable.'); } catch { /* no ui */ }
       resolve(null); return;
     }
 

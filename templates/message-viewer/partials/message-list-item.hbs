@@ -177,7 +177,7 @@
       {{!-- Badge slot --}}
       {{#if threatBadge}}
         <span class="ncm-viewer__msg-badge ncm-viewer__msg-badge--{{threatBadge.variant}}"
-              data-tooltip="{{threatBadge.label}}">
+              data-tooltip="{{ncm-tip threatBadge.label}}">
           <i class="{{threatBadge.icon}}"></i> {{threatBadge.label}}
         </span>
       {{else if (eq priority "critical")}}

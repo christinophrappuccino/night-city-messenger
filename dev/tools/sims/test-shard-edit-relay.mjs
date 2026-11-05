@@ -37,7 +37,7 @@ let IS_GM = true;
 let ACTIVE_GM = { id: 'gm' };
 globalThis.game = {
   get user() { return { isGM: IS_GM, id: IS_GM ? 'gm' : 'p1' }; },
-  get users() { return { activeGM: ACTIVE_GM }; },
+  get users() { return { activeGM: ACTIVE_GM, get: (id) => ({ gm: { id: 'gm', name: 'GM', isGM: true }, p1: { id: 'p1', name: 'Rache', isGM: false } })[id] ?? null }; },
   settings: { get: (m, k) => settings[k], set: async () => {} },
   actors: { get: () => null, contents: [] }, items: { get: () => null }, journal: { get: () => null, contents: [] },
   folders: { find: () => null },
@@ -171,40 +171,41 @@ section('the GM handler lands each op');
 await ok('decrypt', async () => {
   asGM();
   const { item, flags } = mockShard();
-  await svc.handleStateRequest({ op: 'decrypt', itemUuid: 'Item.i1' });
+  await svc.handleStateRequest({ op: 'decrypt', itemUuid: 'Item.i1' }, 'gm');
   assert.equal(flags.state.decrypted, true);
 });
 await ok('session merges the patch into THAT actor only', async () => {
   asGM();
   const { item, flags } = mockShard({ state: { sessions: { a2: { hackAttempts: 5 } } } });
-  await svc.handleStateRequest({ op: 'session', itemUuid: 'Item.i1', actorId: 'a1', updates: { keyItemUsed: true } });
+  await svc.handleStateRequest({ op: 'session', itemUuid: 'Item.i1', actorId: 'a1', updates: { keyItemUsed: true } }, 'gm');
   assert.equal(flags.state.sessions.a1.keyItemUsed, true);
   assert.equal(flags.state.sessions.a2.hackAttempts, 5, 'another actor\'s session untouched');
 });
 await ok('decryptPage flips the page flag', async () => {
   asGM();
   const { pages } = mockShard({ pages: [{ id: 'mX' }] });
-  await svc.handleStateRequest({ op: 'decryptPage', itemUuid: 'Item.i1', messageId: 'mX' });
+  await svc.handleStateRequest({ op: 'decryptPage', itemUuid: 'Item.i1', messageId: 'mX' }, 'gm');
   assert.equal(pages[0].flags[MODULE_ID].decrypted, true);
 });
 await ok('destroy deletes the pages and marks the item', async () => {
   asGM();
-  const { writes, flags } = mockShard({ pages: [{}, {}] });
-  await svc.handleStateRequest({ op: 'destroy', itemUuid: 'Item.i1' });
+  // a wipe only happens on a shard whose own config destroys itself (A3b)
+  const { writes, flags } = mockShard({ pages: [{}, {}], config: { failureMode: 'destroy' } });
+  await svc.handleStateRequest({ op: 'destroy', itemUuid: 'Item.i1' }, 'gm');
   assert.ok(writes.some((w) => w.kind === 'delete' && w.n === 2));
   assert.equal(flags.state.destroyed, true);
 });
 await ok('an unknown shard or op is ignored, never thrown', async () => {
   asGM();
   UUIDS = {};
-  await svc.handleStateRequest({ op: 'decrypt', itemUuid: 'Item.nope' });
+  await svc.handleStateRequest({ op: 'decrypt', itemUuid: 'Item.nope' }, 'gm');
   mockShard();
-  await svc.handleStateRequest({ op: 'banana', itemUuid: 'Item.i1' });
+  await svc.handleStateRequest({ op: 'banana', itemUuid: 'Item.i1' }, 'gm');
 });
 await ok('a non-GM client ignores the request entirely', async () => {
   asPlayer();
   const { flags } = mockShard({ owner: true });
-  await svc.handleStateRequest({ op: 'decrypt', itemUuid: 'Item.i1' });
+  await svc.handleStateRequest({ op: 'decrypt', itemUuid: 'Item.i1' }, 'gm');
   assert.equal(flags.state.decrypted, undefined);
 });
 
@@ -234,9 +235,8 @@ await ok('the socket op is registered, GM-only, one GM lands it', () => {
   const i = s.indexOf('SOCKET_OPS.SHARD_STATE_REQUEST');
   assert.ok(i !== -1);
   const blk = s.slice(i, i + 500);
-  assert.ok(blk.includes('if (!game.user.isGM) return;'));
-  assert.ok(blk.includes('game.users.activeGM.id !== game.user.id'));
-  assert.ok(blk.includes('handleStateRequest(data)'));
+  assert.ok(blk.includes('if (!isPrimaryGM()) return;'));
+  assert.ok(blk.includes('handleStateRequest(data, sender)'), 'the handler gets the verified sender (A3b)');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -355,7 +355,7 @@ await ok('a shard that was GM-made and opened to a player gains a maker on its f
 await ok('the conversion relay understands a re-encode and never converts', () => {
   const s = read('scripts/integrations/SocketHandlers.js');
   const i = s.indexOf('SOCKET_OPS.SHARD_CONVERT_REQUEST');
-  const blk = s.slice(i, i + 1600);
+  const blk = s.slice(i, i + 2400);
   const re = blk.indexOf('if (data.reencode)');
   const conv = blk.indexOf('service.convertToDataShard(item, config');
   assert.ok(re !== -1 && conv !== -1 && re < conv, 'the re-encode branch must come BEFORE the conversion');

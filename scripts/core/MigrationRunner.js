@@ -25,14 +25,15 @@
  */
 
 import { MODULE_ID } from '../utils/constants.js';
-import { log, isGM } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM } from '../utils/helpers.js';
 import { tameCrtDeep } from '../utils/crt.js';
 import { shiftInterfaceDvs, shiftJackRules, refreshJackDials } from '../utils/interfaceDvShift.js';
 import { adminWait } from '../utils/adminTheme.js';
 import { creditOldScheduled } from '../services/SchedulingService.js';
+import { serialize } from '../utils/serialize.js';
 
 /** The schema version this build of the module writes. */
-export const DATA_SCHEMA_VERSION = 5;
+export const DATA_SCHEMA_VERSION = 6;
 
 /**
  * Everything saved in this world that can hold an Interface DV.
@@ -174,8 +175,11 @@ const MIGRATIONS = [
       await game.settings.set(MODULE_ID, 'phoneLines', {});
       for (const a of game.actors ?? []) {
         if (a.getFlag?.(MODULE_ID, 'phone') !== undefined) await a.unsetFlag(MODULE_ID, 'phone');
-        const contacts = a.getFlag?.(MODULE_ID, 'contacts');
-        if (Array.isArray(contacts) && contacts.some((c) => c?.phone)) await a.setFlag(MODULE_ID, 'contacts', contacts.map((c) => (c?.phone ? { ...c, phone: '' } : c)));
+        // in the contacts queue (audit B4 leftover), read fresh inside it
+        await serialize(`contacts:${a.id}`, async () => {
+          const contacts = a.getFlag?.(MODULE_ID, 'contacts');
+          if (Array.isArray(contacts) && contacts.some((c) => c?.phone)) await a.setFlag(MODULE_ID, 'contacts', contacts.map((c) => (c?.phone ? { ...c, phone: '' } : c)));
+        });
       }
       const mcs = game.nightcity?.masterContactService;
       for (const c of mcs?.getAll?.() || []) if (c.phone) await mcs.updateContact(c.id, { phone: '' });
@@ -194,6 +198,18 @@ const MIGRATIONS = [
       log.info(`Scheduled messages: recorded the eddies paid on ${changed}`);
     },
   },
+  {
+    // The recycle bin moved from one ever-growing world setting (re-sent whole to every client on each wipe) to a
+    // GM-only journal, one page per wiped file (audit PERF-07). Move what is already there. Safe to run twice:
+    // entries already in the journal are skipped, and the old setting empties only once every entry is across.
+    to: 6,
+    label: 'Recycle bin: move wiped files into a GM-only journal',
+    run: async () => {
+      const { migrateRecycleBin } = await import('../ui/content/SiphonFlow.js');
+      const n = await migrateRecycleBin();
+      if (n) log.info(`Recycle bin: moved ${n} wiped file(s) into the bin journal`);
+    },
+  },
 ];
 
 /**
@@ -203,7 +219,15 @@ const MIGRATIONS = [
  * @returns {Promise<{ran: number, from: number, to: number}>}
  */
 export async function runMigrations() {
-  if (!isGM()) return { ran: 0, from: 0, to: 0 };
+  // One GM migrates: two GMs loading together could each run a step (v3 lowered
+  // Interface DVs by twice the amount — INT-01 / DATA-09).
+  if (!isPrimaryGM()) return { ran: 0, from: 0, to: 0 };
+
+  // Not until the id migration has run (audit DATA-09): a world still holding its data under the old module id
+  // would otherwise be stamped "current" here while empty, and the legacy data would skip every later step once
+  // the GM accepts the move. A fresh world is stamped done at ready, before this runs.
+  try { if (!game.settings.get(MODULE_ID, 'namespaceMigrationDone')) return { ran: 0, from: 0, to: 0 }; }
+  catch { return { ran: 0, from: 0, to: 0 }; }
 
   let from = 0;
   try { from = Number(game.settings.get(MODULE_ID, 'dataSchemaVersion')) || 0; }

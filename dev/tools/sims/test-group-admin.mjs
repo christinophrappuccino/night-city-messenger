@@ -66,6 +66,9 @@ globalThis.Handlebars = { escapeExpression: (s) => String(s ?? '') };
 
 const { MessageService } = await import(pathToFileURL(`${ROOT}/scripts/services/MessageService.js`).href);
 const { MessagesTab } = await import(pathToFileURL(`${ROOT}/scripts/ui/AdminPanel/tabs/MessagesTab.js`).href);
+// This sim edits its fake journals directly (no Foundry hooks): count every scan as after a change (D5 cache: test-mail-scan-cache.mjs).
+{ const { bumpMailRevision } = await import(pathToFileURL(`${ROOT}/scripts/utils/mailRevision.js`).href);
+  for (const m of ['_scanInboxes', '_gatherActivity', '_sentViaIndex']) { const o = MessagesTab.prototype[m]; MessagesTab.prototype[m] = function (...a) { bumpMailRevision(); return o.apply(this, a); }; } }
 const { ToolsTab } = await import(pathToFileURL(`${ROOT}/scripts/ui/AdminPanel/tabs/ToolsTab.js`).href);
 const { ContactGroupService, memberFromMasterContact } = await import(pathToFileURL(`${ROOT}/scripts/services/ContactGroupService.js`).href);
 const { makeMember } = await import(pathToFileURL(`${ROOT}/scripts/utils/participants.js`).href);

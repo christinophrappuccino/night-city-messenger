@@ -94,6 +94,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!H) { fail++; console.error('FAIL: no Handlebars'); }
 else {
   H.registerHelper('lower', (s) => String(s ?? '').toLowerCase());
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   const html = H.compile(read('templates/sounds/sound-board.hbs'))({ groups: C.soundBoard(S), changed: Object.keys(S).length, total: 34, changedOnly: false, query: '', soundOn: true });
   ok((html.match(/data-sb-row/g) || []).length === Object.keys(SOUND_PATHS).length, 'every sound has a row');
   ok(html.includes('ping.mp3') && html.includes('>off</span>') && html.includes("module's own"), 'rows say what plays: your file, off, or the module’s own');

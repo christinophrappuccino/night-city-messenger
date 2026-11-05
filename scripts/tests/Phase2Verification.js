@@ -6,6 +6,7 @@
  *              Run via: game.nightcity.verifyPhase2()
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, TEMPLATES } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 
@@ -112,10 +113,10 @@ export class Phase2Verification {
 
     if (failed === 0) {
       log.info('🎉 All Phase 2 checks PASSED');
-      ui.notifications.info(`NCM Phase 2: All ${total} checks passed ✅`);
+      ncmNotify.info(`NCM Phase 2: All ${total} checks passed ✅`);
     } else {
       log.error(`⚠️ ${failed} Phase 2 checks FAILED`);
-      ui.notifications.warn(`NCM Phase 2: ${failed}/${total} checks failed`);
+      ncmNotify.warn(`NCM Phase 2: ${failed}/${total} checks failed`);
     }
 
     return { passed, failed, total, results };

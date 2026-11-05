@@ -6,29 +6,29 @@
 <div class="ncm-tmdesk">
   <div class="ncm-tmdesk__icons">
     {{#each folders}}
-      <div class="ncm-tmdesk__icon{{#if active}}{{#unless @root.isFilesView}} is-on{{/unless}}{{/if}}" data-action="terminalFolder" data-folder="{{key}}" data-tooltip="{{label}} — {{count}} message{{#unless (eq count 1)}}s{{/unless}}">
+      <div class="ncm-tmdesk__icon{{#if active}}{{#unless @root.isFilesView}} is-on{{/unless}}{{/if}}" data-action="terminalFolder" data-folder="{{key}}" data-tooltip="{{ncm-tip label}} — {{ncm-tip count}} message{{#unless (eq count 1)}}s{{/unless}}">
         <i class="{{icon}}"></i>{{#if unread}}<span class="ncm-tmdesk__badge">{{unread}}</span>{{/if}}
         <span>{{label}}</span><small>{{count}}</small>
       </div>
     {{/each}}
     {{#each fs.roots}}
-      <div class="ncm-tmdesk__icon ncm-tmdesk__icon--drive{{#if isActiveRoot}} is-on{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="" data-tooltip="{{label}} · {{count}} file{{#unless (eq count 1)}}s{{/unless}}">
+      <div class="ncm-tmdesk__icon ncm-tmdesk__icon--drive{{#if isActiveRoot}} is-on{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="" data-tooltip="{{ncm-tip label}} · {{ncm-tip count}} file{{#unless (eq count 1)}}s{{/unless}}">
         <i class="{{icon}}"></i><span>{{label}}</span><small>{{subLabel}}</small>
       </div>
       {{#each dirs}}{{#if (eq depth 1)}}
-        <div class="ncm-tmdesk__icon{{#if active}} is-on{{/if}}{{#if locked}} is-locked{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="{{path}}"{{#if locked}} data-locked="1" data-lock-label="{{lockLabel}}"{{/if}} data-tooltip="/{{path}}{{#if locked}} — {{lockLabel}}{{/if}}">
+        <div class="ncm-tmdesk__icon{{#if active}} is-on{{/if}}{{#if locked}} is-locked{{/if}}" data-action="terminalFsOpen" data-scope="{{scope}}" data-path="{{path}}"{{#if locked}} data-locked="1" data-lock-label="{{lockLabel}}"{{/if}} data-tooltip="/{{ncm-tip path}}{{#if locked}} — {{ncm-tip lockLabel}}{{/if}}">
           <i class="fas {{#if locked}}fa-lock{{else}}fa-folder{{/if}}"></i><span>{{name}}</span><small>{{#if locked}}{{lockLabel}}{{else}}{{count}} file{{#unless (eq count 1)}}s{{/unless}}{{/if}}</small>
         </div>
       {{/if}}{{/each}}
       {{#each files}}
-        <div class="ncm-tmdesk__icon ncm-tmdesk__icon--file{{#if isSelected}} is-on{{/if}}" data-action="terminalFsOpen" data-scope="{{../scope}}" data-path="" data-message-id="{{messageId}}" data-ct-color="{{accent}}" data-tooltip="{{filename}}">
+        <div class="ncm-tmdesk__icon ncm-tmdesk__icon--file{{#if isSelected}} is-on{{/if}}" data-action="terminalFsOpen" data-scope="{{../scope}}" data-path="" data-message-id="{{messageId}}" data-ct-color="{{accent}}" data-tooltip="{{ncm-tip filename}}">
           <i class="{{typeIcon}}"></i>{{#if isNew}}<span class="ncm-tmdesk__badge ncm-tmdesk__badge--new">NEW</span>{{/if}}<span>{{filename}}</span><small>{{#if isStream}}LIVE{{else}}{{fileSize}}{{/if}}</small>
         </div>
       {{/each}}
     {{/each}}
     {{!-- ADMIN ACCESS: other accounts' homes — double as "view that account". --}}
     {{#each fs.otherHomes}}
-      <div class="ncm-tmdesk__icon ncm-tmdesk__icon--drive{{#unless ok}} is-locked{{/unless}}" {{#if ok}}data-action="{{#if isBack}}terminalAdminBack{{else}}terminalAdminView{{/if}}" data-account-id="{{id}}" data-files="1"{{/if}} data-tooltip="{{#if ok}}{{#if isBack}}Back to your own account{{else}}View {{username}}'s files as admin{{/if}}{{else}}{{reason}}{{/if}}">
+      <div class="ncm-tmdesk__icon ncm-tmdesk__icon--drive{{#unless ok}} is-locked{{/unless}}" {{#if ok}}data-action="{{#if isBack}}terminalAdminBack{{else}}terminalAdminView{{/if}}" data-account-id="{{id}}" data-files="1"{{/if}} data-tooltip="{{#if ok}}{{#if isBack}}Back to your own account{{else}}View {{ncm-tip username}}'s files as admin{{/if}}{{else}}{{ncm-tip reason}}{{/if}}">
         <i class="fas {{#if ok}}fa-house-user{{else}}fa-house-lock{{/if}}"></i><span>home</span><small>{{username}}{{#if tag}} · {{tag}}{{/if}}</small>
       </div>
     {{/each}}

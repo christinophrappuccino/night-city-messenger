@@ -70,7 +70,7 @@
         <div class="ncm-term__prompt">&gt; personnel sign-in<span class="ncm-term__cursor"></span></div>
         <div class="ncm-term__roster">
           {{#each accounts}}
-            <div class="ncm-term__rrow" data-action="terminalSelectAccount" data-account-id="{{id}}" data-tooltip="{{tooltip}}">
+            <div class="ncm-term__rrow" data-action="terminalSelectAccount" data-account-id="{{id}}" data-tooltip="{{ncm-tip tooltip}}">
               <span class="ncm-term__rrow-av">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
               <span class="ncm-term__rrow-id">
                 <span class="ncm-term__rrow-nm">{{displayName}}{{#if isAdmin}}<i class="fas fa-user-shield ncm-term__rrow-adm"></i>{{/if}}</span>
@@ -115,7 +115,7 @@
           {{#if others.length}}
             <div class="ncm-term__lock-others">
               {{#each others}}
-                <span class="ncm-term__lock-mini" data-action="terminalFocusAccount" data-account-id="{{id}}" data-tooltip="{{displayName}}">
+                <span class="ncm-term__lock-mini" data-action="terminalFocusAccount" data-account-id="{{id}}" data-tooltip="{{ncm-tip displayName}}">
                   {{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
                 </span>
               {{/each}}
@@ -171,7 +171,7 @@
           {{#if others.length}}
             <div class="ncm-term__lock-others">
               {{#each others}}
-                <span class="ncm-term__lock-mini" data-action="terminalFocusAccount" data-account-id="{{id}}" data-tooltip="{{displayName}}">
+                <span class="ncm-term__lock-mini" data-action="terminalFocusAccount" data-account-id="{{id}}" data-tooltip="{{ncm-tip displayName}}">
                   {{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
                 </span>
               {{/each}}
@@ -185,7 +185,7 @@
         {{!-- ── PORTRAIT ROW — consumer-OS shared machine. --}}
         <div class="ncm-term__portraits">
           {{#each accounts}}
-            <div class="ncm-term__port" data-action="terminalSelectAccount" data-account-id="{{id}}" data-tooltip="{{tooltip}}">
+            <div class="ncm-term__port" data-action="terminalSelectAccount" data-account-id="{{id}}" data-tooltip="{{ncm-tip tooltip}}">
               <div class="ncm-term__port-av">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
                 {{#unless isOpen}}<span class="ncm-term__port-lock"><i class="fas fa-lock"></i></span>{{/unless}}
                 {{#if offNet}}<span class="ncm-term__port-off">OFF-NET</span>{{/if}}

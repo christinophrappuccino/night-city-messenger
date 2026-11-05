@@ -13,8 +13,10 @@
  *   - Deleted folder for archived/removed journals
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { resolveDisplayName } from '../utils/helpers.js';
+import { serialize } from '../utils/serialize.js';
 
 // ── Folder names (plain, functional, GM-friendly) ──
 const ROOT_FOLDER   = 'Night City Messenger';
@@ -57,7 +59,13 @@ export class MessageRepository {
    */
   async _getOrCreateRootFolder() {
     if (this._rootFolder && game.folders.get(this._rootFolder.id)) return this._rootFolder;
+    // Find-then-create, one at a time: two first deliveries made two roots (DATA-15).
+    return serialize('folder:root', () => this._findOrCreateRoot());
+  }
 
+  /** @private */
+  async _findOrCreateRoot() {
+    if (this._rootFolder && game.folders.get(this._rootFolder.id)) return this._rootFolder;
     this._rootFolder = game.folders.find(f =>
       f.type === 'JournalEntry' && f.name === ROOT_FOLDER && !f.folder
     ) ?? null;
@@ -85,7 +93,12 @@ export class MessageRepository {
       if (game.folders.get(cached.id)) return cached;
       this._folderCache.delete(name);
     }
+    return serialize(`folder:${name}`, () => this._findOrCreateSubfolder(name));
+  }
 
+  /** @private */
+  async _findOrCreateSubfolder(name) {
+    if (this._folderCache.has(name) && game.folders.get(this._folderCache.get(name).id)) return this._folderCache.get(name);
     const root = await this._getOrCreateRootFolder();
     if (!root) return null;
 
@@ -348,7 +361,7 @@ export class MessageRepository {
    */
   async repairAllInboxPermissions() {
     if (!game.user.isGM) {
-      ui.notifications.warn('NCM | GM only.');
+      ncmNotify.warn('NCM | GM only.');
       return 0;
     }
 
@@ -378,7 +391,7 @@ export class MessageRepository {
       if (await this._repairPermissions(journal, actor, inboxFolder)) repaired++;
     }
 
-    if (repaired > 0) ui.notifications.info(`NCM | Repaired ${repaired} inbox journal(s).`);
+    if (repaired > 0) ncmNotify.info(`NCM | Repaired ${repaired} inbox journal(s).`);
     return repaired;
   }
 
@@ -388,7 +401,15 @@ export class MessageRepository {
    * @param {string} ownerId — Actor ID or master contact ID
    * @returns {Promise<JournalEntry|null>}
    */
-  async getInboxJournal(ownerId) {
+  /**
+   * The owner's inbox journal. Only a WRITE of mail may create one (`create`, default true for the writers):
+   * every read, count or change of existing mail passes `{ create: false }` and gets null when there is none
+   * (audit PERF-01 — the GM's unread badge asked for every actor's inbox and so made one per NPC, container
+   * and Black ICE in the world).
+   * @param {string} ownerId
+   * @param {{create?: boolean}} [opts]
+   */
+  async getInboxJournal(ownerId, { create = true } = {}) {
     if (!ownerId) return null;
 
     // ── Cache check ──
@@ -397,6 +418,14 @@ export class MessageRepository {
       if (game.journal.get(cached.id)) return cached;
       this._inboxCache.delete(ownerId);
     }
+    // Find-then-create, one at a time per owner: two first deliveries at once made
+    // two inbox journals and the second one's mail was never seen (DATA-15).
+    return game.user?.isGM ? serialize(`inbox:${ownerId}`, () => this._findOrCreateInbox(ownerId, create)) : this._findOrCreateInbox(ownerId, create);
+  }
+
+  /** @private */
+  async _findOrCreateInbox(ownerId, create = true) {
+    if (this._inboxCache.has(ownerId) && game.journal.get(this._inboxCache.get(ownerId).id)) return this._inboxCache.get(ownerId);
 
     // ── Determine inbox type ──
     const actor = game.actors?.get(ownerId);
@@ -430,7 +459,8 @@ export class MessageRepository {
       journal = game.journal.find(j => j.name === legacyName);
     }
 
-    // ── 3. Create new if not found ──
+    // ── 3. Create new if not found (only when writing mail) ──
+    if (!journal && !create) return null;
     if (!journal) {
       if (!game.user.isGM) {
         console.warn(`${MODULE_ID} | Non-GM cannot create inbox for ${ownerLabel}`);
@@ -509,6 +539,11 @@ export class MessageRepository {
           // SENDER's sent copy only: the recipient's page must never reveal the
           // real typist of an impersonated message.
           sentVia: (messageData.status?.sent && messageData.sentVia) ? messageData.sentVia : null,
+          // A GM broadcast (Admin → Messages → Mass Broadcast): drives the broadcast icon in the admin feed (DATA-19).
+          isBroadcast: !!messageData.isBroadcast,
+          // Low-signal garble + the Reconstruct roll (MessageService sets it at send) — it was never stored, so
+          // neither ever happened (DATA-13).
+          signalDegradation: messageData.signalDegradation || null,
 
           from: messageData.from || '',
           fromActorId: messageData.fromActorId || '',
@@ -578,6 +613,8 @@ export class MessageRepository {
             spamSource: messageData.metadata?.spamSource || null,
             spamCategory: messageData.metadata?.spamCategory || null,
             spamTemplateId: messageData.metadata?.spamTemplateId || null,
+            // A tapped conversation's running log (ConversationService) — dropped here, so the log restarted (INT-04).
+            ...(Array.isArray(messageData.metadata?.tapLog) ? { tapLog: messageData.metadata.tapLog } : {}),
           },
 
           attachments: messageData.attachments || [],
@@ -651,7 +688,7 @@ export class MessageRepository {
    */
   async getMessages(actorId, options = {}) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return [];
 
       const filter = options.filter || 'inbox';
@@ -706,7 +743,7 @@ export class MessageRepository {
 
   async getMessage(actorId, messageId) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return null;
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
       return page ? this._pageToMessage(page) : null;
@@ -791,7 +828,7 @@ export class MessageRepository {
 
   async updateMessage(actorId, messageId, updates) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, error: 'Inbox not found' };
 
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
@@ -811,15 +848,18 @@ export class MessageRepository {
 
   async updateMessageFlags(actorId, messageId, flagUpdates) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, error: 'Inbox not found' };
 
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === messageId);
       if (!page) return { success: false, error: 'Message not found' };
 
-      const currentFlags = page.flags?.[MODULE_ID] ?? {};
-      const merged = foundry.utils.mergeObject(currentFlags, flagUpdates, { inplace: false });
-      await page.update({ [`flags.${MODULE_ID}`]: merged });
+      // Only the fields being changed are written (audit INT-10). Writing the whole merged block re-sent every OTHER
+      // field from this client's copy too, so a GM working from a slightly stale copy could put back a player's
+      // just-claimed eddies or just-read flag.
+      const changes = flagChangePaths(flagUpdates, `flags.${MODULE_ID}`);
+      if (!Object.keys(changes).length) return { success: true };
+      await page.update(changes);
       return { success: true };
     } catch (error) {
       console.error(`${MODULE_ID} | MessageRepository.updateMessageFlags:`, error);
@@ -868,7 +908,7 @@ export class MessageRepository {
    */
   async markAllAsRead(actorId) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, count: 0, error: 'Inbox not found' };
 
       const readAt = new Date().toISOString();
@@ -900,7 +940,7 @@ export class MessageRepository {
 
   async hardDeleteMessage(actorId, messageId) {
     try {
-      const journal = await this.getInboxJournal(actorId);
+      const journal = await this.getInboxJournal(actorId, { create: false });
       if (!journal) return { success: false, error: 'Inbox not found' };
 
       if (!game.user.isGM && !journal.isOwner) {
@@ -927,7 +967,7 @@ export class MessageRepository {
   }
 
   async getUnreadCount(actorId) {
-    const messages = await this.getMessages(actorId, { filter: 'inbox' });
+    const messages = await this.getMessages(actorId, { filter: 'inbox' });   // getMessages never creates an inbox
     return messages.filter(m => !m.status.read).length;
   }
 
@@ -994,7 +1034,7 @@ export class MessageRepository {
    */
   async migrateJournalOrganization() {
     if (!game.user.isGM) {
-      ui.notifications.warn('NCM | Journal migration is GM-only.');
+      ncmNotify.warn('NCM | Journal migration is GM-only.');
       return { inboxes: 0, contacts: 0, shards: 0, pages: 0 };
     }
 
@@ -1176,6 +1216,7 @@ export class MessageRepository {
       inReplyTo: flags.inReplyTo,
       references: Array.isArray(flags.references) ? flags.references : [],
       participants: Array.isArray(flags.participants) ? flags.participants : [],
+      isBroadcast: !!flags.isBroadcast,
       sentVia: flags.sentVia || null,
       from: flags.from,
       fromActorId: flags.fromActorId,
@@ -1236,4 +1277,26 @@ export class MessageRepository {
     this._folderCache.clear();
     this._rootFolder = null;
   }
+}
+
+/**
+ * The changed fields of a flag update as dot paths under `prefix` (audit INT-10), so a write touches only them.
+ * Plain objects are walked down to their leaves; arrays, null and other values are written whole (arrays were
+ * always replaced, never merged). An empty object writes nothing, as merging it never did. A `-=key` deletion key
+ * keeps working: it becomes `prefix.path.-=key`. Pure.
+ * @param {object} updates @param {string} prefix e.g. "flags.night-city-messenger"
+ * @returns {Object<string, any>}
+ */
+export function flagChangePaths(updates, prefix) {
+  const out = {};
+  const plain = (v) => v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
+  const walk = (obj, path) => {
+    for (const [k, v] of Object.entries(obj || {})) {
+      const p = `${path}.${k}`;
+      if (plain(v) && !k.startsWith('-=')) walk(v, p);
+      else out[p] = v;
+    }
+  };
+  walk(updates, prefix);
+  return out;
 }

@@ -8,6 +8,7 @@
  * delivered via SpamService.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { BaseTab } from '../BaseTab.js';
 import { adminConfirm } from '../../../utils/adminTheme.js';
 import { ScopePicker } from '../../../utils/scopePicker.js';
@@ -291,13 +292,13 @@ export class SpamTab extends BaseTab {
   async onBlast(event, target) {
     const recipients = this._getRecipientIds();
     if (recipients.length === 0) {
-      ui.notifications.warn('Select at least one recipient.');
+      ncmNotify.warn('Select at least one recipient.');
       return;
     }
     this._saveListScroll();
     const result = await this.spamService?.blast(recipients, this._blastCount, this._categoryFilter);
     if (result?.sent > 0) {
-      ui.notifications.info(`Blasted ${result.sent} spam message(s).`);
+      ncmNotify.info(`Blasted ${result.sent} spam message(s).`);
     }
     this.render(true);
   }
@@ -323,13 +324,13 @@ export class SpamTab extends BaseTab {
     if (!templateId) return;
     const recipients = this._getRecipientIds();
     if (recipients.length === 0) {
-      ui.notifications.warn('Select at least one recipient.');
+      ncmNotify.warn('Select at least one recipient.');
       return;
     }
     this._saveListScroll();
     const result = await this.spamService?.sendTemplate(templateId, recipients);
     if (result?.sent > 0) {
-      ui.notifications.info(`Sent spam to ${result.sent} recipient(s).`);
+      ncmNotify.info(`Sent spam to ${result.sent} recipient(s).`);
     }
     this.render(true);
   }
@@ -360,16 +361,16 @@ export class SpamTab extends BaseTab {
     }
 
     if (!this._creatorData.fromName || !this._creatorData.subject) {
-      ui.notifications.warn('From Name and Subject are required.');
+      ncmNotify.warn('From Name and Subject are required.');
       return;
     }
 
     if (this._editingId) {
       await this.spamService?.updateTemplate(this._editingId, this._creatorData);
-      ui.notifications.info('Template updated.');
+      ncmNotify.info('Template updated.');
     } else {
       await this.spamService?.createTemplate(this._creatorData);
-      ui.notifications.info('Custom template created.');
+      ncmNotify.info('Custom template created.');
     }
 
     this._showCreator = false;
@@ -409,7 +410,7 @@ export class SpamTab extends BaseTab {
 
     await this.spamService?.deleteTemplate(templateId);
     if (this._selectedId === templateId) this._selectedId = null;
-    ui.notifications.info('Template deleted.');
+    ncmNotify.info('Template deleted.');
     this.render(true);
   }
 
@@ -418,7 +419,7 @@ export class SpamTab extends BaseTab {
     const spam = this.spamService;
     if (!spam) return;
     if (spam.customCount === 0) {
-      ui.notifications.warn('No custom templates to export.');
+      ncmNotify.warn('No custom templates to export.');
       return;
     }
 
@@ -431,14 +432,14 @@ export class SpamTab extends BaseTab {
     a.click();
     URL.revokeObjectURL(url);
 
-    ui.notifications.info(`Exported ${payload.templates.length} custom template(s).`);
+    ncmNotify.info(`Exported ${payload.templates.length} custom template(s).`);
   }
 
   /** Import custom spam templates from a JSON file (merges, skips duplicates). */
   onImportTemplates(event, target) {
     const spam = this.spamService;
     if (!spam) {
-      ui.notifications.warn('Spam service not available.');
+      ncmNotify.warn('Spam service not available.');
       return;
     }
 
@@ -454,11 +455,11 @@ export class SpamTab extends BaseTab {
       try {
         const payload = JSON.parse(await file.text());
         const { imported, skipped } = await spam.importTemplates(payload);
-        ui.notifications.info(`Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (duplicates/invalid).` : ''}`);
+        ncmNotify.info(`Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (duplicates/invalid).` : ''}`);
         this.render(true);
       } catch (err) {
         console.error('NCM | Import spam templates failed:', err);
-        ui.notifications.error(err.message || 'Failed to parse JSON file.');
+        ncmNotify.error(err.message || 'Failed to parse JSON file.');
       } finally {
         input.remove();
       }

@@ -41,18 +41,29 @@ registerGMTools(initializer);
 
 // ─── Foundry Hooks ───
 
-Hooks.once('init', async () => {
-  log.info('Initializing Night City Messenger v4.1...');
-  await initializer.runPhase('preInit');
-  await initializer.runPhase('init');
+/** Settles when every preInit + init task has (the template preload included). Ready waits for it (audit FBL-07). */
+let initDone = Promise.resolve();
+
+// Everything synchronous registers inside Foundry's init hook — nothing waits on the network first (audit COMPAT-01).
+// Foundry does not await an async init callback, so anything after an `await` here used to land after init had
+// ended: on a slow host the keybindings threw and settings were missing when ready tasks read them.
+Hooks.once('init', () => {
+  // the real version, from module.json (audit ARCH-03: it printed a fixed, out-of-date number)
+  log.info(`Initializing Night City Messenger v${game.modules?.get?.(MODULE_ID)?.version || '?'}...`);
+  const preInit = initializer.runPhaseNow('preInit');
+  const init = initializer.runPhaseNow('init');
+  initDone = Promise.all([preInit, init]);
 });
 
 Hooks.once('ready', async () => {
+  await initDone;
   await initializer.runPhase('ready');
 
   // postReady with 100ms delay to let Foundry settle
   setTimeout(async () => {
     await initializer.runPhase('postReady');
+    initializer.reportFailures();   // the GM hears about a failed startup step (ARCH-02)
+    if (game.nightcity) game.nightcity.startupFailures = initializer.failures;
 
     // Register verification function
     if (game.nightcity) {

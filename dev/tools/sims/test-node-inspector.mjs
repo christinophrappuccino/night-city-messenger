@@ -109,6 +109,7 @@ let ctx;
   }
   if (!H) { fail++; console.error('FAIL: no Handlebars — render checks did not run'); }
   else {
+    { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
     const tpl = H.compile(read('templates/network-nodes/node-inspector.hbs'));
     const a = tpl(ctx), b = tpl(ctx2);
     ok(a.includes('data-action="unjam"') && a.includes('data-action="infClean"') && a.includes('data-action="fxDel"') && a.includes('data-action="runKick"') && a.includes('data-action="lockClear"'), 'every row has its control');

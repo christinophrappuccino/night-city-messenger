@@ -26,6 +26,7 @@
  *   one inside an HTML comment silently killed the whole modal).
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, chatCardTime } from '../../utils/helpers.js';
 
@@ -44,6 +45,8 @@ export const DEFAULT_NET_CHOICES = Object.freeze([
 const _pending = new Map();
 /** GM-side open prompts: requestId → close(). */
 const _openPrompts = new Map();
+/** requestId → the user who asked (only they may withdraw it, audit SEC-22). */
+const _promptOwners = new Map();
 
 /**
  * Ask for a Tier C verdict. GM caller → local prompt; player → socket round-trip.
@@ -99,7 +102,7 @@ export function requestNetAdjudication(o = {}) {
   }
 
   if (!game.users?.activeGM) {
-    ui.notifications.warn('NCM | No GM connected — this table resolves netrunning at the table, so a GM must be online to call it.');
+    ncmNotify.warn('NCM | No GM connected — this table resolves netrunning at the table, so a GM must be online to call it.');
     return { promise: Promise.resolve({ cancelled: true }), withdraw: () => {} };
   }
 
@@ -124,14 +127,21 @@ export function requestNetAdjudication(o = {}) {
 }
 
 /** GM-side socket body for NET_RESOLVE_REQUEST. */
-export async function handleNetResolveRequest(data) {
+export async function handleNetResolveRequest(data, senderId = undefined) {
   if (!isGM() || !data?.requestId) return;
+  // The verdict goes back to whoever really asked, and only they may withdraw it (A3e).
+  if (senderId !== undefined) {
+    if (!senderId) return;
+    data = { ...data, userId: senderId };
+  }
   // Multi-GM: only the canonical active GM prompts (the standing one-GM-acts
   // pattern) — otherwise every GM gets a prompt and the losers' verdicts are
   // silently ignored, leaving orphaned modals on their screens.
   if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) return;
   try { game.nightcity?.soundService?.play?.('receive'); } catch { /* no sound */ }
+  _promptOwners.set(data.requestId, data.userId);
   const choiceId = await runNetAdjudicator(data);
+  _promptOwners.delete(data.requestId);
   // The prompt may have been closed by a player withdraw — in that case the
   // pending entry is already gone client-side and this result is ignored there.
   game.nightcity?.socketManager?.emit(SOCKET_OPS.NET_RESOLVE_RESULT, {
@@ -149,9 +159,10 @@ export function handleNetResolveResult(data) {
 }
 
 /** GM-side socket body for NET_RESOLVE_CANCEL — the player stood down. */
-export function handleNetResolveCancel(data) {
+export function handleNetResolveCancel(data, senderId = undefined) {
+  if (senderId !== undefined && (!senderId || _promptOwners.get(data?.requestId) !== senderId)) return;
   const close = data?.requestId ? _openPrompts.get(data.requestId) : null;
-  if (close) { close(); ui.notifications.info('NCM | The operator withdrew the action.'); }
+  if (close) { close(); ncmNotify.info('NCM | The operator withdrew the action.'); }
 }
 
 /** Player-side socket body for NET_RESOLVE_STATE — the GM docked/restored their

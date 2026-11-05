@@ -8,12 +8,18 @@
  *   by the GM's client and ends if that client reloads.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, getPlayerCharacters, generateId } from '../utils/helpers.js';
+import { log, isGM, isFromGM, getPlayerCharacters, generateId } from '../utils/helpers.js';
 import { typeOutMs } from '../utils/callModel.js';
 import { holdsItem } from '../utils/phoneEmergency.js';
 import { activeEffects, nodeIsUp } from '../utils/networkNodes.js';
 import { sanitizeEavesdrop, sanitizeScript, waysFor, garbleFor, garbleLine, plainHeard } from '../utils/overheard.js';
+
+/** One Enhance clears at most this much garble (15 + a beaten DV by 7 × 5, a very good roll) … */
+const ENHANCE_MAX = 50;
+/** … and comes at most this often per listener. */
+const ENHANCE_GAP_MS = 3000;
 
 export class OverheardService {
   constructor() {
@@ -228,7 +234,7 @@ export class OverheardService {
 
   _ask(data) {
     if (isGM()) return this.handleSocket(data, game.user.id);
-    if (!game.users.activeGM) { ui.notifications?.warn('No GM is online.'); return false; }
+    if (!game.users.activeGM) { ncmNotify.warn('No GM is online.'); return false; }
     this.socket.emit(SOCKET_OPS.CALL_OVERHEARD, data);
     return true;
   }
@@ -238,7 +244,8 @@ export class OverheardService {
     if (Array.isArray(data.userIds) && !data.userIds.includes(game.user.id)) return;
     const hud = game.nightcity?.overheardHud;
     switch (data.op) {
-      case 'prompt': case 'joined': case 'line': case 'ended': case 'click': case 'cut': case 'none': case 'saved': return hud?.receive(data);
+      // What a listener's screen shows only ever comes from a GM (audit SEC-10).
+      case 'prompt': case 'joined': case 'line': case 'ended': case 'click': case 'cut': case 'none': case 'saved': return isFromGM(senderId) ? hud?.receive(data) : undefined;
       default: break;
     }
     if (!isGM() || game.users.activeGM?.id !== game.user.id) return;
@@ -249,7 +256,12 @@ export class OverheardService {
       if (!target || !this._join(target, senderId, data.actorId, data.way)) this._to(senderId, { op: 'none', way: data.way });
     } else if (data.op === 'leave' && l) { run.listeners.delete(senderId); this._changed(); }
     else if (data.op === 'enhance' && l) {
-      l.enhance = Math.min(100, (l.enhance || 0) + Math.max(0, Number(data.amount) || 0));
+      // The roll is the listener's (the gameplay boundary), but one Enhance clears at most what a very good
+      // roll earns, and not more than one every few seconds (audit SEC-22: a request could jump to 100).
+      const nowMs = Date.now();
+      if (nowMs - (l.lastEnhanceAt || 0) < ENHANCE_GAP_MS) { log.warn('Overheard: an Enhance came too soon after the last one — ignored'); return; }
+      l.lastEnhanceAt = nowMs;
+      l.enhance = Math.min(100, (l.enhance || 0) + Math.min(ENHANCE_MAX, Math.max(0, Number(data.amount) || 0)));
       for (const i of l.heard.keys()) { const line = this.lineFor(run, l, i); if (line) { l.heard.set(i, line); this._to(senderId, { op: 'line', runId: run.id, line, again: true }); } }
       this._changed();
     } else if (data.op === 'save' && l) { const ok = await this._save(run, l); this._to(senderId, { op: 'saved', runId: run.id, ok }); }

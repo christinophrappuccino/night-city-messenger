@@ -173,7 +173,7 @@
     {{/if}}
     {{#if contentData.canDeclassify}}
       <button type="button" class="ncm-ct-declass ncm-ct-doss__declass" data-action="contentUnlock" data-unlock-kind="dossier" data-entry-id="{{id}}"
-              data-tooltip="Strip the classification layer off this dossier — DV {{contentData.declassifyDV}}">
+              data-tooltip="Strip the classification layer off this dossier — DV {{ncm-tip contentData.declassifyDV}}">
         <i class="fas fa-stamp"></i> DECLASSIFY
       </button>
     {{/if}}
@@ -264,7 +264,7 @@
       <div class="ncm-avlog-locked">
         <i class="fas fa-lock"></i><span>RECORDING SEALED</span>
         <button type="button" class="ncm-ct-gal__unlock" data-action="contentUnlock" data-unlock-kind="avlog" data-entry-id="{{id}}"
-                data-tooltip="Break the encryption sealing this recording — DV {{contentData.unlockDV}}">DECRYPT</button>
+                data-tooltip="Break the encryption sealing this recording — DV {{ncm-tip contentData.unlockDV}}">DECRYPT</button>
       </div>
     {{else}}
       <div class="ncm-ct-av__deck">
@@ -338,7 +338,7 @@
       <div class="ncm-ct-loc__body ncm-ct-loc__body--locked">
         <p class="ncm-ct-loc__lockmsg">Pin data sealed — image, coordinates, and intel are encrypted.</p>
         <button type="button" class="ncm-ct-gal__unlock" data-action="contentUnlock" data-unlock-kind="location" data-entry-id="{{id}}"
-                data-tooltip="Break the encryption sealing this pin — DV {{contentData.unlockDV}}">
+                data-tooltip="Break the encryption sealing this pin — DV {{ncm-tip contentData.unlockDV}}">
           <i class="fas fa-unlock-keyhole"></i> DECRYPT · DV {{contentData.unlockDV}}
         </button>
       </div>
@@ -402,7 +402,7 @@
       {{#if contentData.redactedCount}}<span class="ncm-ct-chip ncm-ct-chip--red"><i class="fas fa-eye-slash"></i> {{contentData.redactedCount}}</span>{{/if}}
       {{#if contentData.canDeclassify}}
         <button type="button" class="ncm-ct-declass ncm-ct-declass--chip" data-action="contentUnlock" data-unlock-kind="spreadsheet" data-entry-id="{{id}}"
-                data-tooltip="Strip the classification layer off the sealed cells — DV {{contentData.declassifyDV}}">
+                data-tooltip="Strip the classification layer off the sealed cells — DV {{ncm-tip contentData.declassifyDV}}">
           <i class="fas fa-stamp"></i> DECLASSIFY
         </button>
       {{/if}}
@@ -422,7 +422,7 @@
                 {{#if redacted}}
                   <td class="ncm-ct-cell--redacted" data-tooltip="REDACTED"><i class="fas fa-lock"></i></td>
                 {{else if flagged}}
-                  <td class="ncm-ct-cell--flag{{#if num}} ncm-ct-cell--num{{/if}}{{#if selected}} is-selected{{/if}}"{{#if reason}} data-tooltip="{{reason}}"{{/if}}>{{#if bold}}<b>{{value}}</b>{{else}}{{value}}{{/if}}</td>
+                  <td class="ncm-ct-cell--flag{{#if num}} ncm-ct-cell--num{{/if}}{{#if selected}} is-selected{{/if}}"{{#if reason}} data-tooltip="{{ncm-tip reason}}"{{/if}}>{{#if bold}}<b>{{value}}</b>{{else}}{{value}}{{/if}}</td>
                 {{else if isStatus}}
                   <td><span class="ncm-ct-pill" data-ct-color="{{pillColor}}">{{value}}</span></td>
                 {{else}}
@@ -489,7 +489,7 @@
                 <div class="ncm-ct-cal__lockt"><i class="fas fa-lock"></i> ENCRYPTED ENTRY</div>
                 <div class="ncm-ct-cal__chips"><span class="ncm-ct-cal__chip">date · location · attendees withheld</span></div>
                 <button type="button" class="ncm-ct-cal__unlock" data-action="contentUnlock" data-unlock-kind="calendar" data-index="{{idx}}" data-entry-id="{{../id}}"
-                        data-tooltip="Break the encryption sealing this entry — DV {{effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT</button>
+                        data-tooltip="Break the encryption sealing this entry — DV {{ncm-tip effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT</button>
               {{else}}
                 <div class="ncm-ct-cal__title">{{title}}{{#if lockedGm}}<span class="ncm-ct-cal__gmlock"><i class="fas fa-lock"></i> LOCKED</span>{{/if}}</div>
                 {{#if chips.length}}
@@ -703,7 +703,7 @@
               <span class="ncm-ct-cam__enc">ENCRYPTED</span>
             </div>
             <button type="button" class="ncm-ct-gal__unlockbar" data-action="contentUnlock" data-unlock-kind="gallery" data-index="{{idx}}" data-entry-id="{{../id}}"
-                    data-tooltip="Break the encryption sealing this channel — DV {{effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT CHANNEL</button>
+                    data-tooltip="Break the encryption sealing this channel — DV {{ncm-tip effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT CHANNEL</button>
           {{else if offline}}
             <div class="ncm-ct-cam__static"></div>
             <span class="ncm-ct-cam__tag">{{label}}</span>
@@ -733,9 +733,9 @@
             {{#if ../interactive}}
               <span class="ncm-ct-cam__acts">
                 {{#if canLoop}}<button type="button" class="ncm-ct-cam__act ncm-ct-cam__act--loop" data-action="camAction" data-cam-act="loop" data-index="{{idx}}" data-entry-id="{{../id}}"
-                        data-tooltip="Freeze this camera on old footage — DV {{loopDV}}"><i class="fas fa-rotate"></i> LOOP</button>{{/if}}
+                        data-tooltip="Freeze this camera on old footage — DV {{ncm-tip loopDV}}"><i class="fas fa-rotate"></i> LOOP</button>{{/if}}
                 {{#if canCut}}<button type="button" class="ncm-ct-cam__act ncm-ct-cam__act--cut" data-action="camAction" data-cam-act="cut" data-index="{{idx}}" data-entry-id="{{../id}}"
-                        data-tooltip="Kill this channel — DV {{cutDV}}"><i class="fas fa-scissors"></i> CUT</button>{{/if}}
+                        data-tooltip="Kill this channel — DV {{ncm-tip cutDV}}"><i class="fas fa-scissors"></i> CUT</button>{{/if}}
                 {{#if canRestore}}<button type="button" class="ncm-ct-cam__act ncm-ct-cam__act--gm" data-action="camAction" data-cam-act="restore" data-index="{{idx}}" data-entry-id="{{../id}}"
                         data-tooltip="GM — restore this channel"><i class="fas fa-rotate-left"></i> RESTORE</button>{{/if}}
               </span>
@@ -773,7 +773,7 @@
               <span>ENCRYPTED</span>
             </div>
             <button type="button" class="ncm-ct-gal__unlockbar" data-action="contentUnlock" data-unlock-kind="gallery" data-index="{{idx}}" data-entry-id="{{../id}}"
-                    data-tooltip="Break the encryption sealing this frame — DV {{effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT</button>
+                    data-tooltip="Break the encryption sealing this frame — DV {{ncm-tip effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT</button>
           {{else if hasImage}}
             <button type="button" class="ncm-ct-gal__thumb" data-action="galleryView" data-src="{{url}}" data-caption="{{caption}}" data-label="{{label}}" data-time="{{time}}" data-index="{{idx}}" data-tooltip="Enlarge">
               <img src="{{url}}" alt="{{label}}" loading="lazy">
@@ -836,7 +836,7 @@
     </div>
     {{#if contentData.canDeclassify}}
       <button type="button" class="ncm-ct-declass" data-action="contentUnlock" data-unlock-kind="document" data-entry-id="{{id}}"
-              data-tooltip="Strip the classification layer off this file — DV {{contentData.declassifyDV}}">
+              data-tooltip="Strip the classification layer off this file — DV {{ncm-tip contentData.declassifyDV}}">
         <i class="fas fa-stamp"></i> DECLASSIFY
       </button>
     {{/if}}
@@ -958,7 +958,7 @@
           </svg>
         {{/if}}
         {{#each contentData.annotations}}
-          <span class="ncm-ct-schem__pin{{#if isFog}} ncm-ct-schem__pin--fog{{/if}}" data-ct-color="{{color}}" style="left:{{x}}%;top:{{y}}%" data-tooltip="{{#if isFog}}Encrypted marker — scout to reveal{{else}}{{label}}{{#if note}} — {{note}}{{/if}}{{/if}}"><i class="{{icon}}"></i></span>
+          <span class="ncm-ct-schem__pin{{#if isFog}} ncm-ct-schem__pin--fog{{/if}}" data-ct-color="{{color}}" style="left:{{x}}%;top:{{y}}%" data-tooltip="{{#if isFog}}Encrypted marker — scout to reveal{{else}}{{ncm-tip label}}{{#if note}} — {{ncm-tip note}}{{/if}}{{/if}}"><i class="{{icon}}"></i></span>
         {{/each}}
       </div>
     {{else}}
@@ -978,7 +978,7 @@
                 <span class="ncm-ct-schem__legi"><i class="{{icon}}"></i></span>
                 {{#if isFog}}
                   <span class="ncm-ct-schem__legtx"><i class="ncm-ct-schem__legfog">Encrypted marker — scout to reveal (DV {{effDV}})</i></span>
-                  {{#if ../../interactive}}<button type="button" class="ncm-ct-schem__reveal" data-action="contentUnlock" data-unlock-kind="schematic" data-index="{{idx}}" data-entry-id="{{../../id}}" data-tooltip="Scout this marker — DV {{effDV}}">SCOUT</button>{{/if}}
+                  {{#if ../../interactive}}<button type="button" class="ncm-ct-schem__reveal" data-action="contentUnlock" data-unlock-kind="schematic" data-index="{{idx}}" data-entry-id="{{../../id}}" data-tooltip="Scout this marker — DV {{ncm-tip effDV}}">SCOUT</button>{{/if}}
                 {{else}}
                   <span class="ncm-ct-schem__legtx">
                     <b>{{label}}</b>

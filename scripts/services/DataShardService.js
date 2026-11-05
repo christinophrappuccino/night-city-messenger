@@ -12,12 +12,15 @@
  *              Per-message encryption support.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../utils/constants.js';
-import { log, isGM, generateId } from '../utils/helpers.js';
+import { log, isGM, generateId, userOwnsActor } from '../utils/helpers.js';
+import { userCanReachShard, sanitizeSessionUpdates, shardCanSelfDestruct } from '../utils/shardAccess.js';
 import { withShardPrefix, restorePatch } from '../utils/shardNaming.js';
 import { shardTerm as T, withArticle } from '../utils/shardTerm.js';
+import { serializeMethods, itemKey } from '../utils/serialize.js';
 import {
-  resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor,
+  resolveIntegrity, percentOf, tierOf, entryLevel, quantize, effectiveHit, applyLoss, unstableFor, afterRecon,
 } from '../ui/content/IntegrityModel.js';
 
 export class DataShardService {
@@ -152,6 +155,13 @@ export class DataShardService {
       if (deleteJournal && journalId && !isArchive) {
         const journal = game.journal.get(journalId);
         if (journal) await journal.delete();
+        // Archive copies were windows on this journal (audit INT-08): with it gone they show nothing, so they stop
+        // being shards too. Their own name and art stay.
+        for (const copy of game.items?.contents ?? []) {
+          if (copy.id !== item.id && copy.getFlag(MODULE_ID, 'shardArchive') && copy.getFlag(MODULE_ID, 'journalId') === journalId) {
+            await this.removeDataShard(copy, false);
+          }
+        }
       }
 
       log.info(`Data shard removed from "${item.name}"`);
@@ -1218,16 +1228,39 @@ export class DataShardService {
     return unstableFor(entryLevel(entry), cfg);
   }
 
-  /** GM-side handler for SHARD_INTEGRITY_REQUEST. */
-  async handleIntegrityRequest(data = {}) {
+  /**
+   * GM-side handler for SHARD_INTEGRITY_REQUEST (audit SEC-05). The sender must be able
+   * to reach the shard. What a player's result may change is decided here, from the
+   * shard's own settings: a failed breach takes the configured hit (never a sent amount),
+   * a repair restores the configured points, a reconstruct moves an entry one step the
+   * way its roll allows, and a salvage is for a character the sender owns.
+   * @param {object} data
+   * @param {string|null} senderId the server-verified sender
+   */
+  async handleIntegrityRequest(data = {}, senderId = null) {
     if (!isGM()) return;
     const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
     if (!item || !this.isDataShard(item)) { log.warn(`Integrity relay: shard ${data.itemUuid} not found`); return; }
+    if (!userCanReachShard(senderId, item)) { log.warn(`Integrity relay refused: ${game.users?.get(senderId)?.name || 'unknown sender'} has no way into "${item.name}"`); return; }
+    const cfg = this.getIntegrityConfig(item);
     switch (data.op) {
-      case 'degrade': return this.degradeIntegrity(item, { amount: data.amount ?? undefined, rollLoss: data.rollLoss !== false, by: data.by || '' });
-      case 'entry':   return this.setEntryCorruption(item, data.entryId, data.level);
-      case 'repair':  return this.repairIntegrity(item, data.points);
-      case 'salvage': return this.salvageShard(item, data.actorId, !!data.ok);
+      case 'degrade': return this.degradeIntegrity(item, { rollLoss: data.rollLoss !== false, by: String(data.by || '').slice(0, 60) });
+      case 'entry': {
+        const page = this._getLinkedJournal(item)?.pages?.find(p => p.flags?.[MODULE_ID]?.messageId === data.entryId);
+        if (!page) { log.warn('Integrity relay refused: no such entry on this shard'); return; }
+        const f = page.flags?.[MODULE_ID] || {};
+        const level = entryLevel(f);
+        const want = quantize(data.level);
+        if (want !== afterRecon(level, true, cfg) && want !== afterRecon(level, false, cfg)) {
+          log.warn(`Integrity relay refused: entry damage ${level} → ${want} is not a reconstruct result`);
+          return;
+        }
+        return this.setEntryCorruption(item, data.entryId, want);
+      }
+      case 'repair':  return this.repairIntegrity(item, cfg.repairPts ?? 15);
+      case 'salvage':
+        if (!userOwnsActor(senderId, data.actorId)) { log.warn('Integrity relay refused: a salvage for a character the sender does not own'); return; }
+        return this.salvageShard(item, data.actorId, !!data.ok);
       default: log.warn(`Integrity relay: unknown op "${data.op}"`);
     }
   }
@@ -1235,7 +1268,7 @@ export class DataShardService {
   /** @private Player → GM relay. Warns when there is no GM to land the write. */
   _relayIntegrity(op, shardItem, payload = {}) {
     if (!game.users?.activeGM) {
-      ui.notifications?.warn(`NCM | No GM connected — the ${T('short', 'lower')} change could not be saved.`);
+      ncmNotify.warn(`NCM | No GM connected — the ${T('short', 'lower')} change could not be saved.`);
       return false;
     }
     this.socketManager?.emit(SOCKET_OPS.SHARD_INTEGRITY_REQUEST, { op, itemUuid: shardItem.uuid, userId: game.user?.id, ...payload });
@@ -1308,6 +1341,11 @@ export class DataShardService {
     const amount = contentData.amount ?? 0;
     if (amount <= 0) return { success: false, error: 'No eddies to claim' };
 
+    // Wealth is credited before the GM marks the entry claimed (audit DATA-02): with no GM to write
+    // that, the same eddies could be claimed again and again. Refuse up front.
+    const { canPersistContent } = await import('../ui/content/SiphonFlow.js');
+    if (!canPersistContent({ warn: false })) return { success: false, error: 'No GM is connected — the GM must be online to claim this.' };
+
     try {
       // Wire to CPR wealth ledger — wealth is an object { value, transactions }
       const wealth = foundry.utils.deepClone(actor.system.wealth);
@@ -1322,12 +1360,23 @@ export class DataShardService {
       // and the nested contentData.* dot-path write is the unreliable-flag
       // gotcha anyway. persistContentData writes the whole contentData (GM
       // direct, player via the CONTENT_UPDATE_REQUEST relay).
+      // A player relays the INTENT ('claim'); the GM marks it claimed from the stored entry (audit SEC-04).
       const { persistContentData } = await import('../ui/content/SiphonFlow.js');
-      await persistContentData(entryId, {
-        // claimedRealMs = real time, drives the one-shot claim animation (the
-        // enricher's justClaimed window compares against Date.now()).
-        ...contentData, claimed: true, claimedBy: actor.id, claimedAt: new Date().toISOString(), claimedRealMs: Date.now(),
-      }, `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`);
+      const { applyContentIntent } = await import('../utils/contentIntents.js');
+      const nowIso = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
+      const claimed = applyContentIntent(CONTENT_TYPES.EDDIES, contentData, { action: 'claim' },
+        { actorId: actor.id, actorName: actor.name, nowIso, realIso: new Date().toISOString(), realMs: Date.now() });
+      if (!claimed.ok) return { success: false, error: claimed.why };
+      const saved = await persistContentData(entryId, claimed.next,
+        `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`, { action: 'claim' }, actor.id);
+      if (!saved) {
+        // The claim could not be recorded: take the money back rather than leave it claimable twice.
+        const undo = foundry.utils.deepClone(actor.system.wealth);
+        undo.value -= amount;
+        undo.transactions.push([`Decreased by ${amount} to ${undo.value}`, `NCM: Claim of ${amount.toLocaleString()} eb could not be recorded — reversed`]);
+        await actor.update({ 'system.wealth': undo });
+        return { success: false, error: 'The claim could not be recorded' };
+      }
 
       this.eventBus?.emit(EVENTS.SHARD_EDDIES_CLAIMED, {
         itemId: shardItem.id, entryId, actorId: actor.id, amount,
@@ -1775,7 +1824,10 @@ export class DataShardService {
     // The journal is GM-owned and the item may be too — a player relays.
     if (!isGM()) return this._relayState('destroy', shardItem);
     try {
-      const journal = this._getLinkedJournal(shardItem);
+      // An archive copy shares the SOURCE's journal (audit INT-08): wiping it would gut the player's real shard.
+      // An archive only ever marks itself.
+      const isArchive = !!shardItem.getFlag(MODULE_ID, 'shardArchive');
+      const journal = isArchive ? null : this._getLinkedJournal(shardItem);
       if (journal) {
         // Delete all pages (messages)
         const pageIds = journal.pages.map(p => p.id);
@@ -1784,14 +1836,10 @@ export class DataShardService {
         }
       }
 
-      // Mark as destroyed in state
-      await shardItem.update({
-        [`flags.${MODULE_ID}.state`]: {
-          decrypted: false,
-          sessions: {},
-          destroyed: true,
-        },
-      });
+      // Mark as destroyed in state. Replace the block, never merge into it (audit INT-08): a merged write kept
+      // every old session, so `sessions: {}` cleared nothing.
+      await shardItem.unsetFlag(MODULE_ID, 'state');
+      await shardItem.setFlag(MODULE_ID, 'state', { decrypted: false, sessions: {}, destroyed: true });
 
       this.soundService?.play('shard-expire');
       log.info(`Shard "${shardItem.name}" self-destructed`);
@@ -1873,7 +1921,7 @@ export class DataShardService {
   /** @private Player → GM relay for a state write. Warns when there is no GM to land it. */
   _relayState(op, item, payload = {}) {
     if (!game.users?.activeGM) {
-      ui.notifications?.warn(`NCM | No GM connected — the ${T('short', 'lower')} could not record that. Try again when your GM is online.`);
+      ncmNotify.warn(`NCM | No GM connected — the ${T('short', 'lower')} could not record that. Try again when your GM is online.`);
       return false;
     }
     this.socketManager?.emit(SOCKET_OPS.SHARD_STATE_REQUEST, { op, itemUuid: item.uuid, userId: game.user?.id, ...payload });
@@ -1889,16 +1937,28 @@ export class DataShardService {
     return true;
   }
 
-  /** GM-side handler for SHARD_STATE_REQUEST. */
-  async handleStateRequest(data = {}) {
+  /**
+   * GM-side handler for SHARD_STATE_REQUEST (audit SEC-05). The sender must be able to
+   * reach the shard (shardAccess.userCanReachShard); a session write must be for a
+   * character they own and may only set session fields; a wipe only happens on a shard
+   * whose own config destroys itself on failed hacks.
+   * @param {object} data
+   * @param {string|null} senderId the server-verified sender
+   */
+  async handleStateRequest(data = {}, senderId = null) {
     if (!isGM()) return;
     const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
     if (!item || !this.isDataShard(item)) { log.warn(`State relay: shard ${data.itemUuid} not found`); return; }
+    if (!userCanReachShard(senderId, item)) { log.warn(`State relay refused: ${game.users?.get(senderId)?.name || 'unknown sender'} has no way into "${item.name}"`); return; }
     switch (data.op) {
       case 'decrypt':     return this._writeDecrypted(item);
-      case 'session':     return this._updateActorSession(item, data.actorId, data.updates || {});
+      case 'session':
+        if (!userOwnsActor(senderId, data.actorId)) { log.warn('State relay refused: a session write for a character the sender does not own'); return; }
+        return this._updateActorSession(item, data.actorId, sanitizeSessionUpdates(data.updates));
       case 'decryptPage': return this._decryptMessage(item, data.messageId);
-      case 'destroy':     return this._destroyShard(item);
+      case 'destroy':
+        if (!shardCanSelfDestruct(this.getConfig(item))) { log.warn(`State relay refused: "${item.name}" does not self-destruct`); return; }
+        return this._destroyShard(item);
       default: log.warn(`State relay: unknown op "${data.op}"`);
     }
   }
@@ -2253,3 +2313,8 @@ export class DataShardService {
     }
   }
 }
+
+// One shard state write at a time per shard (B4 / INT-02): `decrypted` and an actor's session are written as the
+// whole state block, so two at once undid each other. Integrity hits queue too (INT-09: a hit was lost).
+serializeMethods(DataShardService.prototype, ['_writeDecrypted', '_updateActorSession'], (args) => itemKey('shard', args[0]));
+serializeMethods(DataShardService.prototype, ['degradeIntegrity'], (args) => itemKey('shardIntegrity', args[0]));

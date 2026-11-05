@@ -380,8 +380,9 @@
 .ncm-numpop__row small { font: calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-secondary); }
 .ncm-numpop__ft { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--ncm-border, #2a2a45); color: var(--ncm-text-secondary, #a8a8bc); font-size: calc(11.5px * var(--ncm-text-scale, 1)); }
 
-/* hover help (Foundry draws these from data-tooltip; the mock draws its own) */
-.mk-tip { position: fixed; z-index: 1100; max-width: 260px; padding: 5px 8px; background: #000; color: #fff; border: 1px solid #555; border-radius: 3px; font: 12px/1.35 sans-serif; pointer-events: none; }
+/* hover help (Foundry draws these from data-tooltip; the mock draws its own). The .mk-* rules are the mocks'
+   own and match only off Foundry (a Foundry page's body carries .vtt) — they styled any .mk-* class in the game (COMPAT-11). */
+:where(body:not(.vtt)) .mk-tip { position: fixed; z-index: 1100; max-width: 260px; padding: 5px 8px; background: #000; color: #fff; border: 1px solid #555; border-radius: 3px; font: 12px/1.35 sans-serif; pointer-events: none; }
 
 /* the exchange list */
 .ncm-calls-xlist { position: absolute; inset: 0; z-index: 15; display: flex; flex-direction: column; background: var(--ncm-bg-surface); padding: 14px 18px; overflow-y: auto; overflow-x: hidden; gap: 8px; }
@@ -504,23 +505,23 @@
 .ncm-tb-note b { color: var(--ncm-text-primary); }
 
 /* numbers in place */
-.mk-place { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-content: start; color: var(--ncm-text-primary); }
-.mk-place h4 { margin: 0 0 6px; border: 0; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-secondary); }
-.mk-place .full { grid-column: 1 / -1; }
-.mk-card { display: flex; gap: 10px; padding: 10px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); }
-.mk-card .face { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ncm-bg-surface); border: 1.5px solid var(--ncm-secondary); color: var(--ncm-secondary); font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
-.mk-card b { display: block; font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
-.mk-card .ncm-num { font-size: calc(14px * var(--ncm-text-scale, 1)); }
-.mk-card small { display: block; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
-.mk-ring { --rc: var(--ncm-secondary); padding: 10px 12px; background: var(--ncm-bg-deep); border: 1.5px solid var(--rc); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
-.mk-ring { position: relative; } .mk-ring::after { content: ""; position: absolute; top: -1.5px; right: -1.5px; width: 12px; height: 12px; pointer-events: none; background: linear-gradient(to top right, transparent calc(50% - 1.8px), var(--rc) calc(50% - 1.8px), var(--rc) 50%, transparent 50%); }
-.mk-ring .k { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: var(--rc); }
-.mk-ring b { display: block; margin: 3px 0 1px; font: 800 calc(17px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; }
-.mk-ring .ncm-num { font-size: calc(16px * var(--ncm-text-scale, 1)); font-weight: 700; }
-.mk-ring small { display: block; margin-top: 2px; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
-.mk-ring .far { display: inline-block; margin-top: 5px; padding: 1px 6px; border: 1px solid var(--ncm-accent); color: var(--ncm-accent); font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
-.mk-seen { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 4px 12px; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
-.mk-seen .ncm-num { font-size: calc(15px * var(--ncm-text-scale, 1)); }
+:where(body:not(.vtt)) .mk-place { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-content: start; color: var(--ncm-text-primary); }
+:where(body:not(.vtt)) .mk-place h4 { margin: 0 0 6px; border: 0; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .16em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+:where(body:not(.vtt)) .mk-place .full { grid-column: 1 / -1; }
+:where(body:not(.vtt)) .mk-card { display: flex; gap: 10px; padding: 10px; background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border); }
+:where(body:not(.vtt)) .mk-card .face { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ncm-bg-surface); border: 1.5px solid var(--ncm-secondary); color: var(--ncm-secondary); font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+:where(body:not(.vtt)) .mk-card b { display: block; font: 700 calc(14px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); }
+:where(body:not(.vtt)) .mk-card .ncm-num { font-size: calc(14px * var(--ncm-text-scale, 1)); }
+:where(body:not(.vtt)) .mk-card small { display: block; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+:where(body:not(.vtt)) .mk-ring { --rc: var(--ncm-secondary); padding: 10px 12px; background: var(--ncm-bg-deep); border: 1.5px solid var(--rc); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+:where(body:not(.vtt)) .mk-ring { position: relative; } :where(body:not(.vtt)) .mk-ring::after { content: ""; position: absolute; top: -1.5px; right: -1.5px; width: 12px; height: 12px; pointer-events: none; background: linear-gradient(to top right, transparent calc(50% - 1.8px), var(--rc) calc(50% - 1.8px), var(--rc) 50%, transparent 50%); }
+:where(body:not(.vtt)) .mk-ring .k { font: 700 calc(9px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: var(--rc); }
+:where(body:not(.vtt)) .mk-ring b { display: block; margin: 3px 0 1px; font: 800 calc(17px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase; }
+:where(body:not(.vtt)) .mk-ring .ncm-num { font-size: calc(16px * var(--ncm-text-scale, 1)); font-weight: 700; }
+:where(body:not(.vtt)) .mk-ring small { display: block; margin-top: 2px; font: calc(11.5px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); color: var(--ncm-text-secondary); }
+:where(body:not(.vtt)) .mk-ring .far { display: inline-block; margin-top: 5px; padding: 1px 6px; border: 1px solid var(--ncm-accent); color: var(--ncm-accent); font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
+:where(body:not(.vtt)) .mk-seen { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 4px 12px; font: calc(13px * var(--ncm-text-scale, 1)) var(--ncm-font-body, sans-serif); }
+:where(body:not(.vtt)) .mk-seen .ncm-num { font-size: calc(15px * var(--ncm-text-scale, 1)); }
 .ncm-calls-rowc .ncm-num { font-size: calc(10.5px * var(--ncm-text-scale, 1)); }
 
 /* the hidden attribute loses to any author display rule (the settings row is a grid) */

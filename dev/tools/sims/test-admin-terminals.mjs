@@ -482,7 +482,7 @@ ok(/prefers-reduced-motion[\s\S]*ncm-term2-led[^}]*animation: none/.test(css), '
 ok(/\.ncm-term2-ax\[hidden\]\s*\{\s*display: none !important/.test(css), 'a folded facts block cannot be re-shown by a display rule');
 ok(/tab-terminals\.css/.test(read('styles/night-city-messenger.css')) || /tab-terminals\.css/.test(read('styles/components/admin-panel.css')), 'stylesheet imported');
 ok(!fs.readdirSync(`${ROOT}/styles`, { recursive: true }).filter((f) => String(f).endsWith('.css') && !String(f).includes('tab-terminals') && !String(f).includes('admin-hierarchy')).some((f) => fs.readFileSync(`${ROOT}/styles/${f}`, 'utf8').includes('.ncm-term2-')), 'no other stylesheet uses the ncm-term2- prefix');
-ok(js.includes("mailboxStyle: cfg.mailboxStyle || 'classic'") && tpl.includes('{{mailboxStyle}}'), 'mailbox-styles sim contract kept');
+ok(js.includes("mailboxStyle: cfg.mailboxStyle || 'classic'") && tpl.includes('{{ncm-tip mailboxStyle}}'), 'mailbox-styles sim contract kept');
 ok(/showNamePicker\(/.test(js) && /ScopePicker\.html\(/.test(js) && /ScopePicker\.after\(\)/.test(js), 'name picker (import) + scope picker (scenes)');
 ok(/openTo\(select\)/.test(js), 'openTo implemented');
 ok(/getAccountMessages\?\.\(item, a\.id, \{ enforceGates: false/.test(js), 'mailbox counts read with gates off (GM read)');
@@ -496,6 +496,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars — render checks did not run'); }
 else {
   { const { registerTagHueHelper } = await import(new URL('../../../scripts/utils/tagHue.js', import.meta.url)); registerTagHueHelper(Handlebars); }
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
   const render = Handlebars.compile(tpl);
   tab._filter = 'all'; tab._search = ''; tab._group = 'location'; tab._selectedId = 'ws'; tab._menuOpen = true; tab._acctOpen.clear(); tab._fold.clear();
@@ -574,6 +575,8 @@ else {
   };
   ns.eventBus = { emit: () => {} };
   game.users = Object.assign([...game.users], { activeGM: { id: 'gm' } });
+  // the reporting player owns V (audit D3: the GM only saves a report about the sender's own character)
+  { const u1 = { id: 'u1', isGM: false }; const get = game.users.get?.bind(game.users); game.users.get = (id) => (id === 'u1' ? u1 : get?.(id)); actors.get('aV').ownership = { u1: 3 }; }
   ns.socketManager = { emit: (op, data) => deliver(game.user.isGM ? 'gm' : 'pl', op, data) };
   clients.gm = as('gm', () => new SecurityService());
   clients.pl = as('pl', () => new SecurityService());
@@ -601,10 +604,11 @@ else {
   ok(as('gm', () => clients.gm.getKnownState('aV', KEY))?.attempts === 1, 'a new miss shows again');
   as('pl', () => clients.pl.recordSuccess('aV', KEY));
   ok(as('gm', () => clients.gm.getKnownState('aV', KEY)) === null, 'a later success clears the report');
-  // networks / shards (bare ids) are never reported; no GM online = nothing sent
+  // every target is reported now (D3 saves them all); no GM online = nothing sent
   wire.length = 0;
   as('pl', () => clients.pl.recordFailedAttempt('aV', 'some-network'));
-  ok(!wire.length, 'bare-id targets are not reported');
+  ok(wire.some((w) => w[1] === SOCKET_OPS.SECURITY_REPORT), 'a network / shard (bare id) miss is reported too (it is saved now)');
+  wire.length = 0;
   game.users.activeGM = null;
   as('pl', () => clients.pl.recordFailedAttempt('aV', KEY));
   ok(!wire.length, 'no GM online → nothing to do');

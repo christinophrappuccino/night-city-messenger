@@ -114,7 +114,7 @@ const nc = read('scripts/ui/NetworkNodes/NodeConsoleApp.js');
 ok(nc.includes('_noProgramsMessage') && nc.includes("won't run on a node"), 'the empty message names what they carry');
 ok(!nc.includes('Build one in the shard composer'), 'and no longer points at a screen that redirects away');
 ok(flow.includes('export const TARGETED_VERBS') && flow.includes('pickHostFiles') && flow.includes('messageIds: targets'), 'Wipe and Corrupt pick their files when they run');
-ok(flow.includes("data.kind === 'uploadRun'"), 'a player\'s push that writes is the GM\'s to apply');
+ok(flow.includes("data?.kind === 'uploadRun'"), 'a player\'s push that writes is the GM\'s to apply');
 ok(read('scripts/services/TerminalService.js').includes("case 'adjudicate': {"), 'a custom routine fires with the GM\'s words');
 ok(read('scripts/utils/constants.js').includes("forward: { allow: true, "), 'Forward is on for new terminals');
 

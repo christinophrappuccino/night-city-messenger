@@ -34,6 +34,7 @@
  * client — the GM sees those as the players do.
  */
 
+import { ncmNotify } from './notify.js';
 import { MODULE_ID } from './constants.js';
 import { log } from './helpers.js';
 
@@ -129,7 +130,7 @@ export async function toggleGmView() {
       try { app.render(); } catch { /* non-fatal */ }
     }
   }
-  ui.notifications?.info(`NCM | ${next ? 'GM view — Messenger windows use the admin theme.' : 'Player view — Messenger windows use the player theme.'}`);
+  ncmNotify.info(`NCM | ${next ? 'GM view — Messenger windows use the admin theme.' : 'Player view — Messenger windows use the player theme.'}`);
 }
 
 /**

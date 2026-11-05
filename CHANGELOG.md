@@ -13,6 +13,7 @@ patch = fixes, minor = new features, major = breaking changes.
 - **Special numbers and line types.** Hidden lines, hotlines, recordings, burners and business lines.
 - **Trauma Team and Lawman Backup calls,** with real dice and a countdown. Each has an opening, a tracker, an on-scene banner and an exit. The GM sets their names, pictures, spoken lines and titles. Backup can also change per organization or per Lawman: callsign, extra groups, colour, lights and sounds. The GM gets a toast and a short tone when one is called.
 - **Overheard calls.** Write a conversation between NPCs that players can catch.
+- **Payphones.** A booth on the map anyone standing at it can call from: the other end and a trace see the place, never the person. Calling one rings its scene, and the first person at it picks up. Wired, so they work in dead zones. The GM styles each booth (style, colours, grit, exposed wiring, graffiti, screen text, sounds) under Admin → Phone → Payphones, and can ring one as an NPC.
 - **Search, filters and date folds on every call log and voicemail list.**
 - **Watching another player.** A player can share a terminal, shard or node window, and others watch a live copy.
 - **A roll panel.** Shows the formula, the DV, your chance, and Luck before the die moves.

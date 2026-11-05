@@ -15,6 +15,7 @@
  *   the button to "in contacts" in that card without a reload.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, resolveOperator } from '../utils/helpers.js';
 
@@ -76,7 +77,7 @@ export async function addContactFromCard(btn) {
   const d = el ? rowData(el) : null;
   const me = resolveOperator();
   const repo = game.nightcity?.contactRepository;
-  if (!d || !me || !repo?.addContact) { ui.notifications?.warn('NCM | Contact system unavailable.'); return false; }
+  if (!d || !me || !repo?.addContact) { ncmNotify.warn('NCM | Contact system unavailable.'); return false; }
   btn.disabled = true;
   try {
     const master = game.nightcity?.masterContactService;
@@ -92,17 +93,17 @@ export async function addContactFromCard(btn) {
     });
     if (result?.success) {
       if (slot) slot.innerHTML = inHtml();
-      ui.notifications?.info(`NCM | Added "${d.name || d.email}" to contacts.`);
+      ncmNotify.info(`NCM | Added "${d.name || d.email}" to contacts.`);
       game.nightcity?.soundService?.play?.('receive');
       return true;
     }
     if (/already exists/i.test(result?.error || '')) { if (slot) slot.innerHTML = inHtml(); return true; }
-    ui.notifications?.warn(`NCM | ${result?.error || 'Could not add contact.'}`);
+    ncmNotify.warn(`NCM | ${result?.error || 'Could not add contact.'}`);
     btn.disabled = false;
     return false;
   } catch (err) {
     log.warn(`ChatCards: add contact failed: ${err.message}`);
-    ui.notifications?.error('NCM | Failed to add contact.');
+    ncmNotify.error('NCM | Failed to add contact.');
     btn.disabled = false;
     return false;
   }

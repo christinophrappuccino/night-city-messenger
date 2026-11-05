@@ -12,7 +12,9 @@
 
 /* ─── Corner tag on item image ─── */
 /* Anchored to a tightly-bounded .ncm-shard-thumb-wrap span (set in JS).
-   Sits flush at the bottom-right corner of the image — no overhang. */
+   Sits flush at the bottom-right corner of the image — no overhang.
+   FIXED colours, not the player theme (dev 2026-11-05): it sits on Foundry's sheets and directory, outside any NCM
+   window, and following the theme turned it red on Blackwall / Tyger Claws. Shard = cyan chip on near-black. */
 .ncm-shard-img-tag {
   position: absolute;
   bottom: 0;
@@ -20,17 +22,17 @@
   width: 13px;
   height: 13px;
   box-sizing: border-box;
-  background: var(--ncm-bg-deep);
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 50%, transparent);
+  background: #0a0a0f;
+  border: 1px solid rgba(25, 243, 247, .5);
   border-radius: 2px 0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 7px;
-  color: var(--ncm-secondary);
+  color: #19f3f7;
   z-index: 1;
   pointer-events: none;
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ncm-secondary) 30%, transparent));
+  filter: drop-shadow(0 0 2px rgba(25, 243, 247, .3));
 }
 /* Wrap span around the image — keeps the badge anchored to the image,
    not to the row container (which can be flex/wider than the image).

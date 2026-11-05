@@ -20,18 +20,18 @@
     {{#if addMode}}<div class="ncm-calls-addf"><label class="f" data-tooltip="Only you see this. It tells your lines apart in My line."><span>Name it</span><input type="text" data-calls-addlabel maxlength="24" placeholder="Old D.C. line" value="{{addLabel}}" autocomplete="off"></label>
       <div class="f"><span>Kind</span><div class="ncm-calls-tabs"><button type="button" class="{{#unless addBurner}}on{{/unless}}" data-action="calls-addkind" data-k="extra" data-tooltip="A number you keep until you retire it">Keep it</button><button type="button" class="{{#if addBurner}}on{{/if}}" data-action="calls-addkind" data-k="burner" data-tooltip="A throwaway. A Trace finds nothing behind it, and retiring it burns it">Burner</button></div></div></div>{{/if}}
     <nav class="ncm-calls-trail" aria-label="Where your number comes from">
-      {{#each trail}}<button type="button" class="st{{#if here}} on{{/if}}" data-action="calls-level" data-k="{{key}}" data-tooltip="Change the {{label}}"><small>{{label}}</small>{{value}}</button>{{/each}}
+      {{#each trail}}<button type="button" class="st{{#if here}} on{{/if}}" data-action="calls-level" data-k="{{key}}" data-tooltip="Change the {{ncm-tip label}}"><small>{{label}}</small>{{value}}</button>{{/each}}
     </nav>
     {{#if step}}
     <div class="ncm-calls-row"><span class="lbl">Step {{step.n}} of {{step.of}}: {{step.label}}</span><span class="ln"></span>
       {{#if step.back}}<button type="button" class="ncm-calls-shuf" data-action="calls-level" data-k="{{step.back}}" data-tooltip="Go back one step"><i class="fas fa-arrow-left"></i> Back</button>{{/if}}
       <button type="button" class="ncm-calls-shuf" data-action="calls-level-done" data-tooltip="Keep what you had and go back to the numbers"><i class="fas fa-xmark"></i> Cancel</button></div>
-    <div class="ncm-calls-dist ncm-calls-dist--big">{{#each step.opts}}<button type="button" class="{{#if on}}on{{/if}}" data-action="calls-step" data-v="{{v}}" data-tooltip="{{name}}">{{#if code}}<code>{{code}}</code>{{/if}}{{name}}</button>{{/each}}</div>
+    <div class="ncm-calls-dist ncm-calls-dist--big">{{#each step.opts}}<button type="button" class="{{#if on}}on{{/if}}" data-action="calls-step" data-v="{{v}}" data-tooltip="{{ncm-tip name}}">{{#if code}}<code>{{code}}</code>{{/if}}{{name}}</button>{{/each}}</div>
     {{else}}
     <div class="ncm-calls-row"><span class="lbl">Made for you, from {{place}}</span><span class="ln"></span>
       <button type="button" class="ncm-calls-shuf" data-action="calls-shuffle" data-tooltip="Four more free numbers from here"><i class="fas fa-shuffle"></i> New numbers</button></div>
     <div class="ncm-calls-opts">
-      {{#each suggestions}}<button type="button" class="ncm-calls-opt{{#if on}} on{{/if}}" data-action="calls-pick" data-line="{{line}}" data-tooltip="Pick {{seen}}">
+      {{#each suggestions}}<button type="button" class="ncm-calls-opt{{#if on}} on{{/if}}" data-action="calls-pick" data-line="{{line}}" data-tooltip="Pick {{ncm-tip seen}}">
         <span class="in"><span class="num">{{seen}}</span><small>{{#if on}}✓ selected{{else}}{{number}}{{/if}}</small></span></button>{{/each}}
     </div>
     {{#if ownDigits}}
@@ -84,9 +84,9 @@
     <div class="ncm-calls-sig{{#if sig.warn}} is-warn{{/if}}">▸ {{sig.lead}} <span class="dim">//</span> {{#each sig.parts}}<span class="{{#if (eq tone 'dim')}}dim{{/if}}">{{text}}</span>{{#unless @last}} <span class="dim">·</span> {{/unless}}{{/each}}</div>
     <div class="ncm-calls-line{{#if multiLine}} has-many{{/if}}">
       <div class="ncm-calls-line__hd"><span>My line</span><span class="sp"></span>
-        {{#if canAdd}}<button type="button" class="ncm-calls-mini txt" data-action="calls-addline" data-tooltip="{{addHelp}}" aria-label="Add a line"><i class="fas fa-plus"></i></button>{{/if}}
+        {{#if canAdd}}<button type="button" class="ncm-calls-mini txt" data-action="calls-addline" data-tooltip="{{ncm-tip addHelp}}" aria-label="Add a line"><i class="fas fa-plus"></i></button>{{/if}}
         {{#each lines}}<button type="button" class="ncm-calls-mini txt" data-lineonly="{{value}}"{{#unless on}} hidden{{/unless}} data-action="calls-sharemine" data-number="{{number}}" data-tooltip="Give this number to another character"><i class="fas fa-share-nodes"></i></button>{{/each}}
-        {{#each lines}}<button type="button" class="ncm-calls-mini txt" data-lineonly="{{value}}"{{#unless on}} hidden{{/unless}} data-action="calls-copy" data-number="{{number}}" data-tooltip="Copy this number to give to someone"><i class="fas fa-copy"></i> Copy</button>{{#if retirable}}<button type="button" class="ncm-calls-mini txt" data-lineonly="{{value}}"{{#unless on}} hidden{{/unless}} data-action="calls-retire" data-number="{{number}}" data-tooltip="Stop using this line. The number retires for good, and it can never be given to anyone else."><i class="fas fa-ban"></i> Retire</button>{{else}}<button type="button" class="ncm-calls-mini txt" data-lineonly="{{value}}"{{#unless on}} hidden{{/unless}} data-action="calls-getnum" data-tooltip="{{@root.changeHelp}}"><i class="fas fa-sim-card"></i> Change</button>{{/if}}{{/each}}
+        {{#each lines}}<button type="button" class="ncm-calls-mini txt" data-lineonly="{{value}}"{{#unless on}} hidden{{/unless}} data-action="calls-copy" data-number="{{number}}" data-tooltip="Copy this number to give to someone"><i class="fas fa-copy"></i> Copy</button>{{#if retirable}}<button type="button" class="ncm-calls-mini txt" data-lineonly="{{value}}"{{#unless on}} hidden{{/unless}} data-action="calls-retire" data-number="{{number}}" data-tooltip="Stop using this line. The number retires for good, and it can never be given to anyone else."><i class="fas fa-ban"></i> Retire</button>{{else}}<button type="button" class="ncm-calls-mini txt" data-lineonly="{{value}}"{{#unless on}} hidden{{/unless}} data-action="calls-getnum" data-tooltip="{{ncm-tip @root.changeHelp}}"><i class="fas fa-sim-card"></i> Change</button>{{/if}}{{/each}}
         <button type="button" class="ncm-calls-mini txt" data-calls-intro data-tooltip="How numbers work" aria-label="How numbers work"><i class="fas fa-circle-question"></i></button></div>
       <span class="ncm-calls-sim" aria-hidden="true"><b></b><b></b><b></b><b></b></span>
       {{#if multiLine}}<button type="button" class="ncm-calls-line__row is-many" data-linetoggle aria-expanded="false" data-tooltip="Calling as this number. Click to switch to another of your lines."><span class="t">{{#each lines}}{{#if on}}<div class="ncm-calls-line__num" data-show="num">{{{numHtml}}}</div><div class="ncm-calls-line__where" data-show="where">{{where}}</div>{{/if}}{{/each}}</span><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
@@ -107,11 +107,11 @@
     <div class="ncm-calls-match" data-calls-match></div>
     {{#if scanner}}<div class="ncm-calls-scan"><span class="t"><img src="{{scanner.img}}" alt=""> {{scanner.name}}</span><button type="button" class="ncm-calls-btn" data-action="calls-scan" data-tooltip="Looks for calls on this scene, with no node needed"><i class="fas fa-satellite-dish"></i> Scan</button></div>{{/if}}
     {{#if emergency}}<div class="ncm-calls-em">
-      {{#if emergency.trauma}}<button type="button" class="ncm-calls-embtn is-tt" data-action="calls-trauma" data-tooltip="{{emergency.traumaHelp}}"{{#if emergency.traumaBusy}} disabled{{/if}}><i class="fas fa-truck-medical"></i> Trauma Team<small>{{emergency.traumaPlan}}</small></button><button type="button" class="ncm-calls-emfor" data-action="calls-traumafor" aria-label="Call Trauma Team for someone else" data-tooltip="Your plan can cover someone else, but not both of you at once"{{#if emergency.traumaBusy}} disabled{{/if}}><i class="fas fa-user-plus"></i></button>{{/if}}
+      {{#if emergency.trauma}}<button type="button" class="ncm-calls-embtn is-tt" data-action="calls-trauma" data-tooltip="{{ncm-tip emergency.traumaHelp}}"{{#if emergency.traumaBusy}} disabled{{/if}}><i class="fas fa-truck-medical"></i> Trauma Team<small>{{emergency.traumaPlan}}</small></button><button type="button" class="ncm-calls-emfor" data-action="calls-traumafor" aria-label="Call Trauma Team for someone else" data-tooltip="Your plan can cover someone else, but not both of you at once"{{#if emergency.traumaBusy}} disabled{{/if}}><i class="fas fa-user-plus"></i></button>{{/if}}
       {{#if emergency.backup}}<button type="button" class="ncm-calls-embtn is-bk" data-action="calls-backup" data-tooltip="Takes your Action. Rolls d10, needing your rank or under"><i class="fas fa-shield-halved"></i> Call for backup<small>{{emergency.backupOrg}}</small></button>{{/if}}
     </div>{{/if}}
     <div class="ncm-calls-keys">
-      {{#each keypad}}<button type="button" data-calls-key="{{k}}" data-tooltip="{{#if (eq k '+')}}Starts a long-distance number, like +14 DAL CEN-3345{{else if (eq k '#')}}Used by some service lines{{else if l}}Types {{k}}, or any of {{l}}. Three keys in a row become a district.{{else}}Types {{k}}{{/if}}">{{k}}<small>{{l}}</small></button>{{/each}}
+      {{#each keypad}}<button type="button" data-calls-key="{{k}}" data-tooltip="{{#if (eq k '+')}}Starts a long-distance number, like +14 DAL CEN-3345{{else if (eq k '#')}}Used by some service lines{{else if l}}Types {{ncm-tip k}}, or any of {{ncm-tip l}}. Three keys in a row become a district.{{else}}Types {{ncm-tip k}}{{/if}}">{{k}}<small>{{l}}</small></button>{{/each}}
     </div>
     <button type="button" class="ncm-calls-cb is-empty" data-calls-btn data-nosig="{{#if noSignal}}1{{else}}0{{/if}}" disabled>
       <span class="ncm-calls-cb__in">
@@ -125,16 +125,16 @@
   {{!-- ═══ right: speed dial + the log ═══ --}}
   <div class="ncm-calls-lg">
     <div class="ncm-calls-lgt" role="tablist">
-      {{#each logTabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="{{#if on}}on{{/if}}" data-action="calls-filter" data-f="{{k}}" data-tooltip="{{help}}"><i class="fas {{icon}}"></i> {{label}}{{#if n}}<span class="ct{{#if hot}} hot{{/if}}">{{n}}</span>{{/if}}</button>{{/each}}
+      {{#each logTabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="{{#if on}}on{{/if}}" data-action="calls-filter" data-f="{{k}}" data-tooltip="{{ncm-tip help}}"><i class="fas {{icon}}"></i> {{label}}{{#if n}}<span class="ct{{#if hot}} hot{{/if}}">{{n}}</span>{{/if}}</button>{{/each}}
     </div>
     {{#if bookView}}
     <div class="ncm-calls-bkh"><input type="text" data-calls-bookq placeholder="Find a contact" aria-label="Find a contact" autocomplete="off" spellcheck="false"></div>
     <div class="ncm-calls-list ncm-scrollbar">
       {{#each bookRows}}
       <div class="ncm-calls-bk" data-bk="{{hay}}">
-        <span class="face"{{#if img}} style="background-image:url('{{img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span>
+        <span class="face"{{#if img}} style="background-image:url('{{ncm-css-url img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span>
         <span class="tx"><span class="nm">{{name}}</span><span class="sub">{{{numHtml}}}</span></span>
-        <button type="button" class="ncm-calls-mini go" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call {{name}}" data-tooltip-direction="LEFT" aria-label="Call {{name}}"><i class="fas fa-phone"></i></button>
+        <button type="button" class="ncm-calls-mini go" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call {{ncm-tip name}}" data-tooltip-direction="LEFT" aria-label="Call {{name}}"><i class="fas fa-phone"></i></button>
       </div>
       {{else}}
       <div class="ncm-calls-none"><i class="fas fa-address-book"></i> No contacts with a number yet.</div>
@@ -144,8 +144,8 @@
     {{else}}
     {{#if speed.length}}
     <div class="ncm-calls-sd"><span class="k">Speed dial</span>
-      {{#each speed}}<button type="button" class="ncm-calls-sdp" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call {{name}} · {{number}}" data-tooltip-direction="UP">
-        <span class="face"{{#if img}} style="background-image:url('{{img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span><span class="nm">{{name}}</span></button>{{/each}}
+      {{#each speed}}<button type="button" class="ncm-calls-sdp" data-action="calls-dial" data-number="{{number}}" data-tooltip="Call {{ncm-tip name}} · {{ncm-tip number}}" data-tooltip-direction="UP">
+        <span class="face"{{#if img}} style="background-image:url('{{ncm-css-url img}}')"{{/if}}>{{#unless img}}{{initials}}{{/unless}}</span><span class="nm">{{name}}</span></button>{{/each}}
     </div>
     {{/if}}
     <div class="ncm-calls-tools">
@@ -187,7 +187,7 @@
           <div class="ncm-calls-band__b"><div>{{#each days}}{{#if divider}}<div class="ncm-calls-day">{{label}}</div>{{/if}}{{#each rows}}
           <div class="ncm-calls-rowc is-{{dirInfo.cls}}{{#if unseen}} is-new{{/if}}">
             <span class="dir"><i class="fas {{dirInfo.icon}}"></i></span>
-            <span class="face{{#unless other.known}} unknown{{/unless}}"{{#if other.img}} style="background-image:url('{{other.img}}')"{{/if}}>{{#unless other.img}}<i class="fas {{#if other.known}}fa-user{{else}}fa-hashtag{{/if}}"></i>{{/unless}}</span>
+            <span class="face{{#unless other.known}} unknown{{/unless}}"{{#if other.img}} style="background-image:url('{{ncm-css-url other.img}}')"{{/if}}>{{#unless other.img}}<i class="fas {{#if other.known}}fa-user{{else}}fa-hashtag{{/if}}"></i>{{/unless}}</span>
             <span class="tx"><span class="nm">{{{nameHtml}}}{{#if unseen}} <span class="tag">New</span>{{/if}}</span>
               <span class="sub"><span class="k">{{dirInfo.word}}</span>{{#if detail}}<span>{{detail}}</span>{{/if}}{{#if net}}<span class="net">{{net.name}}</span>{{/if}}{{#if withheld}}<span class="anon"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}</span>
               {{#if why}}<span class="why"><i class="fas fa-tower-broadcast"></i> {{why}}</span>{{/if}}

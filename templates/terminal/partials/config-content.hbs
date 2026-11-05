@@ -79,7 +79,7 @@
         </select>
         {{#if gate.isClearance}}<input type="number" class="ncm-acctl-gate-min" data-ct-gatemin data-scope="{{scope}}" data-path="{{path}}" value="{{gate.min}}" min="0" max="99" data-tooltip="Minimum level — the first number in the account's clearance (LEVEL 3 → 3)">{{/if}}
         {{#if gate.isAccounts}}<span class="ncm-acctl-gate-who" data-action="ctGateAccounts" data-scope="{{scope}}" data-path="{{path}}" data-tooltip="Pick the accounts that may open it">{{gate.accountsLabel}}</span>{{/if}}
-        {{#if gate.inherited}}<span class="ncm-acctl-gate-inh" data-tooltip="Locked by its parent folder — admins and whoever opens {{gate.inheritedFrom}} get in"><i class="fas fa-lock"></i> via {{gate.inheritedFrom}}</span>{{/if}}
+        {{#if gate.inherited}}<span class="ncm-acctl-gate-inh" data-tooltip="Locked by its parent folder — admins and whoever opens {{ncm-tip gate.inheritedFrom}} get in"><i class="fas fa-lock"></i> via {{gate.inheritedFrom}}</span>{{/if}}
         <span class="ncm-acctl-dir-ct">{{count}} file{{#unless (eq count 1)}}s{{/unless}}{{#if size}} · {{size}}{{/if}}</span>
         <span class="ncm-acctl-dir-act">
           <button type="button" data-action="ctAdd" data-scope="{{scope}}" data-env="file" data-path="{{path}}" data-tooltip="Add a file in this folder" aria-label="Add a file in {{name}}"><i class="fas fa-plus"></i></button>

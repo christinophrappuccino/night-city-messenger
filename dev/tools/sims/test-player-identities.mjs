@@ -162,6 +162,7 @@ for (const p of [process.env.NCM_HANDLEBARS, 'C:/Program Files/Foundry Virtual T
 }
 if (Handlebars) {
   Handlebars.registerHelper('eq', (a, b) => a === b);
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   const drawer = Handlebars.compile(read('templates/message-viewer/partials/identity-drawer.hbs'));
   const on = drawer({ viewingAsName: 'Vee', viewingAsEmail: 'vee@nc.net', canChangeIdentity: true, sendAsChoices: view()._sendAsChoices() });
   ok(/Sending as/.test(on) && /data-action="set-send-identity" data-contact-id="c2"/.test(on) && /is-alias/.test(on), 'drawer: Sending as renders with its rows');

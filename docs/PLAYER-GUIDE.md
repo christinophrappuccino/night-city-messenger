@@ -168,6 +168,8 @@ Open **Calls** in your inbox. The dialer is on the left, and your calls are on t
 
 **Sharing your number.** Use the share button on My line to give your number to another character. A contact shows only what you were given, so you might have someone's address and not their number.
 
+**Payphones.** Some places have a payphone pin on the map. Stand at it and double-click it: lift the handset, punch the number on the little screen (or press **Book** for your contacts) and press **OK**. Whoever you call sees the payphone, not you, and the call stays out of your own call log. Payphones are wired, so they work where your Agent has no signal. **SPKR** lets everyone standing there follow the call; without it, they only see that you're on the phone. When a payphone rings near you, a prompt offers **Pick up** if you're standing at it.
+
 **Emergency calls.** If your character has a Trauma Team plan, dialling Trauma Team calls them out. A Lawman can also call Backup from Calls. Help arrives in a few rounds, and a small strip at the top of the screen counts down.
 
 ---

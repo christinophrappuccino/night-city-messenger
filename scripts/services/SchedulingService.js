@@ -8,8 +8,9 @@
  *              Supports both real-time and in-game-time scheduling.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, resolveDisplayName, whisperCardHtml } from '../utils/helpers.js';
+import { log, isGM, isFromGM, resolveDisplayName, whisperCardHtml } from '../utils/helpers.js';
 
 /**
  * Everyone a scheduled message goes to, as recipient rows. Several people or a group ride in `recipients` (toActorId is then
@@ -105,6 +106,13 @@ export class SchedulingService {
   /** Check interval in ms (every 10 seconds) */
   static CHECK_INTERVAL_MS = 10_000;
 
+  /** How long a request to the GM (add / cancel / edit) waits for its answer. */
+  static REQUEST_TIMEOUT_MS = 10_000;
+
+  /** requestId → resolve, for requests still waiting; requestId → what to do if the answer comes late. */
+  _waiters = new Map();
+  _late = new Map();
+
   // ─── Service Accessors (lazy getters — no constructor injection) ──
 
   get settingsManager() { return game.nightcity?.settingsManager; }
@@ -197,14 +205,24 @@ export class SchedulingService {
         status: 'pending', // pending, delivered, cancelled
       };
 
-      this._scheduled.push(entry);
-      if (isGM()) await this._persistScheduled();
+      if (!isGM()) {
+        // The same recipient rules as sending it now (audit DATA-12): the GM delivers it later, as the GM,
+        // so without this a player could schedule mail to a send-only or unknown address.
+        const rc = await this.messageService?.checkRecipientsAsPlayer?.(entry.messageData);
+        if (rc && !rc.ok) return { success: false, error: rc.error, errorCode: rc.errorCode };
+      }
 
-      // Sync to other clients
-      this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, {
-        action: 'add',
-        entry,
-      });
+      if (this._isDeliverer()) {
+        this._scheduled.push(entry);
+        await this._persistScheduled();
+      } else {
+        // Ask the GM who saves the schedule, and wait for the answer (audit DATA-11). A refusal comes back as a
+        // failure (the composer gives the eddies back); an answer too late to wait for is handled when it comes.
+        const res = await this._request('add', { entry }, {
+          onLate: (r) => { if (!r.ok) this._lateRefusal(entry, r.error); },
+        });
+        if (!res.timeout && !res.ok) return { success: false, error: res.error || 'The GM refused it' };
+      }
 
       this.eventBus?.emit(EVENTS.MESSAGE_SCHEDULED, {
         scheduleId,
@@ -232,27 +250,23 @@ export class SchedulingService {
       if (!isGM() && !game.users?.activeGM) {
         return { success: false, error: 'A GM must be online to change a scheduled message.' };
       }
-      const idx = this._scheduled.findIndex(e => e.scheduleId === scheduleId);
-      if (idx === -1) {
-        return { success: false, error: 'Scheduled message not found' };
+      if (!this._isDeliverer()) {
+        // Only the GM who delivers knows whether it is still waiting. The eddies come back once that GM says the
+        // cancel went through (audit DATA-11: a cancel near delivery time refunded while the GM delivered anyway).
+        const refundFor = (r) => this._refund({ messageData: { fromActorId: r.fromActorId } }, r.refund, 'scheduled message cancelled');
+        const res = await this._request('cancel', { scheduleId }, { onLate: (r) => { if (r.ok) refundFor(r); } });
+        if (res.timeout) return { success: false, error: 'No answer from the GM yet. If it was cancelled, the eddies come back when the GM answers.' };
+        if (!res.ok) return { success: false, error: res.error || 'The GM could not cancel it' };
+        this._scheduled = this._scheduled.filter((e) => e.scheduleId !== scheduleId);
+        log.info(`Scheduled message cancelled: ${scheduleId}`);
+        return { success: true, refunded: await refundFor(res) };
       }
 
-      const entry = this._scheduled[idx];
-      if (entry.status !== 'pending') {
-        return { success: false, error: `Cannot cancel — status is '${entry.status}'` };
-      }
-
-      entry.status = 'cancelled';
-      this._scheduled.splice(idx, 1);
-      if (isGM()) await this._persistScheduled();
-
-      this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, {
-        action: 'cancel',
-        scheduleId,
-      });
-
+      const taken = this._takeForCancel(scheduleId);
+      if (!taken.ok) return { success: false, error: taken.error };
+      await this._persistScheduled();
       log.info(`Scheduled message cancelled: ${scheduleId}`);
-      return { success: true, refunded: await this._refund(entry, entry.eddiesHeld, 'scheduled message cancelled') };
+      return { success: true, refunded: await this._refund(taken.entry, taken.entry.eddiesHeld, 'scheduled message cancelled') };
     } catch (error) {
       console.error(`${MODULE_ID} | SchedulingService.cancelScheduled:`, error);
       return { success: false, error: error.message };
@@ -273,7 +287,7 @@ export class SchedulingService {
     if (amount <= 0) return 0;
     const actor = game.actors?.get?.(entry.messageData?.fromActorId);
     const failed = () => {
-      ui.notifications?.error(`NCM | Could not refund ${amount.toLocaleString()} eb (${reason}). Add it back to the sender's sheet by hand.`, { permanent: true });
+      ncmNotify.error(`NCM | Could not refund ${amount.toLocaleString()} eb (${reason}). Add it back to the sender's sheet by hand.`, { permanent: true });
       return 0;
     };
     if (!actor?.system?.wealth || !(actor.isOwner || isGM())) return failed();
@@ -297,35 +311,80 @@ export class SchedulingService {
    */
   async editScheduled(scheduleId, updates) {
     try {
-      const entry = this._scheduled.find(e => e.scheduleId === scheduleId);
-      if (!entry) {
-        return { success: false, error: 'Scheduled message not found' };
+      if (!this._isDeliverer()) {
+        // Only the delivering GM changes the saved schedule (a player's Edit cancels and schedules again).
+        const res = await this._request('edit', { scheduleId, updates });
+        if (res.timeout) return { success: false, error: 'No answer from the GM yet.' };
+        return res.ok ? { success: true } : { success: false, error: res.error || 'The GM could not change it' };
       }
-      if (entry.status !== 'pending') {
-        return { success: false, error: `Cannot edit — status is '${entry.status}'` };
-      }
-
-      if (updates.deliveryTime) {
-        entry.deliveryTime = updates.deliveryTime;
-      }
-      if (updates.messageData) {
-        foundry.utils.mergeObject(entry.messageData, updates.messageData);
-      }
-
-      if (isGM()) await this._persistScheduled();
-
-      this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, {
-        action: 'edit',
-        scheduleId,
-        updates,
-      });
-
+      const r = this._applyEdit(scheduleId, updates);
+      if (!r.ok) return { success: false, error: r.error };
+      await this._persistScheduled();
       log.info(`Scheduled message updated: ${scheduleId}`);
       return { success: true };
     } catch (error) {
       console.error(`${MODULE_ID} | SchedulingService.editScheduled:`, error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Delivering GM: take a pending entry out for a cancel. Refused while it is being delivered.
+   * @returns {{ok:true, entry:object}|{ok:false, error:string}}
+   * @private
+   */
+  _takeForCancel(scheduleId) {
+    const idx = this._scheduled.findIndex(e => e.scheduleId === scheduleId);
+    if (idx === -1) return { ok: false, error: 'Scheduled message not found — it may already have been delivered' };
+    const entry = this._scheduled[idx];
+    if (entry.status !== 'pending') return { ok: false, error: `Cannot cancel — status is '${entry.status}'` };
+    if (entry.delivering) return { ok: false, error: 'It is being delivered right now' };
+    entry.status = 'cancelled';
+    this._scheduled.splice(idx, 1);
+    return { ok: true, entry };
+  }
+
+  /** Delivering GM: change a pending entry. Refused while it is being delivered. @private */
+  _applyEdit(scheduleId, updates = {}) {
+    const entry = this._scheduled.find(e => e.scheduleId === scheduleId);
+    if (!entry) return { ok: false, error: 'Scheduled message not found' };
+    if (entry.status !== 'pending') return { ok: false, error: `Cannot edit — status is '${entry.status}'` };
+    if (entry.delivering) return { ok: false, error: 'It is being delivered right now' };
+    if (updates.deliveryTime) entry.deliveryTime = updates.deliveryTime;
+    if (updates.messageData) foundry.utils.mergeObject(entry.messageData, updates.messageData);
+    return { ok: true, entry };
+  }
+
+  /**
+   * Ask the delivering GM to add / cancel / edit, and wait for the answer.
+   * @returns {Promise<object>} the GM's answer `{ ok, error?, refund?, fromActorId? }`, or `{ timeout: true }`
+   * @private
+   */
+  _request(action, payload, { onLate = null } = {}) {
+    const requestId = foundry.utils.randomID();
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this._waiters.delete(requestId);
+        if (onLate) this._late.set(requestId, onLate);
+        resolve({ timeout: true });
+      }, SchedulingService.REQUEST_TIMEOUT_MS);
+      this._waiters.set(requestId, (res) => { clearTimeout(timer); this._waiters.delete(requestId); resolve(res); });
+      this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, { action, requestId, ...payload });
+    });
+  }
+
+  /** An answer from the delivering GM to one of this client's requests. Acted on once. @private */
+  _onResult(data) {
+    const w = this._waiters.get(data.requestId);
+    if (w) { w(data); return; }
+    const late = this._late.get(data.requestId);
+    if (late) { this._late.delete(data.requestId); late(data); }
+  }
+
+  /** A scheduled message the GM refused after the player stopped waiting: give its eddies back and say so. @private */
+  async _lateRefusal(entry, why) {
+    const refunded = await this._refund(entry, entry.eddiesHeld, 'scheduled message refused');
+    ncmNotify.warn(`NCM | Your scheduled message "${entry.messageData?.subject || '(no subject)'}" was refused: ${why || 'no reason given'}.${refunded ? ` ${refunded.toLocaleString()} eb refunded.` : ''}`, { permanent: true });
   }
 
   /**
@@ -397,6 +456,7 @@ export class SchedulingService {
     let settled = 0;
 
     for (const entry of pending) {
+      if (entry.status !== 'pending') continue;   // cancelled while an earlier one was being delivered
       const now = entry.useGameTime
         ? this.timeService?.getCurrentTime() ?? new Date().toISOString()
         : new Date().toISOString();
@@ -442,9 +502,22 @@ export class SchedulingService {
         msgData.status.scheduled = false;
       }
 
+      // A player's message is checked as that player's (audit DATA-12): the GM delivers it, and the GM's
+      // own sends skip the send-only and directory rules.
+      if (entry.asPlayer) {
+        msgData._asPlayer = true;
+        if (msgData.terminalSend) {
+          const v = game.nightcity?.terminalService?.verifyAccountSend?.(msgData) || { ok: false, reason: 'terminals unavailable' };
+          if (!v.ok) return this._refuseScheduled(entry, msgData, { success: false, error: `Refused: ${v.reason}.` });
+        }
+      }
+
       const toLabel = scheduledRecipientLabel(entry.messageData);
       const perCopy = Number(entry.messageData?.eddies) || 0;
-      const result = await this.messageService?.sendMessage(msgData);
+      // Marked first, so a cancel arriving mid-send is refused instead of refunding money that is being delivered (DATA-11).
+      entry.delivering = true;
+      let result;
+      try { result = await this.messageService?.sendMessage(msgData); } finally { if (entry.status === 'pending') entry.delivering = false; }
       if (!result) return { success: false };
 
       if (result.success) {
@@ -458,6 +531,17 @@ export class SchedulingService {
         return { success: true };
       }
 
+      return this._refuseScheduled(entry, msgData, result);
+    } catch (error) {
+      console.error(`${MODULE_ID} | SchedulingService._deliverScheduled:`, error);
+      return { success: false };
+    }
+  }
+
+  /** A scheduled send that came back refused: finished, listed, refunded, reported. @private */
+  async _refuseScheduled(entry, msgData, result) {
+    try {
+      const toLabel = scheduledRecipientLabel(entry.messageData);
       log.warn(`Scheduled delivery refused for ${entry.scheduleId}: ${result.error}`);
       entry.status = 'failed';
       entry.failedAt = new Date().toISOString();
@@ -482,7 +566,7 @@ export class SchedulingService {
   async _tellRefused(entry, toLabel, why, refunded) {
     try {
       const paid = refunded ? ` ${refunded.toLocaleString()} eb refunded.` : '';
-      ui.notifications?.warn(`NCM | Scheduled message to ${toLabel} not delivered: ${why}.${paid} See Messages → Outbox.`, { permanent: true });
+      ncmNotify.warn(`NCM | Scheduled message to ${toLabel} not delivered: ${why}.${paid} See Messages → Outbox.`, { permanent: true });
       const by = game.users?.get?.(entry.createdBy);
       if (!by || by.isGM || typeof ChatMessage === 'undefined') return;
       const reason = this.messageService?.constructor?.playerFacingError?.(why) || why;
@@ -540,27 +624,92 @@ export class SchedulingService {
    * @private
    */
   _registerSocketHandlers() {
-    this.socketManager?.register(SOCKET_OPS.SCHEDULE_SYNC, (data) => {
-      if (data.action === 'add' && data.entry) {
-        // Avoid duplicate from own emit
-        if (!this._scheduled.find(e => e.scheduleId === data.entry.scheduleId)) {
-          this._scheduled.push(data.entry);
-        }
-      } else if (data.action === 'cancel' && data.scheduleId) {
-        this._scheduled = this._scheduled.filter(e => e.scheduleId !== data.scheduleId);
-      } else if (data.action === 'edit' && data.scheduleId && data.updates) {
-        const entry = this._scheduled.find(e => e.scheduleId === data.scheduleId);
-        if (entry) {
-          if (data.updates.deliveryTime) entry.deliveryTime = data.updates.deliveryTime;
-          if (data.updates.messageData) {
-            foundry.utils.mergeObject(entry.messageData, data.updates.messageData);
-          }
-        }
+    this.socketManager?.register(SOCKET_OPS.SCHEDULE_SYNC, async (data, sender) => {
+      if (!data) return;
+      // An answer to one of MY requests — only a GM's counts, since it can release a refund.
+      if (data.action === 'result') {
+        if (data.forUserId === game.user?.id && isFromGM(sender)) this._onResult(data);
+        return;
       }
+      // The saved list (a world setting) is what every client reads. Only the GM who saves it acts on a
+      // request, after checking who sent it (audit SEC-07); every other client follows the setting
+      // (_registerSettingSync). Before this, any client could add, cancel or rewrite anyone's mail here.
+      if (!this._isDeliverer()) return;
+      const user = sender ? game.users?.get(sender) : null;
+      if (!user) return;
+      const reply = (res) => {
+        if (data.requestId) this.socketManager?.emit(SOCKET_OPS.SCHEDULE_SYNC, { action: 'result', requestId: data.requestId, forUserId: user.id, ...res });
+      };
+      let changed = false;
+      if (data.action === 'add' && data.entry) {
+        const ok = await this.checkScheduledAdd(data.entry, user);
+        if (!ok.ok) { log.warn(`Scheduled message refused: ${ok.why}`); reply({ ok: false, error: ok.why }); return; }
+        if (!this._scheduled.find(e => e.scheduleId === ok.entry.scheduleId)) { this._scheduled.push(ok.entry); changed = true; }
+        reply({ ok: true });
+      } else if (data.action === 'cancel' && data.scheduleId) {
+        const entry = this._scheduled.find(e => e.scheduleId === data.scheduleId);
+        if (entry && !user.isGM && entry.createdBy !== user.id) {
+          log.warn(`Scheduled message cancel refused: ${user.name} did not schedule it`);
+          reply({ ok: false, error: 'You did not schedule that message' });
+          return;
+        }
+        // The requester refunds — only now that the entry has really left the schedule.
+        const taken = this._takeForCancel(data.scheduleId);
+        if (!taken.ok) { reply({ ok: false, error: taken.error }); return; }
+        changed = true;
+        reply({ ok: true, refund: Number(taken.entry.eddiesHeld) || 0, fromActorId: taken.entry.messageData?.fromActorId || null });
+      } else if (data.action === 'edit' && data.scheduleId && data.updates) {
+        // Only the GM's Outbox edits a scheduled message in place; a player's Edit cancels and schedules again.
+        if (!user.isGM) { log.warn(`Scheduled message edit refused: ${user.name} is not a GM`); reply({ ok: false, error: 'Only a GM can change a scheduled message in place' }); return; }
+        const r = this._applyEdit(data.scheduleId, data.updates);
+        if (!r.ok) { reply({ ok: false, error: r.error }); return; }
+        changed = true;
+        reply({ ok: true });
+      } else return;
       // A player cannot write the world setting: the active GM saves the change for them (before this, a player's
       // scheduled message lived only in the GM's memory and was lost on a reload).
-      if (this._isDeliverer()) this._persistScheduled();
+      if (changed) await this._persistScheduled();
     });
+  }
+
+  /**
+   * GM side: may this user schedule this message? (audit SEC-07) A GM may schedule anything.
+   * A player's entry gets the same checks as their live mail (MessageService.checkRelaySender:
+   * their own character or one of its identities, or a terminal account they are in; GM-only
+   * options dropped; the sending fields rebuilt), and its eddies must have been taken: the
+   * entry's `eddiesHeld` covers every recipient and the sender's ledger shows that charge.
+   * @returns {Promise<{ok:true, entry:object}|{ok:false, why:string}>}
+   */
+  async checkScheduledAdd(entry, user) {
+    if (user.isGM) return { ok: true, entry };
+    const md = entry?.messageData && typeof entry.messageData === 'object' ? { ...entry.messageData } : null;
+    if (!md) return { ok: false, why: 'no message' };
+    const ms = game.nightcity?.messageService;
+    if (!ms?.checkRelaySender) return { ok: false, why: 'mail service unavailable' };
+    const per = Math.max(0, Number(md.eddies) || 0);
+    // checkRelaySender rebuilds the sending fields on the object it is given (eddies are checked
+    // below against eddiesHeld, so it sees none).
+    const check = { ...md, eddies: 0 };
+    const who = await ms.checkRelaySender(check, user.id);
+    if (!who.ok) return who;
+    const rebuilt = { ...check, eddies: md.eddies };
+    // The recipient rules a player's live mail meets (send-only, the directory), and a terminal account's
+    // own permission, checked now as well as at delivery (audit DATA-12).
+    const rc = await ms.checkRecipientsAsPlayer?.(rebuilt);
+    if (rc && !rc.ok) return { ok: false, why: rc.error || 'recipient refused' };
+    if (rebuilt.terminalSend) {
+      const v = game.nightcity?.terminalService?.verifyAccountSend?.(rebuilt) || { ok: false, reason: 'terminals unavailable' };
+      if (!v.ok) return { ok: false, why: v.reason };
+    }
+    let held = Math.max(0, Number(entry.eddiesHeld) || 0);
+    if (per > 0) {
+      const count = Math.max(1, Array.isArray(md.recipients) ? md.recipients.length : 1);
+      const payer = game.actors?.get(rebuilt.fromActorId);
+      if (held < per * count || !payer || !(await ms.verifyEddiesPaid(payer, per, count))) {
+        return { ok: false, why: `the ${per.toLocaleString()} eb attached were never taken from the sender` };
+      }
+    } else held = 0;
+    return { ok: true, entry: { ...entry, messageData: rebuilt, eddiesHeld: held, createdBy: user.id, status: 'pending', asPlayer: true, delivering: false } };
   }
 
   /**

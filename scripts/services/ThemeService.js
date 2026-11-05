@@ -8,6 +8,7 @@
 
 import { MODULE_ID, THEME_PRESETS, COLOR_VAR_MAP, CONTRAST_SPREAD, FONT_OPTIONS, DEFAULTS } from '../utils/constants.js';
 import { log, adjustLightness } from '../utils/helpers.js';
+import { cssUrl } from '../utils/notify.js';
 
 export class ThemeService {
   /**
@@ -152,7 +153,7 @@ export class ThemeService {
         const route = (typeof foundry !== 'undefined') ? foundry.utils?.getRoute : null;
         wp = route ? route(wp) : `/${wp}`;
       }
-      root.style.setProperty('--ncm-wallpaper', `url('${wp.replace(/'/g, "\\'")}')`);
+      root.style.setProperty('--ncm-wallpaper', `url('${cssUrl(wp)}')`);
       root.style.setProperty('--ncm-wallpaper-strength', String((prefs.wallpaperStrength ?? 25) / 100));
     } else if (isRoot) {
       root.style.removeProperty('--ncm-wallpaper');

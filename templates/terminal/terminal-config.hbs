@@ -294,7 +294,7 @@
         <div class="ncm-tc__citem" data-theme-index="{{index}}">
           <div class="ncm-tc__citem-swatch"><span style="background:{{sw1}};"></span><span style="background:{{sw2}};"></span><span style="background:{{sw3}};"></span></div>
           <span class="ncm-tc__citem-name">{{name}}</span>
-          {{#if layoutIcon}}<i class="{{layoutIcon}} ncm-tc__citem-layout" data-tooltip="Mailbox layout: {{layoutLabel}}"></i>{{/if}}
+          {{#if layoutIcon}}<i class="{{layoutIcon}} ncm-tc__citem-layout" data-tooltip="Mailbox layout: {{ncm-tip layoutLabel}}"></i>{{/if}}
           <div class="ncm-tc__citem-actions">
             <button type="button" data-action="applyTermTheme" data-tooltip="Apply"><i class="fas fa-check"></i></button>
             <button type="button" data-action="overwriteTermTheme" data-tooltip="Overwrite with current"><i class="fas fa-save"></i></button>
@@ -429,7 +429,7 @@
         <div data-boot-icon-row="fa">
           <div class="ncm-cfg-icon-search"><i class="fas fa-magnifying-glass"></i><input type="text" data-icon-search placeholder='search icons… ("skull", "medical", "corp")'></div>
           <div class="ncm-cfg-icon-grid" data-icon-grid>
-            {{#each iconLibrary}}<button type="button" class="ncm-cfg-icon-cell{{#if active}} is-on{{/if}}" data-icon-class="{{c}}" data-icon-k="{{k}}" data-tooltip="{{c}}"><i class="{{c}}"></i></button>{{/each}}
+            {{#each iconLibrary}}<button type="button" class="ncm-cfg-icon-cell{{#if active}} is-on{{/if}}" data-icon-class="{{c}}" data-icon-k="{{k}}" data-tooltip="{{ncm-tip c}}"><i class="{{c}}"></i></button>{{/each}}
           </div>
           <div class="ncm-cfg-row" style="margin-top:6px"><span class="ncm-cfg-label">FA class</span>
             <input type="text" name="bootFaIcon" class="ncm-cfg-input ncm-cfg-flex" value="{{bootFaIcon}}" placeholder="or paste any Font Awesome class — fas fa-skull-crossbones…">
@@ -462,7 +462,7 @@
         <input type="hidden" name="bootAnimation" value="{{bootAnimation}}">
         <input type="hidden" name="bootSpeed" value="{{bootSpeed}}">
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Animation</span>
-          <div class="ncm-cfg-chips" data-chip-group="bootAnimation">{{#each animationOptions}}<button type="button" class="ncm-cfg-chip{{#if selected}} is-on{{/if}}" data-chip="{{value}}" data-tooltip="{{hint}}">{{value}}</button>{{/each}}</div>
+          <div class="ncm-cfg-chips" data-chip-group="bootAnimation">{{#each animationOptions}}<button type="button" class="ncm-cfg-chip{{#if selected}} is-on{{/if}}" data-chip="{{value}}" data-tooltip="{{ncm-tip hint}}">{{value}}</button>{{/each}}</div>
         </div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Speed</span>
           <div class="ncm-cfg-chips" data-chip-group="bootSpeed">{{#each speedOptions}}<button type="button" class="ncm-cfg-chip{{#if selected}} is-on{{/if}}" data-chip="{{value}}">{{value}}</button>{{/each}}</div>
@@ -487,7 +487,7 @@
         <input type="hidden" name="mailboxStyle" value="{{mailboxStyleKey}}">
         <div class="ncm-cfg-lstyles ncm-cfg-mstyles">
           {{#each mailboxStyles}}
-          <button type="button" class="ncm-cfg-lstyle ncm-cfg-mstyle{{#if active}} is-on{{/if}}" data-mailbox-style="{{key}}" data-tooltip="{{hint}}">
+          <button type="button" class="ncm-cfg-lstyle ncm-cfg-mstyle{{#if active}} is-on{{/if}}" data-mailbox-style="{{key}}" data-tooltip="{{ncm-tip hint}}">
             <span class="ncm-cfg-mstyle__thumb ncm-cfg-mstyle__thumb--{{key}}"><i></i><i></i><i></i></span>
             <span class="ncm-cfg-mstyle__nm"><i class="{{icon}}"></i> {{label}}</span>
             <span class="ncm-cfg-mstyle__hint">{{hint}}</span>
@@ -501,7 +501,7 @@
         <input type="hidden" name="loginStyle" value="{{loginStyleKey}}">
         <div class="ncm-cfg-lstyles">
           {{#each loginStyles}}
-          <button type="button" class="ncm-cfg-lstyle{{#if active}} is-on{{/if}}" data-login-style="{{key}}" data-tooltip="{{hint}}">
+          <button type="button" class="ncm-cfg-lstyle{{#if active}} is-on{{/if}}" data-login-style="{{key}}" data-tooltip="{{ncm-tip hint}}">
             <i class="{{icon}}"></i><span>{{label}}</span>
           </button>
           {{/each}}
@@ -520,7 +520,7 @@
         <input type="hidden" name="soundSet" value="{{soundSetKey}}">
         <div class="ncm-cfg-lstyles">
           {{#each soundSets}}
-          <button type="button" class="ncm-cfg-lstyle{{#if active}} is-on{{/if}}" data-sound-set="{{key}}" data-tooltip="{{hint}}">
+          <button type="button" class="ncm-cfg-lstyle{{#if active}} is-on{{/if}}" data-sound-set="{{key}}" data-tooltip="{{ncm-tip hint}}">
             <i class="{{icon}}"></i><span>{{label}}</span>
           </button>
           {{/each}}

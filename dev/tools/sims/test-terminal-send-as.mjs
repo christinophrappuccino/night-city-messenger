@@ -93,8 +93,12 @@ cfg = { ...cfg, accountMail: { compose: true, log: true } };
 game.nightcity.terminalService = svc;
 const { MessageService } = await imp('scripts/services/MessageService.js');
 const ms = Object.create(MessageService.prototype);
+// the GM re-check of a player's recipients (audit leftover) has its own sim, test-relay-gates.mjs; this one has no directory
+ms.checkRecipientsAsPlayer = async () => ({ ok: true });
 let delivered = 0, acked = null;
 ms._deliverMessage = async () => { delivered++; return { success: true }; };
+// who may send is test-mail-relays' job (A3d); this sim is about delivery
+ms.checkRelaySender = async () => ({ ok: true });
 Object.defineProperty(ms, 'socketManager', { value: { emit: (op, d) => { acked = d; } } });
 globalThis.console.warn = () => {};
 await MessageService.prototype.handleMessageRelay.call(ms, { messageId: 'x1', terminalSend: { itemUuid: 'Item.term', accountId: 'mr' }, fromContactId: 'tk' }, 'u1');
@@ -135,7 +139,7 @@ const cfgHbs = read('templates/terminal/terminal-config.hbs');
 ok(/name="acctMailCompose"/.test(cfgHbs) && /v\('acctMailCompose'\) \? \{ accountMail:/.test(read('scripts/ui/Terminal/TerminalConfigApp.js')), 'GM switch saves (only when on screen)');
 // Your OWN account (you own its character) is your own mail, not an impersonation.
 ok(/const own = !isGM\(\) && !!ownerActor\?\.isOwner;/.test(viewer) && /operatorName: op\?\.name/.test(viewer), 'viewer marks an owned account + who is typing');
-ok(/eddies: \(this\.terminalSend && !this\.terminalSend\.own\) \? 0/.test(cmp) && /this\.terminalSend && !this\.terminalSend\.own\) return ui\.notifications\.warn/.test(cmp), 'eddies work on your own account, never as someone else');
+ok(/eddies: \(this\.terminalSend && !this\.terminalSend\.own\) \? 0/.test(cmp) && /this\.terminalSend && !this\.terminalSend\.own\) return ncmNotify\.warn/.test(cmp), 'eddies work on your own account, never as someone else');
 ok(/if \(this\.terminalSend && !this\.terminalSend\.own\) this\._logTerminalSend\(\)/.test(cmp), 'your own sends are not logged as intrusions');
 ok(/impersonated: !this\.terminalSend\.own/.test(cmp), 'every terminal send records sentVia');
 const repo = read('scripts/data/MessageRepository.js');

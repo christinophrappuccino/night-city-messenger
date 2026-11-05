@@ -6,6 +6,7 @@
  *   5 tabs: Identity, Security, Network, Systems, Boot.
  */
 
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { resolveIntegrity, garbleString, garbleRate } from '../content/IntegrityModel.js';
 import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES, COLOR_VAR_MAP, FONT_OPTIONS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, applyContrastToElement, buildShardThemePrefs } from '../../utils/helpers.js';
@@ -402,7 +403,7 @@ export class ItemInboxConfig extends BaseApplication {
         const name = await ItemInboxConfig._promptName('Save this look', this.item?.name || 'Shard theme');
         if (!name) return;
         await write([...list, { name, theme: snapshot() }]);
-        ui.notifications.info(`NCM | Saved the look as "${name}".`);
+        ncmNotify.info(`NCM | Saved the look as "${name}".`);
         return;
       }
       case 'themeApply': {
@@ -416,12 +417,12 @@ export class ItemInboxConfig extends BaseApplication {
         this._repaintThemeTab();
         this._syncThemeInputs();
         this._previewTheme();
-        ui.notifications.info(`NCM | Applied "${entry.name}". Save the shard to keep it.`);
+        ncmNotify.info(`NCM | Applied "${entry.name}". Save the shard to keep it.`);
         return;
       }
       case 'themeOverwrite': {
         if (!list[i]) return;
-        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${list[i].name}</b> with this shard's current look?</p>` });
+        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${escapeHtml(list[i].name)}</b> with this shard's current look?</p>` });
         if (!ok) return;
         list[i] = { name: list[i].name, theme: snapshot() };
         await write(list);
@@ -429,7 +430,7 @@ export class ItemInboxConfig extends BaseApplication {
       }
       case 'themeDelete': {
         if (!list[i]) return;
-        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the saved look <b>${list[i].name}</b>?</p>` });
+        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the saved look <b>${escapeHtml(list[i].name)}</b>?</p>` });
         if (!ok) return;
         list.splice(i, 1);
         await write(list);
@@ -453,9 +454,9 @@ export class ItemInboxConfig extends BaseApplication {
           if (!theme || typeof theme !== 'object') continue;
           added.push({ name: String(raw?.name || 'Imported look'), theme });
         }
-        if (!added.length) return void ui.notifications.warn('NCM | That file had no shard theme in it.');
+        if (!added.length) return void ncmNotify.warn('NCM | That file had no shard theme in it.');
         await write([...list, ...added]);
-        ui.notifications.info(`NCM | Imported ${added.length} look${added.length === 1 ? '' : 's'}.`);
+        ncmNotify.info(`NCM | Imported ${added.length} look${added.length === 1 ? '' : 's'}.`);
         return;
       }
       default:
@@ -488,7 +489,7 @@ export class ItemInboxConfig extends BaseApplication {
         const picked = await ItemInboxConfig._promptFullSave(this.item?.name || 'Shard setup');
         if (!picked?.name) return;
         await write([...list, { name: picked.name, config: this._snapshotShard(picked.withSecurity) }]);
-        ui.notifications.info(`NCM | Saved "${picked.name}"${picked.withSecurity ? ' with its security' : ' (look and startup only)'}.`);
+        ncmNotify.info(`NCM | Saved "${picked.name}"${picked.withSecurity ? ' with its security' : ' (look and startup only)'}.`);
         return;
       }
       case 'fullApply': {
@@ -497,7 +498,7 @@ export class ItemInboxConfig extends BaseApplication {
         const hasSec = !!entry.config?.security;
         const ok = await adminConfirm({
           title: 'Apply shard preset',
-          content: `<p>Apply <b>${entry.name}</b> to this shard?</p>
+          content: `<p>Apply <b>${escapeHtml(entry.name)}</b> to this shard?</p>
             <p>It overwrites the look, startup and identity${hasSec
               ? ' <b>and its security block</b> — encryption, login and key item.'
               : '. Its security is untouched.'}</p>
@@ -515,11 +516,11 @@ export class ItemInboxConfig extends BaseApplication {
           ...(hasSec ? foundry.utils.deepClone(c.security) : {}),
         };
         const res = await this.dataShardService.updateConfig(this.item, updates);
-        if (!res?.success) return void ui.notifications.error(`NCM | Failed: ${res?.error || 'unknown'}`);
+        if (!res?.success) return void ncmNotify.error(`NCM | Failed: ${res?.error || 'unknown'}`);
         this._themeDraft = null;
         this._themePresetKey = null;
         this._displaySaved = true;
-        ui.notifications.info(`NCM | Applied "${entry.name}".`);
+        ncmNotify.info(`NCM | Applied "${entry.name}".`);
         for (const { app } of this._openViewers()) app.render(false);
         this.render();
         return;
@@ -527,19 +528,19 @@ export class ItemInboxConfig extends BaseApplication {
       case 'fullOverwrite': {
         const entry = list[i];
         if (!entry) return;
-        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${entry.name}</b> with this shard's current setup?</p>` });
+        const ok = await adminConfirm({ title: 'Overwrite', content: `<p>Replace <b>${escapeHtml(entry.name)}</b> with this shard's current setup?</p>` });
         if (!ok) return;
         // Replace IN PLACE, keeping the name and whatever security choice it was
         // saved with — an overwrite should not quietly re-order the library or
         // change whether the entry is armed.
         list[i] = { name: entry.name, config: this._snapshotShard(!!entry.config?.security) };
         await write(list);
-        ui.notifications.info(`NCM | Overwrote "${entry.name}".`);
+        ncmNotify.info(`NCM | Overwrote "${entry.name}".`);
         return;
       }
       case 'fullDelete': {
         if (!list[i]) return;
-        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the shard preset <b>${list[i].name}</b>?</p>` });
+        const ok = await adminConfirm({ title: 'Delete', content: `<p>Delete the shard preset <b>${escapeHtml(list[i].name)}</b>?</p>` });
         if (!ok) return;
         list.splice(i, 1);
         await write(list);
@@ -558,11 +559,11 @@ export class ItemInboxConfig extends BaseApplication {
         const entries = (Array.isArray(raw) ? raw : [raw])
           .map((r) => ({ name: String(r?.name || 'Imported shard'), config: r?.ncmShardPreset ? r.config : (r?.config || r) }))
           .filter((e) => e.config && typeof e.config === 'object');
-        if (!entries.length) return void ui.notifications.warn('NCM | That file had no shard preset in it.');
+        if (!entries.length) return void ncmNotify.warn('NCM | That file had no shard preset in it.');
         // Import NEVER auto-applies — the terminal-library precedent.
         await write([...list, ...entries]);
         const armed = entries.filter((e) => e.config.security).length;
-        ui.notifications.info(`NCM | Imported ${entries.length} preset${entries.length === 1 ? '' : 's'}`
+        ncmNotify.info(`NCM | Imported ${entries.length} preset${entries.length === 1 ? '' : 's'}`
           + (armed ? `, ${armed} carrying a security block.` : '.'));
         return;
       }
@@ -609,7 +610,7 @@ export class ItemInboxConfig extends BaseApplication {
       const dlg = adminDialog({
         title: 'Save this shard as a preset',
         content: `
-          <p><input type="text" class="ncm-stc-nameinput" value="${String(placeholder).replace(/"/g, '&quot;')}" style="width:100%"></p>
+          <p><input type="text" class="ncm-stc-nameinput" value="${escapeHtml(placeholder)}" style="width:100%"></p>
           <p style="margin-top:8px"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400">
             <input type="checkbox" class="ncm-stc-withsec">
             <span>Include this shard's security (encryption, login, key item)</span></label></p>
@@ -700,7 +701,7 @@ export class ItemInboxConfig extends BaseApplication {
       let out = null;
       const dlg = adminDialog({
         title,
-        content: `<p><input type="text" class="ncm-stc-nameinput" value="${String(placeholder).replace(/"/g, '&quot;')}" style="width:100%"></p>`,
+        content: `<p><input type="text" class="ncm-stc-nameinput" value="${escapeHtml(placeholder)}" style="width:100%"></p>`,
         buttons: {
           ok: { label: 'Save', callback: (html) => { out = (html[0] ?? html).querySelector('.ncm-stc-nameinput')?.value?.trim() || null; } },
           cancel: { label: 'Cancel' },
@@ -732,7 +733,7 @@ export class ItemInboxConfig extends BaseApplication {
         const file = input.files?.[0];
         if (!file) return resolve(null);
         try { resolve(JSON.parse(await file.text())); }
-        catch (err) { ui.notifications.error(`NCM | Could not read that file: ${err.message}`); resolve(null); }
+        catch (err) { ncmNotify.error(`NCM | Could not read that file: ${err.message}`); resolve(null); }
       });
       input.click();
     });
@@ -1496,10 +1497,10 @@ export class ItemInboxConfig extends BaseApplication {
       } catch (err) {
         console.warn(`${MODULE_ID} | Failed to update item system properties:`, err);
       }
-      ui.notifications.info('NCM | Shard configuration saved.');
+      ncmNotify.info('NCM | Shard configuration saved.');
       this.close();
     } else {
-      ui.notifications.error(`NCM | Failed: ${result.error}`);
+      ncmNotify.error(`NCM | Failed: ${result.error}`);
     }
   }
 
@@ -1708,7 +1709,7 @@ export class ItemInboxConfig extends BaseApplication {
   static async _onSearchKeyItem(event, target) {
     const items = (game.items?.contents ?? []).filter(isCarrier);
     if (items.length === 0) {
-      ui.notifications.warn('NCM | No items found in the world.');
+      ncmNotify.warn('NCM | No items found in the world.');
       return;
     }
     const pick = await showNamePicker({
@@ -1954,7 +1955,7 @@ export class ItemInboxConfig extends BaseApplication {
     if (!confirm) return;
     const result = await this.dataShardService.applyPreset(this.item, presetKey);
     if (result.success) {
-      ui.notifications.info(`NCM | Preset "${SHARD_PRESETS[presetKey].label}" applied.`);
+      ncmNotify.info(`NCM | Preset "${SHARD_PRESETS[presetKey].label}" applied.`);
       this.render();
     }
   }
@@ -2028,12 +2029,12 @@ export class ItemInboxConfig extends BaseApplication {
     if (!confirm) return;
     const result = await this.dataShardService?.relockShard(this.item);
     if (result?.success) {
-      ui.notifications.info('NCM | All security relocked.');
+      ncmNotify.info('NCM | All security relocked.');
       for (const app of Object.values(ui.windows)) {
         if (app.item?.id === this.item.id && app !== this) app.render(true);
       }
     } else {
-      ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+      ncmNotify.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
     }
   }
 

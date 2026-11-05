@@ -8,12 +8,15 @@
  * handlers directly via AdminPanelApp's static delegators.
  */
 
+import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { isIn, titleFor } from '../../../utils/conversations.js';
-import { MODULE_ID } from '../../../utils/constants.js';
+import { MODULE_ID, SOCKET_OPS } from '../../../utils/constants.js';
+import { refreshNcmWindows } from '../../../utils/forceRefresh.js';
 import { log, formatCyberDate, getPlayerCharacters, hiddenCharacterIds } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { resolveMember, worldAdapter } from '../../../utils/participants.js';
+import { planIdentityRepairs } from '../../../utils/identities.js';
 import { adminDialog, adminConfirm, adminPrompt } from '../../../utils/adminTheme.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { gatherResetPlan, runFactoryReset } from '../../../core/FactoryReset.js';
@@ -75,12 +78,11 @@ export class ToolsTab extends BaseTab {
   }
 
   async onForceRefreshAll(event, target) {
-    ui.notifications.info('Force-refreshing all connected clients...');
-    game.socket?.emit(`module.${MODULE_ID}`, {
-      type: 'forceRefresh',
-    });
-    // Also refresh local
-    this.render(true);
+    // It sent a message nothing listened for (audit leftover). Now every client re-reads NCM's directory and redraws
+    // its open NCM windows — no page reload, nothing typed is lost (dev 2026-11-05).
+    game.nightcity?.socketManager?.emit?.(SOCKET_OPS.ADMIN_FORCE_REFRESH, { at: Date.now() });
+    const n = refreshNcmWindows();
+    ncmNotify.info(`NCM | Refreshed every client. ${n} NCM window${n === 1 ? '' : 's'} redrawn here.`);
   }
 
   onRefreshStats(event, target) {
@@ -103,10 +105,10 @@ export class ToolsTab extends BaseTab {
       a.click();
       URL.revokeObjectURL(url);
 
-      ui.notifications.info(`Exported ${messages.length} messages.`);
+      ncmNotify.info(`Exported ${messages.length} messages.`);
     } catch (error) {
       console.error(`${MODULE_ID} | Export failed:`, error);
-      ui.notifications.error('Export failed. Check console.');
+      ncmNotify.error('Export failed. Check console.');
     }
   }
 
@@ -137,7 +139,7 @@ export class ToolsTab extends BaseTab {
   onOpenTimeSettings(event, target) {
     const ts = game.nightcity?.timeService;
     if (!ts) {
-      ui.notifications.warn('NCM | TimeService not available.');
+      ncmNotify.warn('NCM | TimeService not available.');
       return;
     }
 
@@ -420,13 +422,13 @@ export class ToolsTab extends BaseTab {
           disguisedPanel.show();
           manualPanel.hide();
           hintEl.text(hints['disguised']);
-          ui.notifications.info(`NCM | Disguised time anchored to ${date} ${time}`);
+          ncmNotify.info(`NCM | Disguised time anchored to ${date} ${time}`);
         });
 
         // Disguised: Re-anchor button
         html.find('#ncm-tc-dis-reanchor').on('click', async () => {
           await ts.reanchorDisguisedTime();
-          ui.notifications.info('NCM | Disguised time re-anchored to current displayed time.');
+          ncmNotify.info('NCM | Disguised time re-anchored to current displayed time.');
         });
 
         // Manual: Set button
@@ -440,7 +442,7 @@ export class ToolsTab extends BaseTab {
           manualPanel.show();
           disguisedPanel.hide();
           hintEl.text(hints['manual']);
-          ui.notifications.info(`NCM | Manual time set to ${date} ${time}`);
+          ncmNotify.info(`NCM | Manual time set to ${date} ${time}`);
         });
 
         // Manual: Quick advance buttons
@@ -501,7 +503,7 @@ export class ToolsTab extends BaseTab {
     const kept = [...current].filter((id) => !listed.has(id) && game.actors?.has?.(id));
     const next = [...kept, ...picks.map((p) => p.id)];
     await game.settings.set(MODULE_ID, 'hiddenCharacters', next);
-    ui.notifications.info(next.length ? `${next.length} character${next.length === 1 ? '' : 's'} hidden from character lists.` : 'No characters hidden.');
+    ncmNotify.info(next.length ? `${next.length} character${next.length === 1 ? '' : 's'} hidden from character lists.` : 'No characters hidden.');
     this.render(true);
   }
 
@@ -629,7 +631,7 @@ export class ToolsTab extends BaseTab {
             await game.settings.set(MODULE_ID_LOCAL, 'emailAllowCustomDomains', allowCustom);
 
             const total = domains.length + 1; // +1 for default
-            ui.notifications.info(`NCM | Saved ${total} domain${total !== 1 ? 's' : ''}.`);
+            ncmNotify.info(`NCM | Saved ${total} domain${total !== 1 ? 's' : ''}.`);
           },
         },
         cancel: {
@@ -667,13 +669,13 @@ export class ToolsTab extends BaseTab {
         html.find('#ncm-dom-export').on('click', () => {
           const cfg = readDialogDomains();
           this._downloadText(`ncm-email-domains-${new Date().toISOString().slice(0, 10)}.json`, domainsToJson(cfg), 'application/json');
-          ui.notifications.info(`NCM | Exported ${cfg.domains.length + 1} domain${cfg.domains.length ? 's' : ''}.`);
+          ncmNotify.info(`NCM | Exported ${cfg.domains.length + 1} domain${cfg.domains.length ? 's' : ''}.`);
         });
         html.find('#ncm-dom-import').on('click', async () => {
           const text = await this._pickTextFile('.json,.txt,.csv');
           if (text == null) return;
           const parsed = parseDomainsImport(text);
-          if (parsed.error) return ui.notifications.error(`NCM | ${parsed.error}`);
+          if (parsed.error) return ncmNotify.error(`NCM | ${parsed.error}`);
           if (parsed.defaultDomain) html.find('#ncm-default-domain').val(parsed.defaultDomain);
           if (parsed.allowCustom != null) html.find('#ncm-allow-custom').prop('checked', parsed.allowCustom);
           const current = readDialogDomains().domains.map(d => d.toLowerCase());
@@ -688,7 +690,7 @@ export class ToolsTab extends BaseTab {
             current.push(d);
             added++;
           }
-          ui.notifications.info(`NCM | Loaded ${added} new domain${added !== 1 ? 's' : ''} — press Save to keep them.`);
+          ncmNotify.info(`NCM | Loaded ${added} new domain${added !== 1 ? 's' : ''} — press Save to keep them.`);
         });
 
         // ── Address directory export / import ──
@@ -729,19 +731,19 @@ export class ToolsTab extends BaseTab {
 
   _exportDirectory(format) {
     const rows = buildDirectoryRows(this._directoryWorld());
-    if (!rows.length) return ui.notifications.warn('NCM | No addresses to export yet — nobody has an address.');
+    if (!rows.length) return ncmNotify.warn('NCM | No addresses to export yet — nobody has an address.');
     const stamp = new Date().toISOString().slice(0, 10);
     if (format === 'json') this._downloadText(`ncm-addresses-${stamp}.json`, directoryToJson(rows), 'application/json');
     else this._downloadText(`ncm-addresses-${stamp}.csv`, directoryToCsv(rows), 'text/csv');
-    ui.notifications.info(`NCM | Exported ${rows.length} address${rows.length !== 1 ? 'es' : ''}.`);
+    ncmNotify.info(`NCM | Exported ${rows.length} address${rows.length !== 1 ? 'es' : ''}.`);
   }
 
   async _importDirectory() {
     const text = await this._pickTextFile('.csv,.tsv,.txt,.json');
     if (text == null) return;
     const parsed = parseDirectoryImport(text);
-    if (parsed.error) return ui.notifications.error(`NCM | ${parsed.error}`);
-    if (!parsed.rows.length) return ui.notifications.warn('NCM | The file has no rows with a name or an address.');
+    if (parsed.error) return ncmNotify.error(`NCM | ${parsed.error}`);
+    if (!parsed.rows.length) return ncmNotify.warn('NCM | The file has no rows with a name or an address.');
 
     const { plan, summary } = planDirectoryImport(parsed.rows, this._directoryWorld());
     const writes = summary.updateActor + summary.updateContact + summary.createContact;
@@ -849,8 +851,8 @@ export class ToolsTab extends BaseTab {
     if (res.actors) parts.push(`${res.actors} character${res.actors !== 1 ? 's' : ''}`);
     if (res.contacts) parts.push(`${res.contacts} contact${res.contacts !== 1 ? 's' : ''}`);
     if (res.created) parts.push(`${res.created} new contact${res.created !== 1 ? 's' : ''}`);
-    ui.notifications.info(`NCM | Addresses applied: ${parts.join(', ') || 'nothing'}.`);
-    if (res.failed.length) ui.notifications.warn(`NCM | ${res.failed.length} row${res.failed.length !== 1 ? 's' : ''} failed — ${res.failed.join('; ')}`, { permanent: true });
+    ncmNotify.info(`NCM | Addresses applied: ${parts.join(', ') || 'nothing'}.`);
+    if (res.failed.length) ncmNotify.warn(`NCM | ${res.failed.length} row${res.failed.length !== 1 ? 's' : ''} failed — ${res.failed.join('; ')}`, { permanent: true });
     this.app?.render?.();
   }
 
@@ -879,7 +881,7 @@ export class ToolsTab extends BaseTab {
         const file = e.target.files?.[0];
         if (!file) return done(null);
         try { done(await file.text()); }
-        catch (err) { ui.notifications.error(`NCM | Could not read the file: ${err?.message || err}`); done(null); }
+        catch (err) { ncmNotify.error(`NCM | Could not read the file: ${err?.message || err}`); done(null); }
       });
       // A dismissed picker fires no event; release the promise a beat after focus
       // returns (a chosen file's `change` lands well inside that beat and wins).
@@ -907,16 +909,16 @@ export class ToolsTab extends BaseTab {
     if (!confirmed) return;
 
     const repo = game.nightcity?.messageRepository;
-    if (!repo) return ui.notifications.error('NCM | MessageRepository not available.');
+    if (!repo) return ncmNotify.error('NCM | MessageRepository not available.');
 
     const stats = await repo.migrateJournalOrganization();
     const total = stats.inboxes + stats.contacts + stats.shards;
     if (total > 0 || stats.pages > 0) {
-      ui.notifications.info(
+      ncmNotify.info(
         `NCM | Done: ${stats.inboxes} inbox(es), ${stats.contacts} NPC mail, ${stats.shards} shard(s), ${stats.pages} page(s) renamed.`
       );
     } else {
-      ui.notifications.info('NCM | Journals are already organized — nothing to do.');
+      ncmNotify.info('NCM | Journals are already organized — nothing to do.');
     }
   }
 
@@ -954,7 +956,7 @@ export class ToolsTab extends BaseTab {
       for (const spec of specs) {
         const pack = game.packs.get(spec.pack);
         if (!pack) {
-          ui.notifications.warn(`NCM | Compendium "${spec.pack}" not found — is the module fully loaded?`);
+          ncmNotify.warn(`NCM | Compendium "${spec.pack}" not found — is the module fully loaded?`);
           continue;
         }
 
@@ -990,12 +992,12 @@ export class ToolsTab extends BaseTab {
       }
 
       log.info(`NCM macros: ${created} created, ${updated} reset, ${skipped} preserved`);
-      ui.notifications.info(
+      ncmNotify.info(
         `NCM | Macros installed — ${created} new, ${updated} reset to shipped, ${skipped} preserved.`
       );
     } catch (error) {
       console.error(`${MODULE_ID} | Macro import failed:`, error);
-      ui.notifications.error('NCM | Macro import failed. Check console.');
+      ncmNotify.error('NCM | Macro import failed. Check console.');
     }
   }
 
@@ -1056,7 +1058,7 @@ export class ToolsTab extends BaseTab {
 
     const all = [...inboxTargets, ...shardTargets, ...convTargets];
     if (all.length === 0) {
-      ui.notifications.info('NCM | No messages to purge.');
+      ncmNotify.info('NCM | No messages to purge.');
       return;
     }
 
@@ -1105,11 +1107,11 @@ export class ToolsTab extends BaseTab {
         if (res?.ok) deleted += t.count;
       }
       log.info(`Purged ${deleted} message(s) from ${label}`);
-      ui.notifications.info(`NCM | Purged ${deleted} message(s) from ${label}.`);
+      ncmNotify.info(`NCM | Purged ${deleted} message(s) from ${label}.`);
       this.app?.render?.(false);
     } catch (error) {
       console.error(`${MODULE_ID} | Purge failed:`, error);
-      ui.notifications.error('NCM | Purge failed. Check console.');
+      ncmNotify.error('NCM | Purge failed. Check console.');
     }
   }
 
@@ -1161,10 +1163,11 @@ export class ToolsTab extends BaseTab {
    */
   async onOrphanAudit(event, target) {
     const found = this._gatherOrphans();
-    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length + found.conversations.length;
+    const total = found.inboxes.length + found.pins.length + found.heatActors.length + found.groupMembers.length + found.phoneOwners.length + found.conversations.length
+      + found.identityLinks.patches.length;
 
-    if (total === 0) {
-      ui.notifications.info('NCM | Orphan audit clean — nothing to remove.');
+    if (total === 0 && !found.emptyInboxes.length) {
+      ncmNotify.info('NCM | Orphan audit clean — nothing to remove.');
       return;
     }
 
@@ -1172,37 +1175,55 @@ export class ToolsTab extends BaseTab {
     const lines = [];
     if (found.inboxes.length) {
       lines.push(`<p><strong>${found.inboxes.length}</strong> inbox journal(s) whose owner no longer exists:</p><ul>` +
-        found.inboxes.map(o => li(`${o.journal.name} <em>(${o.isContact ? 'contact' : 'actor'} ${o.ownerId})</em>`)).join('') + '</ul>');
+        found.inboxes.map(o => li(`${escapeHtml(o.journal.name)} <em>(${o.isContact ? 'contact' : 'actor'} ${escapeHtml(o.ownerId)})</em>`)).join('') + '</ul>');
     }
     if (found.pins.length) {
       lines.push(`<p><strong>${found.pins.length}</strong> scene pin(s) pointing at deleted terminals:</p><ul>` +
-        found.pins.map(p => li(`"${p.note.label || p.note.text || 'unnamed pin'}" on ${p.scene.name}`)).join('') + '</ul>');
+        found.pins.map(p => li(`"${escapeHtml(p.note.label || p.note.text || 'unnamed pin')}" on ${escapeHtml(p.scene.name)}`)).join('') + '</ul>');
     }
     if (found.heatActors.length) {
       lines.push(`<p><strong>${found.heatActors.length}</strong> heat entr(ies) keyed to deleted actors.</p>`);
     }
     if (found.groupMembers.length) {
       lines.push(`<p><strong>${found.groupMembers.length}</strong> contact-group member(s) that resolve to nothing (no address, no living actor or directory entry):</p><ul>` +
-        found.groupMembers.map(g => li(`${g.memberName || '(unnamed)'} in <em>${g.groupName}</em> (${g.scope === 'master' ? 'GM group' : `${g.actorName}'s group`})`)).join('') + '</ul>');
+        found.groupMembers.map(g => li(`${escapeHtml(g.memberName || '(unnamed)')} in <em>${escapeHtml(g.groupName)}</em> (${g.scope === 'master' ? 'GM group' : `${escapeHtml(g.actorName)}'s group`})`)).join('') + '</ul>');
     }
 
     if (found.phoneOwners.length) {
       lines.push(`<p><strong>${found.phoneOwners.length}</strong> phone line(s) whose owner no longer exists. Their numbers retire and are never given out again:</p><ul>` +
-        found.phoneOwners.map(o => li(`${o.number} <em>(${o.name || 'unnamed'})</em>`)).join('') + '</ul>');
+        found.phoneOwners.map(o => li(`${escapeHtml(o.number)} <em>(${escapeHtml(o.name || 'unnamed')})</em>`)).join('') + '</ul>');
     }
 
     if (found.conversations.length) {
       lines.push(`<p><strong>${found.conversations.length}</strong> conversation(s) where nobody left in them still exists:</p><ul>` +
-        found.conversations.map(c => li(titleFor(c))).join('') + '</ul>');
+        found.conversations.map(c => li(escapeHtml(titleFor(c)))).join('') + '</ul>');
     }
 
+    if (found.identityLinks.stranded.length) {
+      lines.push(`<p><strong>${found.identityLinks.stranded.length}</strong> alias(es) whose main identity was deleted. One of them becomes the main, so their mail has somewhere to go:</p><ul>` +
+        found.identityLinks.stranded.map(c => li(escapeHtml(c.name || c.email || c.id))).join('') + '</ul>');
+    }
+    if (found.identityLinks.deadLinks.length) {
+      lines.push(`<p><strong>${found.identityLinks.deadLinks.length}</strong> contact(s) linked to a character that was deleted. The link is cleared, so mail reaches the contact's own inbox:</p><ul>` +
+        found.identityLinks.deadLinks.map(c => li(escapeHtml(c.name || c.email || c.id))).join('') + '</ul>');
+    }
+
+    // Empty inboxes: a separate, opt-in list — never removed unless the box is ticked.
+    let emptyBlock = '';
+    if (found.emptyInboxes.length) {
+      const owner = (o) => { const a = o.isContact ? null : game.actors?.get(o.ownerId); return a ? (a.hasPlayerOwner ? 'player character' : a.type) : 'contact'; };
+      emptyBlock = `<hr><p><strong>${found.emptyInboxes.length}</strong> empty inbox journal(s) — no mail, no call logs. Most were made by an older version's unread badge. An inbox comes back by itself with its first mail.</p><ul>`
+        + found.emptyInboxes.map((o) => li(`${escapeHtml(o.journal.name)} <em>(${escapeHtml(owner(o))})</em>`)).join('') + '</ul>'
+        + '<label style="display:flex;gap:6px;align-items:center;text-transform:none;font-weight:400;cursor:pointer"><input type="checkbox" name="ncm-orphan-empty"> Delete these empty inboxes too</label>';
+    }
     let doClean = false;
+    let delEmpty = false;
     await new Promise((resolve) => {
       adminDialog({
         title: 'Orphan Audit',
-        content: `<div style="max-height:320px;overflow-y:auto;overflow-x:hidden">${lines.join('')}<p>Remove all of the above? Message pages inside a removed inbox are deleted with it.</p></div>`,
+        content: `<div style="max-height:320px;overflow-y:auto;overflow-x:hidden">${lines.join('')}${total ? '<p>Remove all of the above? Message pages inside a removed inbox are deleted with it.</p>' : ''}${emptyBlock}</div>`,
         buttons: {
-          clean:  { icon: '<i class="fas fa-broom"></i>', label: 'Clean Up', callback: () => { doClean = true; } },
+          clean:  { icon: '<i class="fas fa-broom"></i>', label: 'Clean Up', callback: (html) => { doClean = true; const root = html?.[0] ?? html; delEmpty = !!root?.querySelector?.('[name="ncm-orphan-empty"]')?.checked; } },
           cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
         },
         default: 'cancel',
@@ -1214,6 +1235,10 @@ export class ToolsTab extends BaseTab {
     try {
       let removed = 0;
       for (const o of found.inboxes) { await o.journal.delete(); removed++; }
+      if (delEmpty) {
+        // still empty right now? (mail may have arrived while the dialog was open)
+        for (const o of found.emptyInboxes) { if (!(o.journal.pages?.size ?? 0) && game.journal?.get(o.journal.id)) { await o.journal.delete(); removed++; } }
+      }
       for (const p of found.pins)    { await p.note.delete();    removed++; }
       if (found.heatActors.length) {
         const map = foundry.utils.deepClone(game.settings.get(MODULE_ID, 'traceHeat') ?? {});
@@ -1238,12 +1263,16 @@ export class ToolsTab extends BaseTab {
         const res = await game.nightcity?.conversationService?.destroy?.(c.id);
         if (res?.ok) removed++;
       }
+      if (found.identityLinks.patches.length) {
+        const res = await this.masterContactService?.repairIdentityLinks?.({ apply: true });
+        removed += res?.changed || 0;
+      }
       log.info(`Orphan audit removed ${removed} orphaned record(s)`);
-      ui.notifications.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
+      ncmNotify.info(`NCM | Orphan audit removed ${removed} orphaned record(s).`);
       this.app?.render?.(false);
     } catch (error) {
       console.error(`${MODULE_ID} | Orphan cleanup failed:`, error);
-      ui.notifications.error('NCM | Orphan cleanup failed. Check console.');
+      ncmNotify.error('NCM | Orphan cleanup failed. Check console.');
     }
   }
 
@@ -1292,7 +1321,7 @@ export class ToolsTab extends BaseTab {
             label: 'Factory Reset',
             callback: (html) => {
               const word = (html.find('[name="confirmWord"]').val() || '').trim().toUpperCase();
-              if (word !== 'RESET') { ui.notifications.warn('NCM | Type RESET to confirm.'); return; }
+              if (word !== 'RESET') { ncmNotify.warn('NCM | Type RESET to confirm.'); return; }
               resetSettings = html.find('[name="resetSettings"]').is(':checked');
               go = true;
             },
@@ -1316,22 +1345,26 @@ export class ToolsTab extends BaseTab {
     if (!go) return;
 
     try {
-      ui.notifications.info('NCM | Factory reset running…');
+      ncmNotify.info('NCM | Factory reset running…');
       const r = await runFactoryReset({ resetSettings, reload: true });
-      ui.notifications.info(
+      ncmNotify.info(
         `NCM | Factory reset done — ${r.journals} journal(s), ${r.pins} pin(s), ${r.macros} macro(s), `
         + `${r.stripped} flag block(s), ${r.settings} setting(s). Reloading.`,
         { permanent: true }
       );
     } catch (error) {
       console.error(`${MODULE_ID} | Factory reset failed:`, error);
-      ui.notifications.error(`NCM | Factory reset failed: ${error?.message || error}. Check the console; the world may be partly reset.`, { permanent: true });
+      ncmNotify.error(`NCM | Factory reset failed: ${error?.message || error}. Check the console; the world may be partly reset.`, { permanent: true });
     }
   }
 
   /** Collect every orphaned inbox journal, stale terminal scene pin, and dead-actor heat entry. */
   _gatherOrphans() {
     const inboxes = [];
+    // Inboxes with no pages at all, for an owner who still exists — mostly made by the old unread badge (audit
+    // PERF-01) for every NPC, vehicle and Black ICE. Listed, deleted only if the GM ticks the box: an inbox comes
+    // back by itself with the first mail.
+    const emptyInboxes = [];
     for (const journal of game.journal ?? []) {
       const info = MessageRepository.identifyInbox(journal);
       if (!info) continue;
@@ -1339,6 +1372,7 @@ export class ToolsTab extends BaseTab {
         ? !!this.masterContactService?.getContact?.(info.ownerId)
         : !!game.actors?.get(info.ownerId);
       if (!exists) inboxes.push({ journal, ...info });
+      else if (!(journal.pages?.size ?? journal.pages?.length ?? 0)) emptyInboxes.push({ journal, ...info });
     }
 
     const pins = [];
@@ -1346,6 +1380,9 @@ export class ToolsTab extends BaseTab {
       for (const note of scene.notes ?? []) {
         const itemId = note.getFlag?.(MODULE_ID, 'terminalItemId');
         if (itemId && !game.items?.get(itemId)) pins.push({ scene, note });
+        // a payphone pin whose payphone was deleted
+        const ppId = note.getFlag?.(MODULE_ID, 'accessPayphone');
+        if (ppId && !game.nightcity?.payphoneService?.get?.(ppId)) pins.push({ scene, note });
       }
     }
 
@@ -1398,7 +1435,13 @@ export class ToolsTab extends BaseTab {
       if (!stillThere) conversations.push(c);
     }
 
-    return { inboxes, pins, heatActors, groupMembers, phoneOwners, conversations };
+    // Directory links that point at nothing (audit DATA-16): aliases whose main identity was deleted, and entries
+    // linked to a deleted character. Both are repaired, not removed — the contacts stay.
+    let identityLinks = { stranded: [], deadLinks: [], patches: [] };
+    try { identityLinks = this.masterContactService?.repairIdentityLinks ? planIdentityRepairs(this.masterContactService.getAll?.() || [], (id) => !!game.actors?.get(id)) : identityLinks; }
+    catch { /* directory unavailable */ }
+
+    return { inboxes, pins, heatActors, groupMembers, phoneOwners, conversations, emptyInboxes, identityLinks };
   }
 
   /**

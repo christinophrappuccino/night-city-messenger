@@ -52,6 +52,7 @@ globalThis.foundry = { utils: { randomID: () => 'x' }, applications: { api: {} }
 globalThis.Hooks = { on() {}, once() {}, off() {}, call() {}, callAll() {} };
 
 const h = await import(pathToFileURL(`${ROOT}/scripts/utils/helpers.js`).href);
+const { ncmNotify } = await import(pathToFileURL(`${ROOT}/scripts/utils/notify.js`).href);
 const names = (rows) => rows.map((r) => r.actorName).sort();
 
 // ── Nothing hidden: unchanged ──
@@ -118,9 +119,9 @@ const run = async (pickerResult) => {
   let opened = null;
   const AsyncFunction = (async () => {}).constructor;
   const inner = body.slice(body.indexOf('{') + 1, body.lastIndexOf('}'));
-  const fn = new AsyncFunction('hiddenCharacterIds', 'getPlayerCharacters', 'showNamePicker', 'MODULE_ID', 'game', 'ui', inner);
+  const fn = new AsyncFunction('hiddenCharacterIds', 'getPlayerCharacters', 'showNamePicker', 'MODULE_ID', 'game', 'ui', 'ncmNotify', inner);
   const self = { render() {} };
-  await fn.call(self, h.hiddenCharacterIds, h.getPlayerCharacters, async (o) => { opened = o; return pickerResult; }, MOD, game, ui);
+  await fn.call(self, h.hiddenCharacterIds, h.getPlayerCharacters, async (o) => { opened = o; return pickerResult; }, MOD, game, ui, ncmNotify);
   return opened;
 };
 store.hiddenCharacters = ['van'];

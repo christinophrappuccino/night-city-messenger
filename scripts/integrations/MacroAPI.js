@@ -7,6 +7,7 @@
  *              documents for convenience.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 
@@ -335,6 +336,25 @@ export class MacroAPI {
     };
     /** GM: the written overheard calls, for a macro to pick from. */
     ns.messenger.getOverheardCalls = () => (isGM() ? (game.nightcity?.overheardService?.scripts?.() || []).map((c) => ({ id: c.id, name: c.name })) : []);
+    /** Open a payphone's booth by id or place name (no reach check — like a link the GM handed out). */
+    ns.messenger.openPayphone = (idOrName) => {
+      const svc = game.nightcity?.payphoneService, all = svc?.getAll?.() || [];
+      const pp = all.find((p) => p.id === idOrName) || all.find((p) => p.name.toLowerCase() === String(idOrName).toLowerCase());
+      if (!pp) return { ok: false, error: 'No payphone by that name.' };
+      svc.open(pp.id, { skipReach: true });
+      return { ok: true, id: pp.id };
+    };
+    /** GM: ring a payphone (by id or place name) as a directory contact (id or name) — the call comes from that NPC's number. */
+    ns.messenger.ringPayphone = async (idOrName, asContact) => {
+      if (!isGM()) return { ok: false, error: 'GM only' };
+      const svc = game.nightcity?.payphoneService, all = svc?.getAll?.() || [];
+      const pp = all.find((p) => p.id === idOrName) || all.find((p) => p.name.toLowerCase() === String(idOrName).toLowerCase());
+      if (!pp) return { ok: false, error: 'No payphone by that name.' };
+      const mcs = game.nightcity?.masterContactService;
+      const c = asContact ? (mcs?.getContact?.(asContact) || (mcs?.getAll?.() || []).find((x) => x.name.toLowerCase() === String(asContact).toLowerCase())) : null;
+      if (asContact && !c) return { ok: false, error: 'No contact by that name.' };
+      return (await svc.ringAs(pp.id, c ? { contactId: c.id } : {})) || { ok: false, error: 'The call could not be placed.' };
+    };
     /** GM: start a written overheard call, by id or name. */
     ns.messenger.startOverheardCall = (idOrName) => {
       if (!isGM()) return { ok: false, error: 'GM only' };
@@ -389,12 +409,12 @@ export class MacroAPI {
 
     ns.messenger.openDataShard = (itemOrId) => {
       const item = MacroAPI._resolveItem(itemOrId);
-      if (!item) return ui.notifications.error('Item not found');
+      if (!item) return ncmNotify.error('Item not found');
       return ns.openDataShard?.(item);
     };
 
     ns.messenger.openGMContacts = () => {
-      if (!isGM()) return ui.notifications.warn('GM only');
+      if (!isGM()) return ncmNotify.warn('GM only');
       return ns.openGMContacts?.();
     };
 

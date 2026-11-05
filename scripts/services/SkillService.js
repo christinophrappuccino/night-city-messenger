@@ -98,7 +98,9 @@ export class SkillService {
 
     // Dice So Nice: the 3D dice play BEFORE anything reveals the number, and
     // every caller waits for them (this method does not return until they land).
-    if (options.dice3d !== false) await this._showDice3d(rollResult.rolls);
+    // The roller's chat roll mode decides who sees the dice and the card (audit COMPAT-09, dev 2026-11-05).
+    const rollMode = options.rollMode || currentRollMode();
+    if (options.dice3d !== false) await this._showDice3d(rollResult.rolls, rollMode);
 
     // ─── Calculate Total ───
     const total = statValue + skillLevel + rollResult.processedRoll + actualLuckSpend + modifier;
@@ -131,7 +133,7 @@ export class SkillService {
     let posted = null;
     result.postChat = () => {
       if (!showChat) return Promise.resolve();
-      if (!posted) posted = this._postChatMessage(actor, skillName, result, { flavor, context });
+      if (!posted) posted = this._postChatMessage(actor, skillName, result, { flavor, context, rollMode });
       return posted;
     };
     if (reveal) {
@@ -362,13 +364,14 @@ export class SkillService {
    * misconfigured DSN can never hang a login.
    * @param {Roll[]} rolls
    */
-  async _showDice3d(rolls = []) {
+  async _showDice3d(rolls = [], rollMode = 'publicroll') {
     const d3 = game.dice3d;
     if (!d3?.showForRoll || !rolls.length) return;
     const cap = (ms) => new Promise((res) => setTimeout(res, ms));
+    const aud = rollModeAudience(rollMode);
     try {
       for (const r of rolls) {
-        await Promise.race([d3.showForRoll(r, game.user, true), cap(12000)]);
+        await Promise.race([d3.showForRoll(r, game.user, true, aud.whisper, aud.blind), cap(12000)]);
       }
     } catch (err) {
       log.debug(`SkillService: Dice So Nice failed: ${err.message}`);
@@ -479,9 +482,12 @@ export class SkillService {
         templateData
       );
 
+      const aud = rollModeAudience(meta.rollMode || 'publicroll');
       await ChatMessage.create({
         content,
         speaker: ChatMessage.getSpeaker({ actor }),
+        ...(aud.whisper ? { whisper: aud.whisper } : {}),
+        ...(aud.blind ? { blind: true } : {}),
         flags: {
           [MODULE_ID]: {
             type: 'skill-check',
@@ -500,4 +506,21 @@ export class SkillService {
       log.warn(`SkillService: Failed to post chat message: ${err.message}`);
     }
   }
+}
+
+/** The roll mode picked in the chat box, or public. */
+export function currentRollMode() {
+  try { return game.settings.get('core', 'rollMode') || 'publicroll'; } catch { return 'publicroll'; }
+}
+
+/**
+ * Who sees a roll in `mode` (audit COMPAT-09): `whisper` is the user ids (null = everyone), `blind` hides it from
+ * the roller. Matches Foundry's own rule — GM roll: the roller and the GMs; blind: the GMs only; self: the roller.
+ * Pure apart from the defaults read from `game`.
+ */
+export function rollModeAudience(mode, { userId = game.user?.id, gmIds = (game.users?.filter?.((u) => u.isGM) || []).map((u) => u.id) } = {}) {
+  if (mode === 'gmroll') return { whisper: [...new Set([...gmIds, userId].filter(Boolean))], blind: false };
+  if (mode === 'blindroll') return { whisper: [...gmIds], blind: true };
+  if (mode === 'selfroll') return { whisper: [userId].filter(Boolean), blind: false };
+  return { whisper: null, blind: false };
 }

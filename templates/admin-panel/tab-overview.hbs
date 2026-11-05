@@ -15,10 +15,10 @@
         {{!-- ═══ THE INSTRUMENT ═══ --}}
         <div class="ncm-ov2-mod ncm-ov2-nl" data-nl-zoom="{{ov.nl.zoom}}" data-nl-now="{{ov.nl.now}}">
           <div class="ncm-ov2-mod__k"><i class="fas fa-timeline"></i>Session line<span class="ncm-ov2-mod__hint">past above · now · future below</span>
-            <span class="ncm-ov2-zoom" role="group" aria-label="How far ahead">{{#each ov.nl.zooms}}<button type="button" class="ncm-ov2-zoom__b{{#if on}} is-on{{/if}}" data-action="tabAct" data-owner="overview" data-op="rwZoom" data-zoom="{{min}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}" data-tooltip="The next {{label}}">{{label}}</button>{{/each}}</span>
+            <span class="ncm-ov2-zoom" role="group" aria-label="How far ahead">{{#each ov.nl.zooms}}<button type="button" class="ncm-ov2-zoom__b{{#if on}} is-on{{/if}}" data-action="tabAct" data-owner="overview" data-op="rwZoom" data-zoom="{{min}}" aria-pressed="{{#if on}}true{{else}}false{{/if}}" data-tooltip="The next {{ncm-tip label}}">{{label}}</button>{{/each}}</span>
           </div>
           <div class="ncm-ov2-nl__legend">
-            {{#each ov.nl.legend}}<button type="button" class="ncm-ov2-nl__key{{#if off}} is-off{{/if}}{{#unless count}} is-none{{/unless}}" style="--tc:{{tc}}" data-action="tabAct" data-owner="overview" data-op="rwLane" data-kind="{{kind}}" aria-pressed="{{#if off}}false{{else}}true{{/if}}" data-tooltip="Hide or show {{label}}"><i class="fas {{icon}}"></i>{{short}}<b>{{count}}</b></button>{{/each}}
+            {{#each ov.nl.legend}}<button type="button" class="ncm-ov2-nl__key{{#if off}} is-off{{/if}}{{#unless count}} is-none{{/unless}}" style="--tc:{{tc}}" data-action="tabAct" data-owner="overview" data-op="rwLane" data-kind="{{kind}}" aria-pressed="{{#if off}}false{{else}}true{{/if}}" data-tooltip="Hide or show {{ncm-tip label}}"><i class="fas {{icon}}"></i>{{short}}<b>{{count}}</b></button>{{/each}}
             <span class="ncm-ov2-nl__sum">{{#if ov.nl.counts.bad}}<b class="is-bad">{{ov.nl.counts.bad}}</b> under 10 min · {{/if}}{{#if ov.nl.counts.attn}}<b class="is-attn">{{ov.nl.counts.attn}}</b> this hour · {{/if}}<b>{{ov.nl.counts.total}}</b> timer{{#unless (eq ov.nl.counts.total 1)}}s{{/unless}}</span>
           </div>
           <div class="ncm-ov2-nl__body">
@@ -30,7 +30,7 @@
 
               {{!-- the past: newest nearest the line --}}
               {{#each ov.nl.past}}
-              <div class="ncm-ov2-nl__ev is-past{{#if far}} is-far{{/if}}" style="--tc:{{tc}};top:{{top}}%" data-nl-ev="p" data-ts="{{ts}}"{{#if subline}} data-tooltip="{{subline}}"{{/if}}>
+              <div class="ncm-ov2-nl__ev is-past{{#if far}} is-far{{/if}}" style="--tc:{{tc}};top:{{top}}%" data-nl-ev="p" data-ts="{{ts}}"{{#if subline}} data-tooltip="{{ncm-tip subline}}"{{/if}}>
                 <i class="fas {{icon}}"></i><span class="ncm-ov2-nl__tx">{{{html}}}</span><span class="ncm-ov2-nl__t" data-nl-ago>{{ago}}</span>
               </div>
               {{/each}}
@@ -39,7 +39,7 @@
               {{!-- NOW --}}
               <div class="ncm-ov2-nl__now" style="top:{{ov.nl.nowPct}}%"><b>NOW · <span data-nl-clock>{{ov.nl.nowClock}}</span></b></div>
               <div class="ncm-ov2-nl__onnow" style="top:{{ov.nl.nowPct}}%">
-                {{#each ov.nl.chips}}<button type="button" class="ncm-ov2-nl__wait is-{{tone}}{{#if on}} is-on{{/if}}" data-action="ovNeedFilter" data-filter="{{kind}}" aria-expanded="{{#if on}}true{{else}}false{{/if}}" data-tooltip="{{count}} — click to see them"><i class="fas {{icon}}"></i>{{label}}<span class="ncm-ov2-nl__n">{{count}}</span></button>{{else}}<span class="ncm-ov2-nl__calm"><i class="fas fa-circle-check"></i>nothing is waiting on you</span>{{/each}}
+                {{#each ov.nl.chips}}<button type="button" class="ncm-ov2-nl__wait is-{{tone}}{{#if on}} is-on{{/if}}" data-action="ovNeedFilter" data-filter="{{kind}}" aria-expanded="{{#if on}}true{{else}}false{{/if}}" data-tooltip="{{ncm-tip count}} — click to see them"><i class="fas {{icon}}"></i>{{label}}<span class="ncm-ov2-nl__n">{{count}}</span></button>{{else}}<span class="ncm-ov2-nl__calm"><i class="fas fa-circle-check"></i>nothing is waiting on you</span>{{/each}}
               </div>
 
               {{!-- the open chip's items, under the line --}}
@@ -65,9 +65,9 @@
               {{#each ov.nl.future}}
               <div class="ncm-ov2-nl__ev is-future{{#if urg}} is-{{urg}}{{/if}}{{#if sel}} is-sel{{/if}}" style="--tc:{{tc}};--mc:{{mc}};top:{{top}}%" data-nl-ev="f" data-timer-id="{{id}}" data-at="{{at}}" data-top="{{top}}">
                 <i class="fas {{icon}}"></i>
-                <button type="button" class="ncm-ov2-nl__tx ncm-ov2-nl__pick" data-action="tabAct" data-owner="overview" data-op="rwPick" aria-expanded="{{#if sel}}true{{else}}false{{/if}}" data-tooltip="{{kindShort}}{{#if subline}} · {{subline}}{{/if}} — click for the facts"><b>{{kindShort}}</b> {{name}}</button>
+                <button type="button" class="ncm-ov2-nl__tx ncm-ov2-nl__pick" data-action="tabAct" data-owner="overview" data-op="rwPick" aria-expanded="{{#if sel}}true{{else}}false{{/if}}" data-tooltip="{{ncm-tip kindShort}}{{#if subline}} · {{ncm-tip subline}}{{/if}} — click for the facts"><b>{{kindShort}}</b> {{name}}</button>
                 <em class="ncm-ov2-nl__t" data-nl-left>{{leftLabel}}</em>
-                <span class="ncm-ov2-nl__acts">{{#each actions}}<button type="button" class="ncm-ov2-btn ncm-ov2-btn--sm{{#if (eq tone 'pri')}} ncm-ov2-btn--pri{{/if}}{{#if (eq tone 'bad')}} ncm-ov2-btn--danger{{/if}}" data-action="{{action}}"{{#each dataAttrs}} data-{{k}}="{{v}}"{{/each}} data-tooltip="{{label}}"><i class="fas {{icon}}"></i>{{label}}</button>{{/each}}</span>
+                <span class="ncm-ov2-nl__acts">{{#each actions}}<button type="button" class="ncm-ov2-btn ncm-ov2-btn--sm{{#if (eq tone 'pri')}} ncm-ov2-btn--pri{{/if}}{{#if (eq tone 'bad')}} ncm-ov2-btn--danger{{/if}}" data-action="{{action}}"{{#each dataAttrs}} data-{{k}}="{{v}}"{{/each}} data-tooltip="{{ncm-tip label}}"><i class="fas {{icon}}"></i>{{label}}</button>{{/each}}</span>
                 {{#if sel}}<div class="ncm-ov2-nl__facts">{{#if subline}}<span class="ncm-ov2-nl__facts-sub">{{subline}}</span>{{/if}}{{#each lines}}<span class="ncm-ov2-nl__fk">{{k}}</span><span class="ncm-ov2-nl__fv{{#if mono}} is-mono{{/if}}">{{v}}</span>{{/each}}</div>{{/if}}
               </div>
               {{/each}}
@@ -82,7 +82,7 @@
         <div class="ncm-ov2-dock">
           <button type="button" class="ncm-ov2-guide" data-action="tabAct" data-owner="overview" data-op="qGuide" data-tooltip="Open the Getting Started guide (PDF) in a new tab"><i class="fas fa-book-open"></i><span><b>Guide</b><small>How everything works</small></span><i class="fas fa-up-right-from-square ncm-ov2-guide__go"></i></button>
 
-          <div class="ncm-ov2-clockcard" data-tooltip="Game time · {{ov.clock}}">
+          <div class="ncm-ov2-clockcard" data-tooltip="Game time · {{ncm-tip ov.clock}}">
             <b class="ncm-ov2-clockcard__t">{{ov.time}}</b><small class="ncm-ov2-clockcard__d">{{ov.date}}</small>
             {{#if ov.sceneName}}<div class="ncm-ov2-clockcard__scn{{#if ov.sceneDead}} is-dead{{/if}}" style="--tc:{{ncm-hue ov.sceneName}}"><i class="fas {{#if ov.sceneDead}}fa-ban{{else}}fa-map{{/if}}"></i><span>{{ov.sceneName}}</span>{{#if ov.sceneDead}}<span class="ncm-tagp is-bad">dead zone</span>{{/if}}</div>{{/if}}
           </div>
@@ -92,7 +92,7 @@
             <div class="ncm-ov2-mod__k"><i class="fas fa-users"></i>At the table{{#if ov.table.hasPlayers}}<span class="ncm-ov2-mod__n{{#if ov.table.need}} is-attn{{/if}}">{{#if ov.table.need}}{{ov.table.need}} need you{{else}}{{ov.table.online}} online{{/if}}</span>{{/if}}</div>
             <div class="ncm-ov2-ppl ncm-ov2-scroll ncm-ov2-scroll--table">
               {{#each ov.table.players}}
-              <div class="ncm-ov2-pp is-{{tone}}{{#if isOpen}} is-open{{/if}}" data-action="tabAct" data-owner="overview" data-op="tblToggle" data-user-id="{{userId}}" role="button" tabindex="0" aria-expanded="{{#if isOpen}}true{{else}}false{{/if}}" data-tooltip="{{status}} — click for why">
+              <div class="ncm-ov2-pp is-{{tone}}{{#if isOpen}} is-open{{/if}}" data-action="tabAct" data-owner="overview" data-op="tblToggle" data-user-id="{{userId}}" role="button" tabindex="0" aria-expanded="{{#if isOpen}}true{{else}}false{{/if}}" data-tooltip="{{ncm-tip status}} — click for why">
                 <span class="ncm-ov2-pl__face"><span class="ncm-ov2-pl__av" style="--tc:{{hue}}">{{#if img}}<img src="{{img}}" alt="">{{else}}{{initials}}{{/if}}</span><span class="ncm-ov2-av__dot{{#if online}} is-on{{/if}}"></span>{{#if unread}}<span class="ncm-ov2-badge">{{unread}}</span>{{/if}}</span>
                 <span class="ncm-ov2-pp__nm">{{name}}<small>{{playerName}}{{#if sceneName}} · {{sceneName}}{{else if online}} · no scene{{/if}}{{#if held}} · <span class="is-warn">{{held}} held</span>{{/if}}{{#unless address}} · <span class="is-bad">no address</span>{{/unless}}</small></span>
                 <span class="ncm-ov2-pp__net{{#if dead}} is-nosig{{else if onNet}} is-net{{#if weak}} is-weak{{/if}}{{else if online}} is-none{{else}} is-off{{/if}}" style="--nc:{{netHue}}">{{#if dead}}<i class="fas fa-ban"></i>no signal{{else if onNet}}<span class="ncm-ov2-sig">{{#each bars}}<i{{#if on}} class="is-on"{{/if}}></i>{{/each}}</span>{{network}}{{else if online}}—{{else}}offline{{/if}}</span>
@@ -140,7 +140,7 @@
           <div class="ncm-ov2-mod">
             <div class="ncm-ov2-tiles">
               {{#each ov.tiles}}
-              <div class="ncm-ov2-tile{{#if bad}} is-bad{{/if}}" style="--c:{{color}}" data-action="switchTab" data-tab="{{tab}}" data-tooltip="{{label}}: {{#each lines}}{{{this}}}{{/each}}{{#if bad}} · {{bad}}{{/if}} — open the tab" role="button" tabindex="0">
+              <div class="ncm-ov2-tile{{#if bad}} is-bad{{/if}}" style="--c:{{color}}" data-action="switchTab" data-tab="{{tab}}" data-tooltip="{{ncm-tip label}}: {{#each lines}}{{{this}}}{{/each}}{{#if bad}} · {{ncm-tip bad}}{{/if}} — open the tab" role="button" tabindex="0">
                 <b class="ncm-ov2-tile__n{{#if bad}} is-bad{{/if}}">{{n}}</b><span class="ncm-ov2-tile__l">{{label}}</span>{{#if bad}}<span class="ncm-ov2-tile__bad">{{bad}}</span>{{/if}}
               </div>
               {{/each}}

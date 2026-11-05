@@ -31,6 +31,7 @@
  *     scene. GMs bypass. Opening from the item itself is deliberately ungated.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { themedConfirm } from '../utils/adminTheme.js';
@@ -39,7 +40,12 @@ import { sanitizePlacement, accessRegionScript, areaRect } from '../utils/access
 
 /** Is this note an NCM access pin? (terminal pins since 2026-07; any kind since 2026-10-29) */
 export function isAccessPin(doc) {
-  return !!(doc?.getFlag?.(MODULE_ID, 'terminalItemId') || doc?.getFlag?.(MODULE_ID, 'accessUuid') || doc?.getFlag?.(MODULE_ID, 'accessNode'));
+  return !!(doc?.getFlag?.(MODULE_ID, 'terminalItemId') || doc?.getFlag?.(MODULE_ID, 'accessUuid') || doc?.getFlag?.(MODULE_ID, 'accessNode') || doc?.getFlag?.(MODULE_ID, 'accessPayphone'));
+}
+
+/** The payphone id a pin opens, else null. */
+export function payphonePinOf(doc) {
+  return doc?.getFlag?.(MODULE_ID, 'accessPayphone') || null;
 }
 
 /** The network-node id a pin opens, else null. */
@@ -67,7 +73,9 @@ export class TerminalScenePins {
     // still claim terminal items before Item Piles / core placement logic.
     Hooks.on('dropCanvasData', (_canvas, data) => {
       if (data?.type !== 'Item' || !data.uuid) return;
-      const item = fromUuidSync(data.uuid);
+      // fromUuidSync throws on an item inside a compendium entry (audit COMPAT-08): that is never a terminal drop
+      let item = null;
+      try { item = fromUuidSync(data.uuid); } catch { return; }
       if (!item?.getFlag?.(MODULE_ID, 'isTerminal')) return;
       this._handleTerminalDrop(item, { x: data.x, y: data.y });
       return false;
@@ -123,7 +131,9 @@ export class TerminalScenePins {
       try { data = JSON.parse(event.dataTransfer?.getData('text/plain') || ''); }
       catch { return; }
       if (data?.type !== 'Item' || !data.uuid) return;
-      const item = fromUuidSync(data.uuid);
+      // fromUuidSync throws on an item inside a compendium entry (audit COMPAT-08): that is never a terminal drop
+      let item = null;
+      try { item = fromUuidSync(data.uuid); } catch { return; }
       if (!item?.getFlag?.(MODULE_ID, 'isTerminal')) return;
 
       // Ours — stop core's #board ondrop (and therefore every dropCanvasData
@@ -148,7 +158,7 @@ export class TerminalScenePins {
   /** Route a claimed terminal drop — GM places a pin, players get a hint. @private */
   _handleTerminalDrop(item, coords) {
     if (!isGM()) {
-      ui.notifications.warn('Only the GM can place a terminal on the scene.');
+      ncmNotify.warn('Only the GM can place a terminal on the scene.');
       return;
     }
     this.placePin(item, coords);
@@ -163,14 +173,14 @@ export class TerminalScenePins {
    * terminal's own Network tab setting (no per-pin override).
    */
   async placePin(item, coords) {
-    if (!canvas?.scene) return ui.notifications.warn('No active scene to place it on.');
+    if (!canvas?.scene) return ncmNotify.warn('No active scene to place it on.');
     await this._createPin(canvas.scene, item, coords, { hidden: false, range: null });
-    ui.notifications.info(`Access point placed: ${this._nameOf(item)}. Players double-click it to open it.`);
+    ncmNotify.info(`Access point placed: ${this._nameOf(item)}. Players double-click it to open it.`);
   }
 
   /** Place a pin at the center of the GM's current view. */
   placeAtViewCenter(item) {
-    if (!canvas?.scene) return ui.notifications.warn('No active scene to place it on.');
+    if (!canvas?.scene) return ncmNotify.warn('No active scene to place it on.');
     return this.placePin(item, { x: canvas.stage.pivot.x, y: canvas.stage.pivot.y });
   }
 
@@ -182,9 +192,9 @@ export class TerminalScenePins {
   async placeAccess(item, place) {
     const p = sanitizePlacement(place);
     const kind = this._kindOf(item);
-    if (!kind) return ui.notifications.warn('Only a terminal or a shard can be placed.');
+    if (!kind) return ncmNotify.warn('Only a terminal or a shard can be placed.');
     const scene = game.scenes.get(p.sceneId) || canvas?.scene;
-    if (!scene) return ui.notifications.warn('Pick a scene first.');
+    if (!scene) return ncmNotify.warn('Pick a scene first.');
     if (canvas?.scene?.id !== scene.id) await scene.view();
     const at = p.where === 'click' ? await this._pickPoint(this._nameOf(item)) : { x: canvas.stage.pivot.x, y: canvas.stage.pivot.y };
     if (!at) return null;
@@ -192,7 +202,7 @@ export class TerminalScenePins {
     if (p.how !== 'area') made.push(await this._createPin(scene, item, at, { hidden: p.hidden, range: p.range }));
     if (p.how !== 'pin') made.push(await this._createArea(scene, item, at, { hidden: p.hidden, size: p.size }));
     const what = p.how === 'both' ? 'A pin and a step-on area' : p.how === 'area' ? 'A step-on area' : 'A pin';
-    ui.notifications.info(`${what} for ${this._nameOf(item)} placed on ${scene.name}${p.hidden ? ' — hidden until you reveal it' : ''}.`);
+    ncmNotify.info(`${what} for ${this._nameOf(item)} placed on ${scene.name}${p.hidden ? ' — hidden until you reveal it' : ''}.`);
     return made;
   }
 
@@ -204,9 +214,9 @@ export class TerminalScenePins {
   async placeNode(nodeId, place) {
     const p = sanitizePlacement(place);
     const node = game.nightcity?.networkService?.getNode?.(nodeId);
-    if (!node) return ui.notifications.warn('That node no longer exists.');
+    if (!node) return ncmNotify.warn('That node no longer exists.');
     const scene = game.scenes.get(p.sceneId) || canvas?.scene;
-    if (!scene) return ui.notifications.warn('Pick a scene first.');
+    if (!scene) return ncmNotify.warn('Pick a scene first.');
     if (canvas?.scene?.id !== scene.id) await scene.view();
     const at = p.where === 'click' ? await this._pickPoint(node.name) : { x: canvas.stage.pivot.x, y: canvas.stage.pivot.y };
     if (!at) return null;
@@ -236,8 +246,73 @@ export class TerminalScenePins {
       made.push(doc);
     }
     const what = p.how === 'both' ? 'A pin and a step-on area' : p.how === 'area' ? 'A step-on area' : 'A pin';
-    ui.notifications.info(`${what} for ${node.name} placed on ${scene.name}${p.hidden ? ' — hidden until you reveal it' : ''}.`);
+    ncmNotify.info(`${what} for ${node.name} placed on ${scene.name}${p.hidden ? ' — hidden until you reveal it' : ''}.`);
     return made;
+  }
+
+  /**
+   * A payphone as a pin / step-on area on a scene (GM). Same placement shape as placeAccess.
+   * @param {string} id @param {object} place — sanitizePlacement shape
+   */
+  async placePayphone(id, place) {
+    const p = sanitizePlacement(place);
+    const pp = game.nightcity?.payphoneService?.get?.(id);
+    if (!pp) return ncmNotify.warn('That payphone no longer exists.');
+    const scene = game.scenes.get(p.sceneId) || canvas?.scene;
+    if (!scene) return ncmNotify.warn('Pick a scene first.');
+    if (canvas?.scene?.id !== scene.id) await scene.view();
+    const label = `Payphone, ${pp.name}`;
+    const at = p.where === 'click' ? await this._pickPoint(label) : { x: canvas.stage.pivot.x, y: canvas.stage.pivot.y };
+    if (!at) return null;
+    const made = [];
+    const ref = { kind: 'payphone', id };
+    if (p.how !== 'area') {
+      const entryId = p.hidden ? (await this._hiddenJournal())?.id : (await this._payphonesJournal())?.id;
+      const [doc] = await scene.createEmbeddedDocuments('Note', [{
+        entryId, x: Math.round(at.x), y: Math.round(at.y),
+        texture: { src: `modules/${MODULE_ID}/assets/icons/payphone/payphone.svg`, ...(p.hidden ? { tint: HIDDEN_TINT } : {}) },
+        iconSize: 52, text: label, fontSize: 18, textAnchor: CONST.TEXT_ANCHOR_POINTS.BOTTOM,
+        flags: { [MODULE_ID]: { accessKind: 'payphone', accessPayphone: id, accessHidden: !!p.hidden, accessRange: Number(p.range) || 0 } },
+      }]);
+      made.push(doc);
+    }
+    if (p.how !== 'pin') {
+      const rect = areaRect(at, p.size, scene.grid?.size);
+      const [doc] = await scene.createEmbeddedDocuments('Region', [{
+        name: `${label} — payphone`, color: '#ffb454',
+        shapes: [{ type: 'rectangle', ...rect, rotation: 0, hole: false }],
+        visibility: CONST.REGION_VISIBILITY?.LAYER ?? 0,
+        flags: { [MODULE_ID]: { access: ref, accessHidden: !!p.hidden } },
+        behaviors: [{ type: 'executeScript', name: `Use ${label}`, disabled: !!p.hidden,
+          system: { events: ['tokenEnter'], source: accessRegionScript(ref, label) } }],
+      }]);
+      made.push(doc);
+    }
+    const what = p.how === 'both' ? 'A pin and a step-on area' : p.how === 'area' ? 'A step-on area' : 'A pin';
+    ncmNotify.info(`${what} for ${label} placed on ${scene.name}${p.hidden ? ' — hidden until you reveal it' : ''}.`);
+    return made;
+  }
+
+  /** The journal a VISIBLE payphone pin points at — players need OBSERVER on it to see the pin. */
+  async _payphonesJournal() {
+    let j = game.journal.find(e => e.getFlag(MODULE_ID, 'payphonesJournal'));
+    if (!j) {
+      j = await JournalEntry.create({ name: 'NCM — Payphones', ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2 },
+        flags: { [MODULE_ID]: { payphonesJournal: true } } });
+    }
+    return j;
+  }
+
+  /** Delete every pin AND area of a payphone across all scenes (GM). */
+  async removePinsForPayphone(id) {
+    try {
+      for (const scene of game.scenes) {
+        const notes = scene.notes.filter(n => payphonePinOf(n) === id).map(n => n.id);
+        if (notes.length) await scene.deleteEmbeddedDocuments('Note', notes);
+        const regions = (scene.regions ?? []).filter(r => r.getFlag(MODULE_ID, 'access')?.kind === 'payphone' && r.getFlag(MODULE_ID, 'access')?.id === id).map(r => r.id);
+        if (regions.length) await scene.deleteEmbeddedDocuments('Region', regions);
+      }
+    } catch (err) { log.error(`payphone pin cleanup failed: ${err.message}`); }
   }
 
   /** The journal a VISIBLE node pin points at — players need OBSERVER on it to see the pin. */
@@ -344,7 +419,7 @@ export class TerminalScenePins {
    */
   _pickPoint(name = '') {
     return new Promise((resolve) => {
-      ui.notifications.info(`Click the map where ${name || 'it'} goes — Esc cancels.`);
+      ncmNotify.info(`Click the map where ${name || 'it'} goes — Esc cancels.`);
       document.body.classList.add('ncm-picking-point');
       const done = (v) => {
         document.removeEventListener('pointerdown', down, true);
@@ -373,9 +448,10 @@ export class TerminalScenePins {
       await doc.setFlag(MODULE_ID, 'accessHidden', !!hidden);
       return;
     }
-    const item = nodePinOf(doc) ? null : this._resolveItem(doc);
+    const item = nodePinOf(doc) || payphonePinOf(doc) ? null : this._resolveItem(doc);
     const entryId = hidden ? (await this._hiddenJournal())?.id
       : nodePinOf(doc) ? (await this._nodesJournal())?.id
+      : payphonePinOf(doc) ? (await this._payphonesJournal())?.id
         : (item ? this._journalOf(item)?.id ?? null : doc.entryId);
     await doc.update({ entryId, 'texture.tint': hidden ? HIDDEN_TINT : null, [`flags.${MODULE_ID}.accessHidden`]: !!hidden });
   }
@@ -410,19 +486,30 @@ export class TerminalScenePins {
 
     const nodeId = nodePinOf(doc);
     if (nodeId) {
-      if (!game.nightcity?.networkService?.getNode?.(nodeId)) { ui.notifications.warn('This access point is dead — the node is gone.'); return false; }
+      if (!game.nightcity?.networkService?.getNode?.(nodeId)) { ncmNotify.warn('This access point is dead — the node is gone.'); return false; }
       if (!isGM()) {
         const block = this._reachBlock(doc, Number(doc.getFlag(MODULE_ID, 'accessRange')) || 0, 'the node');
-        if (block) { game.nightcity?.soundService?.play('error'); ui.notifications.warn(block); return false; }
+        if (block) { game.nightcity?.soundService?.play('error'); ncmNotify.warn(block); return false; }
       }
       game.nightcity?.openNode?.(nodeId);
       return false;
     }
 
+    const ppId = payphonePinOf(doc);
+    if (ppId) {
+      if (!game.nightcity?.payphoneService?.get?.(ppId)) { ncmNotify.warn('This access point is dead — the payphone is gone.'); return false; }
+      if (!isGM()) {
+        const block = this._reachBlock(doc, Number(doc.getFlag(MODULE_ID, 'accessRange')) || 0, 'the payphone');
+        if (block) { game.nightcity?.soundService?.play('error'); ncmNotify.warn(block === 'OUT OF RANGE — move closer.' ? "You're too far from the payphone. Walk up to it first." : block); return false; }
+      }
+      game.nightcity?.payphoneService?.open(ppId, { skipReach: true });
+      return false;
+    }
+
     const item = this._resolveItem(doc);
     if (!item || !this._kindOf(item)) {
-      ui.notifications.warn('This access point is dead — what it opened is gone.');
-      if (isGM()) ui.notifications.info('GM: delete the stale pin via the Journal Notes layer.');
+      ncmNotify.warn('This access point is dead — what it opened is gone.');
+      if (isGM()) ncmNotify.info('GM: delete the stale pin via the Journal Notes layer.');
       return false;
     }
 
@@ -430,7 +517,7 @@ export class TerminalScenePins {
       const block = this._rangeBlock(item, doc);
       if (block) {
         game.nightcity?.soundService?.play('error');
-        ui.notifications.warn(block);
+        ncmNotify.warn(block);
         return false;
       }
     }
@@ -473,12 +560,20 @@ export class TerminalScenePins {
     if (!ov) return;
     const doc = note.document;
     const pos = { clientX: x, clientY: y, preventDefault() {}, stopPropagation() {} };
-    const nodeId = nodePinOf(doc);
-    const item = nodeId ? null : this._resolveItem(doc);
+    const nodeId = nodePinOf(doc), ppId = payphonePinOf(doc);
+    const item = nodeId || ppId ? null : this._resolveItem(doc);
     const entries = [];
     const kind = this._kindOf(item);
     const node = nodeId ? game.nightcity?.networkService?.getNode?.(nodeId) : null;
-    if (node) {
+    const pp = ppId ? game.nightcity?.payphoneService?.get?.(ppId) : null;
+    if (pp) {
+      entries.push({ label: 'Use the payphone', icon: 'fas fa-phone', fn: () => this._onActivateNote(note) });
+      if (isGM()) {
+        entries.push({ label: 'Open in Admin → Phone', icon: 'fas fa-sliders', fn: () => game.nightcity?.openAdminTab?.('phone', { select: `payphone:${ppId}` }) });
+        const more = (game.nightcity?.payphoneAccessEntries?.(ppId) || []).filter(e => !/^Place on/.test(e.label || ''));
+        if (more.length) entries.push({ label: 'Payphone options', icon: 'fas fa-ellipsis', more: true, fn: (p) => ov._showContextMenu(p, more, { title: pp.name, icon: 'fas fa-phone' }) });
+      }
+    } else if (node) {
       entries.push({ label: 'Open the node', icon: 'fas fa-tower-broadcast', fn: () => this._onActivateNote(note) });
       if (isGM()) {
         const up = game.nightcity.networkService.getNode(nodeId)?.state === 'on';
@@ -494,7 +589,7 @@ export class TerminalScenePins {
       const more = ov._nightCityEntries(item, null).filter(e => !/^Place on/.test(e.label || ''));
       if (more.length) entries.push({ label: `${kind === 'terminal' ? 'Terminal' : 'Shard'} options`, icon: 'fas fa-ellipsis', more: true, fn: (p) => ov._showContextMenu(p, more, { title: item.name, icon }) });
     } else {
-      entries.push({ label: 'What it opened is gone', icon: 'fas fa-link-slash', fn: () => ui.notifications.warn('This access point is dead — what it opened is gone.') });
+      entries.push({ label: 'What it opened is gone', icon: 'fas fa-link-slash', fn: () => ncmNotify.warn('This access point is dead — what it opened is gone.') });
     }
     if (isGM()) {
       const hidden = !!doc.getFlag(MODULE_ID, 'accessHidden');
@@ -505,7 +600,7 @@ export class TerminalScenePins {
         { label: 'Remove this pin', icon: 'fas fa-trash', bad: true, fn: () => this._confirmRemovePin(doc, item) });
     }
     // Next tick: this contextmenu event is still dispatching and the menu's own closer listens for it.
-    setTimeout(() => ov._showContextMenu(pos, entries, { title: node?.name || item?.name || doc.text || 'Access point', icon: 'fas fa-map-pin' }), 0);
+    setTimeout(() => ov._showContextMenu(pos, entries, { title: node?.name || (pp ? `Payphone, ${pp.name}` : '') || item?.name || doc.text || 'Access point', icon: 'fas fa-map-pin' }), 0);
   }
 
   /** Delete one pin after a themed confirm. @private */
@@ -582,9 +677,16 @@ export class TerminalScenePins {
   _autoShowMapNotes() {
     try {
       if (!game.settings.get(MODULE_ID, 'terminalPinsAutoShow')) return;
+      // Once per user on this browser (audit COMPAT-07, dev 2026-11-05): switch map notes on the first time, then
+      // leave the user's own choice alone — before, it came back on at every load.
+      const key = `ncm.notesAutoShown.${game.world?.id || 'world'}.${game.user?.id || 'user'}`;
+      let done = false;
+      try { done = localStorage.getItem(key) === '1'; } catch { /* storage blocked: behave as the first time */ }
+      if (done) return;
       if (!game.settings.get('core', 'notesDisplayToggle')) {
         game.settings.set('core', 'notesDisplayToggle', true);
       }
+      try { localStorage.setItem(key, '1'); } catch { /* storage blocked */ }
     } catch (err) {
       log.debug(`terminalPinsAutoShow skipped: ${err.message}`);
     }

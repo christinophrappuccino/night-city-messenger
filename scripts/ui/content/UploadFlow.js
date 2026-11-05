@@ -16,10 +16,12 @@
  * @module night-city-messenger
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, stripMacroRefs, userOwnsActor } from '../../utils/helpers.js';
+import { userCanReachItem } from '../../utils/shardAccess.js';
 import { runSecurityConsole } from './SecurityConsole.js';
-import { canPersistContent, _applyNativeEffect, applyUploadRun, pickHostFiles, TARGETED_VERBS } from './SiphonFlow.js';
+import { canPersistContent, _applyNativeEffect, applyUploadRun, pickHostFiles, TARGETED_VERBS, programMacroId } from './SiphonFlow.js';
 
 const DEFAULT_UPLOAD_SKILL = 'Interface';
 const DEFAULT_UPLOAD_DV = 9;
@@ -97,9 +99,9 @@ function _nowIso() {
 export async function runUpload({ actor, program, targetItem, accountId = null, host = null }) {
   const p = program || {};
   const term = game.nightcity?.terminalService;
-  if (!term?.isTerminal?.(targetItem)) { ui.notifications.warn('NCM | You can only upload to a terminal you are logged into.'); return null; }
+  if (!term?.isTerminal?.(targetItem)) { ncmNotify.warn('NCM | You can only upload to a terminal you are logged into.'); return null; }
   if (!canPersistContent()) return null;                    // the install relays — needs a GM online
-  if (!actor) { ui.notifications.warn('NCM | No operator assigned to run the upload.'); return null; }
+  if (!actor) { ncmNotify.warn('NCM | No operator assigned to run the upload.'); return null; }
 
   const skill = p.uploadSkill || DEFAULT_UPLOAD_SKILL;
   const dv = Number(p.uploadDV) || DEFAULT_UPLOAD_DV;
@@ -168,7 +170,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
   // REJECTED — nothing installs, so there's nothing for the GM to fire later.
   // (The console already played the fail sound.)
   if (outcome === 'rejected') {
-    ui.notifications.warn(`NCM | ${targetItem.name} refused ${name} — the ${isExecute ? 'push' : 'forge'} was too far off${res.adjudicated ? '' : ` (missed DV ${dv} by ${Math.abs(margin)})`}.`);
+    ncmNotify.warn(`NCM | ${targetItem.name} refused ${name} — the ${isExecute ? 'push' : 'forge'} was too far off${res.adjudicated ? '' : ` (missed DV ${dv} by ${Math.abs(margin)})`}.`);
     return { success: false, outcome, forgeQuality };
   }
 
@@ -185,15 +187,15 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     // A verb that changes the box is the GM's to write: a player's client hands it over.
     const WRITES = ['icebreaker', 'wipe', 'corrupt', 'forgeAccount', 'adjudicate'];
     if (WRITES.includes(p.effectType) && !isGM()) {
-      game.nightcity?.socketManager?.emit(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, { kind: 'uploadRun', itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', userId: game.user.id });
+      game.nightcity?.socketManager?.emit(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, { kind: 'uploadRun', itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', source: p.source || null, userId: game.user.id });
       if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'upload', source: name, hostItem: targetItem, severity: 'hostile' });
-      ui.notifications.info(`NCM | ${name} sent to ${targetItem.name}…`);
+      ncmNotify.info(`NCM | ${name} sent to ${targetItem.name}…`);
       return { success: true, outcome, ran: true, report: '' };
     }
     let report = '';
     try {
       report = WRITES.includes(p.effectType)
-        ? await applyUploadRun({ itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', userId: game.user.id })
+        ? await applyUploadRun({ itemUuid: targetItem.uuid, effectType: p.effectType, params, actorId: actor.id, name, description: p.programDescription || '', macroId: p.macroId || '', source: p.source || null, userId: game.user.id })
         : await _applyNativeEffect(p.effectType, { hostItem: targetItem, page: null, actor, cd: { effect: { type: p.effectType, params } } });
     }
     catch (e) { log.warn('Upload run-effect failed', e); }
@@ -206,7 +208,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
       });
     } catch (e) { /* whisper is a bonus */ }
     if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'analyze', source: name, hostItem: targetItem, severity: 'minor' });
-    ui.notifications.info(`NCM | ${name} — ${result}`);
+    ncmNotify.info(`NCM | ${name} — ${result}`);
     return { success: true, outcome, ran: true, report: result };
   }
 
@@ -224,6 +226,8 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     // Re-uploading the same program at the same mailbox overwrites that plant
     // rather than stacking another armed copy (see residentSlotKey).
     slotKey: residentSlotKey({ effectType: p.effectType || 'plant', accountId: tgtAcct, name }),
+    // The program's shard entry, so the GM can re-read a linked macro itself (SEC-02).
+    source: p.source || null,
   };
 
   // Install — GM direct; a player relays (terminalState is GM-owned).
@@ -239,7 +243,7 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
   // rule; this used to double-play hack-success/hack-fail on top of the console).
   if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'upload', source: name, hostItem: targetItem, severity: 'hostile' });
   const sloppyTail = isExecute ? ' — but it\'s glitchy; a sweep will flag it.' : ' — but the forge is sloppy; a scan will flag it.';
-  ui.notifications.info(`NCM | ${name} ${isExecute ? 'installed on' : 'uploaded to'} ${targetItem.name}${outcome === 'clean' ? '.' : sloppyTail}`);
+  ncmNotify.info(`NCM | ${name} ${isExecute ? 'installed on' : 'uploaded to'} ${targetItem.name}${outcome === 'clean' ? '.' : sloppyTail}`);
   return { success: true, outcome, forgeQuality };
 }
 
@@ -249,18 +253,67 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
  *  · defuse — a player's SYSTEM SWEEP defused a resident (state:'defused').
  * Both write the GM-owned terminalState.
  */
-export async function handleResidentRequest(data) {
+export async function handleResidentRequest(data, senderId = null) {
   if (!isGM()) return;
   try {
     const item = data?.itemUuid ? fromUuidSync(data.itemUuid) : null;
     const term = game.nightcity?.terminalService;
     if (!item || !term) throw new Error('Terminal/service not found');
     if (!item.getFlag(MODULE_ID, 'isTerminal')) throw new Error('Not a terminal');
+    // The sender must be able to reach this terminal at all (audit SEC-06).
+    if (!userCanReachItem(senderId, item, 'terminal')) throw new Error('refused: the sender has no way into this terminal');
     if (data.op === 'defuse') {
       if (!data.residentId) throw new Error('No resident id to defuse');
+      const armed = term.getResidents(item).some((r) => r.id === data.residentId && r.state === 'armed');
+      if (!armed) throw new Error('refused: no armed program with that id');
       await term.updateResident(item, data.residentId, { state: 'defused' });
       return;
     }
-    await term.installResident(item, data.resident || {});
-  } catch (err) { log.error(`Resident relay failed: ${err.message}`); }
+    const resident = sanitizeResidentRequest(data.resident, senderId, item, term);
+    if (!resident.ok) throw new Error(`refused: ${resident.why}`);
+    // A player's resident never names a macro (SEC-02): its macro links were
+    // dropped above; for a custom routine the link is read from the program's own
+    // shard entry, which only the GM's tools write.
+    if (resident.value.effectType === 'adjudicate' && resident.value.source) {
+      const macroId = await programMacroId(resident.value.source);
+      if (macroId) resident.value.params = { ...(resident.value.params || {}), macroId };
+    }
+    await term.installResident(item, resident.value);
+  } catch (err) { log.warn(`Resident relay: ${err.message}`); }
+}
+
+/** Programs a player's upload may leave behind (the triggered verbs a player can author). */
+export const PLAYER_RESIDENT_VERBS = Object.freeze(['plant', 'keylog', 'forgeAccount', 'deployICE', 'adjudicate']);
+const TRIGGER_KINDS = ['onLogin', 'onDate', 'onAction', 'onHeat'];
+
+/**
+ * A relayed resident, rebuilt from what may be in one (audit SEC-06). The planter is the
+ * sender's own character; the verb is one a player can author; the trigger kind is known and
+ * any account it names is on this terminal; the stealth DV and forge quality stay in their
+ * range; macro links are dropped (SEC-02). The GM's installer stamps id and state itself.
+ * @returns {{ok:true, value:object}|{ok:false, why:string}}
+ */
+export function sanitizeResidentRequest(raw, senderId, item, term) {
+  const r = stripMacroRefs(raw && typeof raw === 'object' ? raw : {});
+  const prov = r.provenance && typeof r.provenance === 'object' ? r.provenance : {};
+  if (!prov.plantedBy || !userOwnsActor(senderId, prov.plantedBy)) return { ok: false, why: 'the planter must be the sender\'s own character' };
+  const effectType = String(r.effectType || 'plant');
+  if (!PLAYER_RESIDENT_VERBS.includes(effectType)) return { ok: false, why: `"${effectType}" is not a program a player can leave behind` };
+  const known = new Set((term.getConfig(item).accounts || []).map((a) => a.id));
+  const trigger = r.trigger && typeof r.trigger === 'object' ? { ...r.trigger } : { kind: 'onLogin' };
+  if (!TRIGGER_KINDS.includes(trigger.kind)) return { ok: false, why: `unknown trigger "${trigger.kind}"` };
+  if (trigger.accountId && !known.has(trigger.accountId)) return { ok: false, why: 'the trigger names an account this terminal does not have' };
+  const params = r.params && typeof r.params === 'object' ? { ...r.params } : {};
+  if (params.accountId && !known.has(params.accountId)) return { ok: false, why: 'the program targets an account this terminal does not have' };
+  const clamp = (v, lo, hi, d) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Number(v))) : d);
+  return {
+    ok: true,
+    value: {
+      effectType, params, trigger,
+      provenance: { plantedBy: prov.plantedBy, plantedAt: String(prov.plantedAt || ''), forgeQuality: clamp(prov.forgeQuality, 0, 100, 50), sourceLabel: String(prov.sourceLabel || 'uploaded program').slice(0, 80) },
+      stealthDV: clamp(r.stealthDV, 0, 30, 12),
+      slotKey: typeof r.slotKey === 'string' ? r.slotKey.slice(0, 200) : undefined,
+      source: r.source && typeof r.source === 'object' ? { itemUuid: String(r.source.itemUuid || ''), entryId: String(r.source.entryId || '') } : null,
+    },
+  };
 }

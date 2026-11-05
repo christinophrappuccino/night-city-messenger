@@ -49,7 +49,7 @@ ok(/case 'junkOn': case 'junkOff'/.test(mt) && /canMarkJunk:/.test(mt), 'All mai
 ok(/!e\.fromPlayer/.test(mt.slice(mt.indexOf('canMarkJunk'))), "a player's own address can't be marked junk");
 const tpl = read('templates/admin-panel/tab-messages.hbs');
 ok(/data-op="junkOn"/.test(tpl) && /data-op="junkOff"/.test(tpl) && /ncm-msg2-note--junk/.test(tpl), 'template: the note and both switches');
-ok(/\{\{#if tip\}\} data-tooltip="\{\{tip\}\}"/.test(tpl), 'flags carry the reason as a tooltip');
+ok(/\{\{#if tip\}\} data-tooltip="\{\{ncm-tip tip\}\}"/.test(tpl), 'flags carry the reason as a tooltip');
 ok(/ncm-msg2-note--junk/.test(read('styles/components/admin-panel/tab-messages.css')), 'the note is styled');
 
 console.log(`\ntest-junk-senders: ${pass} passed, ${fail} failed`);

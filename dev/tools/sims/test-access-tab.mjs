@@ -149,6 +149,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!Handlebars) { fail++; console.error('FAIL: could not load Handlebars — render checks did not run'); }
 else {
   const { registerTagHueHelper } = await import(new URL('../../../scripts/utils/tagHue.js', import.meta.url)); registerTagHueHelper(Handlebars);
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(Handlebars); }
   Handlebars.registerHelper('eq', (a, b) => String(a) === String(b));
   const render = Handlebars.compile(tpl);
   tab._view = 'map'; tab._stat = 'all'; tab._scene = 's1'; tab._q = '';

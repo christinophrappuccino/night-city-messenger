@@ -25,6 +25,7 @@
  * tab's context into a single object.
  */
 
+import { ncmNotify } from '../../../utils/notify.js';
 import { showAccessMenu } from '../../../integrations/AccessPoints.js';
 import { BaseTab } from '../BaseTab.js';
 import { MODULE_ID, TERMINAL_PRESETS, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_SOUND_SETS } from '../../../utils/constants.js';
@@ -1174,7 +1175,7 @@ export class TerminalsTab extends BaseTab {
     });
     if (!ok) return;
     await this.terminalService.relock(item);
-    ui.notifications.info(`"${item.name}" reset — all sessions cleared.`);
+    ncmNotify.info(`"${item.name}" reset — all sessions cleared.`);
     this.app.render(false);
   }
 
@@ -1195,7 +1196,7 @@ export class TerminalsTab extends BaseTab {
     const cfg = this.terminalService.getConfig(item);
     const payload = { ncmTerminal: 1, name: item.name, exportedAt: new Date().toISOString(), config: cfg };
     this._download(payload, `ncm-terminal-${slug(item.name)}.json`);
-    ui.notifications.info(`Exported "${item.name}" config.`);
+    ncmNotify.info(`Exported "${item.name}" config.`);
   }
 
   /** Drop an access pin for this terminal at the centre of the GM's view. */
@@ -1203,7 +1204,7 @@ export class TerminalsTab extends BaseTab {
     const item = this._resolve(target);
     if (!item) return;
     const pins = game.nightcity?.terminalScenePins;
-    if (!pins?.placeAtViewCenter) return ui.notifications.warn('Scene pins are not available.');
+    if (!pins?.placeAtViewCenter) return ncmNotify.warn('Scene pins are not available.');
     await pins.placeAtViewCenter(item);
     this.app.render(false);
   }
@@ -1236,7 +1237,7 @@ export class TerminalsTab extends BaseTab {
     if (!t) return;
     try { await this.terminalService.logout(t.item, t.actorId, true); } catch (e) { console.error('NCM | admin logout', e); }
     game.nightcity?.securityService?.kickSession?.(t.actorId, [t.key], 'LOGGED OUT BY THE SYSTEM ADMINISTRATOR.');
-    ui.notifications.info(`${t.actor?.name || 'They'} logged out of ${t.account?.username || 'the account'}.`);
+    ncmNotify.info(`${t.actor?.name || 'They'} logged out of ${t.account?.username || 'the account'}.`);
     this.app.render(false);
   }
 
@@ -1249,7 +1250,7 @@ export class TerminalsTab extends BaseTab {
     const t = this._partyTarget(target);
     if (!t) return;
     await this._clearOne(t);
-    ui.notifications.info(`${t.actor?.name || 'They'} can try ${t.account?.username || 'the account'} again.`);
+    ncmNotify.info(`${t.actor?.name || 'They'} can try ${t.account?.username || 'the account'} again.`);
     this.app.render(false);
   }
 
@@ -1262,7 +1263,7 @@ export class TerminalsTab extends BaseTab {
     if (!item || !accountId || !ids.length) return;
     const account = (this.terminalService.getConfig(item).accounts || []).find((a) => a.id === accountId) || null;
     for (const actorId of ids) await this._clearOne({ item, account, accountId, actorId, key: `${item.id}::${accountId}`, actor: game.actors?.get(actorId) || null });
-    ui.notifications.info(`Tries reset on ${account?.username || 'the account'}.`);
+    ncmNotify.info(`Tries reset on ${account?.username || 'the account'}.`);
     this.app.render(false);
   }
 
@@ -1300,28 +1301,28 @@ export class TerminalsTab extends BaseTab {
 
   async onBulkReset() {
     const items = this._items(this._picked);
-    if (!items.length) return ui.notifications.warn('Tick some terminals first.');
+    if (!items.length) return ncmNotify.warn('Tick some terminals first.');
     const ok = await adminConfirm({ title: 'Reset Terminals', content: `<p>Reset <strong>${items.length}</strong> terminal${items.length === 1 ? '' : 's'}? Everyone is logged out; lockouts, GM bypass and uplinks return to defaults. Config, accounts and messages are untouched.</p>` });
     if (!ok) return;
     for (const it of items) { try { await this.terminalService.relock(it); } catch (e) { console.error('NCM | bulk reset', e); } }
-    ui.notifications.info(`Reset ${items.length} terminal${items.length === 1 ? '' : 's'}.`);
+    ncmNotify.info(`Reset ${items.length} terminal${items.length === 1 ? '' : 's'}.`);
     this.app.render(false);
   }
 
   onBulkExport() {
     const items = this._items(this._picked);
-    if (!items.length) return ui.notifications.warn('Tick some terminals first.');
+    if (!items.length) return ncmNotify.warn('Tick some terminals first.');
     const payload = {
       ncmTerminals: 1, exportedAt: new Date().toISOString(),
       terminals: items.map((it) => ({ ncmTerminal: 1, name: it.name, config: this.terminalService.getConfig(it) })),
     };
     this._download(payload, `ncm-terminals-${items.length}.json`);
-    ui.notifications.info(`Exported ${items.length} terminal${items.length === 1 ? '' : 's'}.`);
+    ncmNotify.info(`Exported ${items.length} terminal${items.length === 1 ? '' : 's'}.`);
   }
 
   async onBulkRemove() {
     const items = this._items(this._picked);
-    if (!items.length) return ui.notifications.warn('Tick some terminals first.');
+    if (!items.length) return ncmNotify.warn('Tick some terminals first.');
     const ok = await adminConfirm({ title: 'Remove Terminal Data', content: `<p>Revert <strong>${items.length}</strong> terminal${items.length === 1 ? '' : 's'} to plain items? Their accounts and config are lost (message journals are kept).</p><p>${items.map((i) => esc(i.name)).join(', ')}</p>` });
     if (!ok) return;
     for (const it of items) { try { await this.terminalService.removeTerminal(it); } catch (e) { console.error('NCM | bulk remove', e); } }
@@ -1334,7 +1335,7 @@ export class TerminalsTab extends BaseTab {
     const svc = this.terminalService;
     const candidates = game.items.filter(i =>
       !i.getFlag(MODULE_ID, 'isTerminal') && !i.getFlag(MODULE_ID, 'isDataShard'));
-    if (!candidates.length) return ui.notifications.warn('No eligible world items to convert.');
+    if (!candidates.length) return ncmNotify.warn('No eligible world items to convert.');
     const pick = await showNamePicker({
       title: 'Import Item → Terminal',
       hint: 'Convert which world item into a Terminal?',
@@ -1345,8 +1346,8 @@ export class TerminalsTab extends BaseTab {
     const item = game.items.get(pick.id);
     if (!item) return;
     const res = await svc.convertToTerminal(item);
-    if (!res?.success) return ui.notifications.error(res?.error || 'Conversion failed.');
-    ui.notifications.info(`"${item.name}" is now a Terminal.`);
+    if (!res?.success) return ncmNotify.error(res?.error || 'Conversion failed.');
+    ncmNotify.info(`"${item.name}" is now a Terminal.`);
     this._selectedId = item.id;
     this._filter = 'all';
     this._scrollToSel = true;
@@ -1394,10 +1395,10 @@ export class TerminalsTab extends BaseTab {
     let item = null;
     try { item = await Item.create({ name, type, img: 'icons/svg/computer.svg' }); }
     catch (err) { log.warn(`Blank terminal: Item.create failed — ${err?.message || err}`); }
-    if (!item) return ui.notifications.error('NCM | Could not create the item.');
+    if (!item) return ncmNotify.error('NCM | Could not create the item.');
     const res = await this.terminalService.convertToTerminal(item);
-    if (!res?.success) return ui.notifications.error(res?.error || 'Conversion failed.');
-    ui.notifications.info(`NCM | Created "${item.name}" — configure it now.`);
+    if (!res?.success) return ncmNotify.error(res?.error || 'Conversion failed.');
+    ncmNotify.info(`NCM | Created "${item.name}" — configure it now.`);
     this._selectedId = item.id; this._filter = 'all'; this._scrollToSel = true;
     const { TerminalConfigApp } = await import('../../Terminal/TerminalConfigApp.js');
     new TerminalConfigApp({ item }).render(true);
@@ -1423,7 +1424,7 @@ export class TerminalsTab extends BaseTab {
       const file = input.files?.[0];
       if (!file) return;
       const { terminals, error } = TerminalsTab.parseTerminalImport(await file.text());
-      if (error) return ui.notifications.warn(`NCM | ${error}`);
+      if (error) return ncmNotify.warn(`NCM | ${error}`);
       const ok = await adminConfirm({ title: 'Import Terminals', content: `<p>Create <strong>${terminals.length}</strong> new terminal${terminals.length > 1 ? 's' : ''} from that file? Nothing existing is changed; sessions and lockouts start fresh.</p>` });
       if (!ok) return;
       const types = (game.documentTypes?.Item || game.system?.documentTypes?.Item || []).filter(t => t !== 'base');
@@ -1436,7 +1437,7 @@ export class TerminalsTab extends BaseTab {
           if (res?.success) { created++; last = item.id; } else failed++;
         } catch (err) { failed++; log.warn(`Terminal import failed: ${err?.message || err}`); }
       }
-      ui.notifications.info(`NCM | Imported ${created} terminal${created !== 1 ? 's' : ''}${failed ? ` · ${failed} failed` : ''}.`);
+      ncmNotify.info(`NCM | Imported ${created} terminal${created !== 1 ? 's' : ''}${failed ? ` · ${failed} failed` : ''}.`);
       if (last) { this._selectedId = last; this._filter = 'all'; this._scrollToSel = true; }
       ui.items?.render();
       this.app.render(false);

@@ -25,13 +25,17 @@
  *   the apps/desktop metaphor are later phases (see dev/design/TERMINAL-EXPANSION.md).
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, terminalReachRule } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, generateId, formatCyberDate, terminalReachRule, runGmMacro, userOwnsActor } from '../utils/helpers.js';
+import { userCanReachItem } from '../utils/shardAccess.js';
+import { resolveEncoderConfig, isEligibleBlank } from '../ui/content/EncoderModel.js';
 import { MessageRepository } from '../data/MessageRepository.js';
 import { suggestFilename } from '../ui/content/ContentRenderers.js';
-import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets } from '../utils/terminalAdmin.js';
+import { adminViewVerdict as _adminVerdict, adminViewTargets as _adminTargets, resolveAdminAccess, adminReadOnlyBlocks } from '../utils/terminalAdmin.js';
 import { listNodes, nodeStateAt } from '../utils/networkNodes.js';
 import { SHARED_SCOPE, sanitizeFilesConfig, sanitizeFolder, normalizeFolderPath, visibleEntries, buildTree, canOpenFolder, rewritePlan } from '../utils/terminalFiles.js';
+import { serialize, serializeMethods, itemKey } from '../utils/serialize.js';
 
 export class TerminalService {
 
@@ -1807,6 +1811,113 @@ export class TerminalService {
     return list.slice(-TerminalService.LOGIN_LOG_CAP);
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  RELAY CHECKS — what a player's client may ask the GM to do (audit SEC-06, batch A3c)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Is one of the sender's characters in `accountId` on this terminal — logged into it, or
+   * logged into an admin account that may view it? Every login (open accounts too) writes
+   * the session record, so this is what the machine itself knows.
+   * @returns {{actorId:string, via:string|null}|null} `via` = the admin account, when viewing
+   */
+  senderAccountAccess(item, senderId, accountId) {
+    if (!senderId || !accountId || !this.getAccount(item, accountId)) return null;
+    const sessions = this.getState(item).sessions || {};
+    for (const [actorId, s] of Object.entries(sessions)) {
+      if (!userOwnsActor(senderId, actorId)) continue;
+      const accounts = Array.isArray(s?.loggedInAccounts) ? s.loggedInAccounts : [];
+      if (accounts.includes(accountId)) return { actorId, via: null };
+      for (const viewer of accounts) {
+        if (viewer !== accountId && this.adminViewVerdict(item, viewer, accountId)?.ok) return { actorId, via: viewer };
+      }
+    }
+    return null;
+  }
+
+  /** An account's files as a PLAYER sees them (folder gates applied even when the GM asks). */
+  accountMessagesFor(item, accountId, gateAccountId = null) {
+    const list = this.getAccountMessages(item, accountId, { enforceGates: false });
+    return visibleEntries(list, this.getFileFolders(item), this.getAccount(item, gateAccountId || accountId), { isGM: false });
+  }
+
+  /**
+   * Check a relayed exfil request against the machine: the sender's character must be in
+   * the account; the files must be that account's, visible to it; the entry's own policy
+   * must allow the action; an inbox copy or a frame goes to a character the sender owns;
+   * a burn goes onto an item the sender carries that can take it; a forward is sent as
+   * the sender's character (rebuilt here, never taken from the request).
+   * @returns {{ok:true, item:Item, ids:string[], forwarder?:object, target?:Item}|{ok:false, why:string}}
+   */
+  checkExfilRequest(data = {}, senderId = null) {
+    const fail = (why) => ({ ok: false, why });
+    const KEY = { inbox: 'agent', saveFrame: 'saveFrame', shard: 'shard', forward: 'forward', wipe: 'wipe' };
+    const key = KEY[data.dest || 'inbox'];
+    if (!key) return fail(`unknown exfil "${data.dest}"`);
+    const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
+    if (!item || !this.isTerminal(item)) return fail('not a terminal');
+    const access = this.senderAccountAccess(item, senderId, data.accountId);
+    if (!access) return fail('the sender is not in that account');
+    if (access.via && resolveAdminAccess(this.getConfig(item)).rights === 'read' && adminReadOnlyBlocks(key)) return fail('read-only admin access');
+    const files = new Map(this.accountMessagesFor(item, data.accountId, access.via).map((m) => [m.messageId, m]));
+    const ids = [...new Set((Array.isArray(data.messageIds) ? data.messageIds : []).map(String))].filter((id) => files.has(id));
+    if (!ids.length) return fail('none of those files are in that account');
+    for (const id of ids) {
+      if (!this.resolveEntryExfil(item, files.get(id))[key]?.allow) return fail(`"${key}" is not allowed on that file`);
+    }
+    const out = { ok: true, item, ids };
+    if (key === 'agent' || key === 'saveFrame') {
+      if (!userOwnsActor(senderId, data.targetActorId)) return fail('a copy can only go to the sender\'s own character');
+    } else if (key === 'forward') {
+      const to = game.actors?.get(data.targetActorId);
+      if (!to || !(to.hasPlayerOwner || to.getFlag?.(MODULE_ID, 'email'))) return fail('no such recipient');
+      const me = game.actors?.get(access.actorId);
+      out.forwarder = { email: me?.getFlag?.(MODULE_ID, 'email') || '', actorId: me?.id || '' };
+    } else if (key === 'shard') {
+      let target = game.items?.get(data.targetItemId) || null;
+      if (!target) for (const a of game.actors ?? []) { target = a.items?.get?.(data.targetItemId) || null; if (target) break; }
+      if (!target || !target.parent || !userOwnsActor(senderId, target.parent)) return fail('a burn goes onto something the sender carries');
+      const enc = resolveEncoderConfig(game.nightcity?.settingsManager?.getEncoderConfigRaw?.() ?? {});
+      if (!target.getFlag?.(MODULE_ID, 'isDataShard') && !isEligibleBlank(enc, { name: target.name, type: target.type, tierId: target.getFlag?.(MODULE_ID, 'blankTier') || '' })) return fail(`"${target.name}" cannot take a file`);
+      out.target = target;
+    }
+    return out;
+  }
+
+  /** Check a relayed uplink switch: switching allowed on this box, and the sender can reach it. */
+  checkUplinkRequest(data = {}, senderId = null) {
+    const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
+    if (!item || !this.isTerminal(item)) return { ok: false, why: 'not a terminal' };
+    if (!this.getConfig(item).connection?.allowPlayerSwitching) return { ok: false, why: 'player switching is off for this terminal' };
+    if (!userCanReachItem(senderId, item, 'terminal')) return { ok: false, why: 'the sender has no way into this terminal' };
+    return { ok: true, item };
+  }
+
+  /**
+   * Check a relayed session write: the sender's own character, a terminal they can reach,
+   * and only session fields naming accounts this terminal has. (Whether a login passed is
+   * reported by the client — the plan's gameplay boundary.)
+   * @returns {{ok:true, item:Item, updates:object}|{ok:false, why:string}}
+   */
+  checkSessionRequest(data = {}, senderId = null) {
+    const item = data.itemUuid ? fromUuidSync(data.itemUuid) : null;
+    if (!item || !this.isTerminal(item)) return { ok: false, why: 'not a terminal' };
+    if (!userOwnsActor(senderId, data.actorId)) return { ok: false, why: 'a session for a character the sender does not own' };
+    if (!userCanReachItem(senderId, item, 'terminal')) return { ok: false, why: 'the sender has no way into this terminal' };
+    const known = new Set(this.getAccounts(item, { includeHidden: true }).map((a) => a.id));
+    const u = data.updates && typeof data.updates === 'object' ? data.updates : {};
+    const updates = {};
+    if ('loggedInAccounts' in u) updates.loggedInAccounts = [...new Set((Array.isArray(u.loggedInAccounts) ? u.loggedInAccounts : []).map(String))].filter((id) => known.has(id));
+    if ('activeAccountId' in u) {
+      const id = u.activeAccountId === null ? null : String(u.activeAccountId);
+      const inNow = updates.loggedInAccounts ?? this.getSession(item, data.actorId).loggedInAccounts;
+      if (id !== null && !(known.has(id) && inNow.includes(id))) return { ok: false, why: 'an active account that is not logged in' };
+      updates.activeAccountId = id;
+    }
+    if ('firstAccessedAt' in u && typeof u.firstAccessedAt === 'string' && u.firstAccessedAt.length <= 40) updates.firstAccessedAt = u.firstAccessedAt;
+    return { ok: true, item, updates };
+  }
+
   /**
    * GM-side landing point for the player session relay (login / account
    * switch / logout state writes — players can't update the world item).
@@ -1831,11 +1942,10 @@ export class TerminalService {
       });
       return;
     }
-    // One at a time: each write reads the whole state and writes it back, so two players logging in together
-    // could otherwise lose one's session and footprint.
-    const run = () => this._writeSession(item, actorId, updates);
-    this._sessionWrites = (this._sessionWrites || Promise.resolve()).then(run, run);
-    return this._sessionWrites;
+    // One at a time PER MACHINE, in the same queue as every other terminalState writer (B4 / INT-02):
+    // each write reads the whole state and writes it back, so a login beside a resident install
+    // could otherwise lose one or the other.
+    return serialize(itemKey('term', item), () => this._writeSession(item, actorId, updates));
   }
 
   /** @private */
@@ -1994,7 +2104,7 @@ export class TerminalService {
 
       if (mode === 'manual') {
         // Never prompt: it stays armed until the GM fires it from Admin → Security.
-        ui.notifications.info(`NCM | "${label}" triggered on ${item.name} — armed and waiting (fire it from Admin → Security).`);
+        ncmNotify.info(`NCM | "${label}" triggered on ${item.name} — armed and waiting (fire it from Admin → Security).`);
         return;
       }
       if (mode === 'auto') {
@@ -2017,7 +2127,7 @@ export class TerminalService {
       if (choice === 'fire') await this.fireResident(item, resident, { accountId, actorId });
       else if (choice === 'defuse') {
         await this.updateResident(item, resident.id, { state: 'defused' });
-        ui.notifications.info(`NCM | Resident "${label}" defused.`);
+        ncmNotify.info(`NCM | Resident "${label}" defused.`);
       } else {
         // Later → snooze so a 60s reaper (or a re-login) doesn't re-prompt at once.
         await this.updateResident(item, resident.id, { snoozeUntil: this._nowMs() + 10 * 60 * 1000 });
@@ -2136,10 +2246,8 @@ export class TerminalService {
 
       case 'adjudicate': {
         // A custom routine: the GM's own words, the GM's macro. The fire report carries the words.
-        if (params.macroId) {
-          try { await game.macros?.get(params.macroId)?.execute?.({ item }); }
-          catch (err) { log.error(`Resident macro failed: ${err.message}`); }
-        }
+        // Only a macro a GM wrote (SEC-02) — runGmMacro reports a refusal to the GM.
+        if (params.macroId) await runGmMacro(params.macroId, { item }, `Resident "${params.name || 'custom routine'}"`);
         return `${params.name || 'A custom routine'} fired — ${params.description || 'GM to adjudicate'}`;
       }
 
@@ -2248,10 +2356,10 @@ export class TerminalService {
    * Honors the time provider, so a paused/rewound clock is respected.
    */
   async reapForgedAccounts() {
-    if (!isGM()) return;
+    if (!isPrimaryGM()) return;   // one GM reaps (INT-01)
     const now = this._nowMs();
-    for (const item of game.items) {
-      if (!this.isTerminal(item)) continue;
+    // every terminal, carried ones too (audit DATA-10: a backdoor on a terminal in someone's gear never closed)
+    for (const item of this.collectTerminals()) {
       const accts = this.getConfig(item).accounts || [];
       const expired = accts.filter(a => {
         const at = a?.forged?.expiresAt;
@@ -2274,7 +2382,7 @@ export class TerminalService {
   /** @private GM-only toast + whisper (the durable trace log lands in thread 4). */
   _residentGmAlert(msg) {
     try {
-      ui.notifications.info(`NCM | ${msg}`);
+      ncmNotify.info(`NCM | ${msg}`);
       const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
       if (gmIds.length) {
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2294,10 +2402,10 @@ export class TerminalService {
    * doesn't re-prompt).
    */
   async reapResidents() {
-    if (!isGM()) return;
+    if (!isPrimaryGM()) return;   // one GM fires due residents (two GMs fired each twice — INT-01)
     const now = this._nowMs();
-    for (const item of game.items) {
-      if (!this.isTerminal(item)) continue;
+    // every terminal, carried ones too (audit DATA-10)
+    for (const item of this.collectTerminals()) {
       const due = this.getResidents(item).filter(r =>
         r.state === 'armed' && r.trigger?.kind === 'onDate' &&
         Number(r.trigger.atMs) && Number(r.trigger.atMs) <= now &&
@@ -2444,3 +2552,9 @@ export class TerminalService {
     }
   }
 }
+
+// Every other whole-terminalState writer joins the machine's queue (B4 / INT-02): a relayed install beside
+// an uplink switch or a resident firing used to revert one another — plants vanished, fired ones re-armed.
+// None of these awaits another of them, so they cannot wait on themselves.
+serializeMethods(TerminalService.prototype, ['setUplink', 'forceUnlock', 'relock', 'installResident', 'updateResident', 'removeResident'],
+  (args) => itemKey('term', args[0]));

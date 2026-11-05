@@ -7,6 +7,7 @@
  *   mount() puts everything back. Design dev/design/CONVERSATIONS.md, mock dev/mockups/conversations-mock.html.
  */
 
+import { ncmNotify, tipText, cssUrl } from '../../utils/notify.js';
 import { MODULE_ID, CHAT_EMOJI } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters, isHiddenCharacter, isPersonActor } from '../../utils/helpers.js';
 import { identityRole } from '../../utils/identities.js';
@@ -21,13 +22,13 @@ const HUES = ['#19f3f7', '#ff5fa2', '#5ad1ff', '#b4e05a', '#ffb347', '#c9a0ff', 
 const hueOf = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return HUES[h % HUES.length]; };
 const svc = () => game.nightcity?.conversationService;
 const btn = (label, icon, attrs = '', cls = '') => `<button type="button" class="ncm-conv__btn ${cls}" ${attrs}>${icon ? `<i class="fas ${icon}"></i>` : ''}${label ? ` ${esc(label)}` : ''}</button>`;
-const ic = (icon, tip, attrs = '', cls = '') => `<button type="button" class="ncm-conv__icon ${cls}" aria-label="${esc(tip)}" data-tooltip="${esc(tip)}" ${attrs}><i class="fas ${icon}"></i></button>`;
+const ic = (icon, tip, attrs = '', cls = '') => `<button type="button" class="ncm-conv__icon ${cls}" aria-label="${esc(tip)}" data-tooltip="${tipText(tip)}" ${attrs}><i class="fas ${icon}"></i></button>`;
 const dayOf = (at) => { try { return formatCyberDate(at, { dateOnly: true }); } catch { return ''; } };
 const timeOf = (at) => { try { return formatCyberDate(at, { timeOnly: true }); } catch { return ''; } };
 
 export function avatar(person) {
   const name = person?.name || '?';
-  return person?.img ? `<div class="ncm-conv__av has-img" style="--c:${hueOf(name)};background-image:url('${esc(person.img)}')" role="img" aria-label="${esc(name)}"></div>` : `<div class="ncm-conv__av" style="--c:${hueOf(name)}">${esc(name[0].toUpperCase())}</div>`;
+  return person?.img ? `<div class="ncm-conv__av has-img" style="--c:${hueOf(name)};background-image:url('${esc(cssUrl(person.img))}')" role="img" aria-label="${esc(name)}"></div>` : `<div class="ncm-conv__av" style="--c:${hueOf(name)}">${esc(name[0].toUpperCase())}</div>`;
 }
 
 /** Who a character can write to: their own contacts, minus locked and one-way. The GM: the directory and the players' characters. */
@@ -223,7 +224,7 @@ export class ConversationPane {
       const bell = svc().gmWatches(c);
       const tap = this._tapText(c);
       return `<div class="ncm-conv__head"><div class="ncm-conv__titles"><div class="ncm-conv__title">${title}</div><div class="ncm-conv__sub"><div class="ncm-conv__faces">${faces}</div><span>${esc(names)}</span></div></div>
-        ${tap ? `<span class="ncm-tagp is-attn" data-tooltip="${esc(tap)}"><i class="fas fa-ear-listen"></i> Tapped</span>` : ''}<span class="ncm-tagp is-secret" data-tooltip="Nobody is told you are reading, and their read state does not change"><i class="fas fa-eye"></i> Watching</span>
+        ${tap ? `<span class="ncm-tagp is-attn" data-tooltip="${tipText(tap)}"><i class="fas fa-ear-listen"></i> Tapped</span>` : ''}<span class="ncm-tagp is-secret" data-tooltip="Nobody is told you are reading, and their read state does not change"><i class="fas fa-eye"></i> Watching</span>
         ${ic(bell ? 'fa-bell' : 'fa-bell-slash', bell ? 'On: this one counts in your NPC conversations toast. Click to stop' : 'Off: this one never tells you anything. Click to count it in your toast', 'data-cv="bell"', bell ? 'is-on' : '')}
         ${btn('Members', 'fa-users', 'data-cv="panel"', this.panel ? 'is-on' : '')}</div>`;
     }
@@ -328,7 +329,7 @@ export class ConversationPane {
     const offline = !this.admin && !game.users?.activeGM ? 'No GM is online. Your lines wait here and send when one connects.' : !this.admin && net?.isDeadZone ? 'No signal here. Your lines wait and send when you have signal.' : '';
     let top = '';
     if (this.gm) {
-      const chips = this._speakers(c).map((m, i) => { const on = m.key === me.key; return `<button type="button" class="ncm-conv__aspick${on ? ' is-on' : ''}" data-cv="as" data-id="${esc(m.key)}" aria-pressed="${on}"${i < 9 ? ` data-tooltip="Alt+${i + 1}"` : ''}>${avatar(svc()._displayOf(m))}${esc(m.name)}</button>`; }).join('');
+      const chips = this._speakers(c).map((m, i) => { const on = m.key === me.key; return `<button type="button" class="ncm-conv__aspick${on ? ' is-on' : ''}" data-cv="as" data-id="${esc(m.key)}" aria-pressed="${on}"${i < 9 ? ` data-tooltip="Alt+${tipText(i + 1)}"` : ''}>${avatar(svc()._displayOf(m))}${esc(m.name)}</button>`; }).join('');
       top = `<div class="ncm-conv__as"><span class="ncm-conv__aslabel">Speaking as</span><span class="ncm-conv__asrow">${chips}${ic('fa-user-plus', 'Bring in another NPC. Everyone sees a line saying they joined', 'data-cv="join"')}</span></div>`;
     } else if (this._isAlias(me)) top = `<div class="ncm-conv__as"><i class="fas fa-mask"></i><span>You are in this as <b class="ncm-conv__asb">${esc(me.name)}</b>. Everyone here only ever sees ${esc(me.name)}.</span></div>`;
     const place = this.gm ? `Write as ${me.name}…  Enter sends` : offline ? 'Write a line, it sends when it can…' : 'Write a line…  Enter sends';
@@ -500,12 +501,12 @@ export class ConversationPane {
       case 'mynum': this.plus = false; this.paint(); return this._shareMine(c, me);
       case 'pick': this.plus = false; this.paint(); return this._shareContact(c, me);
       case 'savecard': return this._saveCard(c, t.dataset.id);
-      case 'add': { const raws = await pickPeople(this.actorId, { gm, title: 'Add who?' }); for (const raw of raws || []) { const r = await svc().add(c.id, me?.key || null, raw); if (!r.ok) ui.notifications?.warn(`NCM | ${r.error}`); } return this.paint(); }
+      case 'add': { const raws = await pickPeople(this.actorId, { gm, title: 'Add who?' }); for (const raw of raws || []) { const r = await svc().add(c.id, me?.key || null, raw); if (!r.ok) ncmNotify.warn(`NCM | ${r.error}`); } return this.paint(); }
       case 'join': {
         const raw = await pickNpc('Join as which NPC?');
         if (!raw) return undefined;
         const r = await svc().add(c.id, null, raw);
-        if (!r.ok) { ui.notifications?.warn(`NCM | ${r.error}`); return this.paint(); }
+        if (!r.ok) { ncmNotify.warn(`NCM | ${r.error}`); return this.paint(); }
         saveRecent(pushRecentNpc(readRecent(), raw));
         const joined = svc().get(c.id)?.members.find((m) => isIn(m) && ((raw.contactId && m.contactId === raw.contactId) || (raw.actorId && m.actorId === raw.actorId)));
         if (joined) this.asKey.set(c.id, joined.key);
@@ -514,20 +515,20 @@ export class ConversationPane {
       case 'remove': {
         const target = c.members.find((m) => m.key === t.dataset.id);
         const ok = await themedConfirm({ title: 'Remove from this conversation', yes: 'Remove', yesIcon: 'fas fa-user-minus', bad: true, content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-user-minus', title: target?.name || 'Them', kind: 'Conversation', lead: '**They keep what they had on screen and get nothing new.** Everyone sees a line saying so.' }) });
-        if (ok) { const r = await svc().remove(c.id, me?.key || null, t.dataset.id); if (!r.ok) ui.notifications?.warn(`NCM | ${r.error}`); }
+        if (ok) { const r = await svc().remove(c.id, me?.key || null, t.dataset.id); if (!r.ok) ncmNotify.warn(`NCM | ${r.error}`); }
         return this.paint();
       }
       case 'leave': {
         const ok = await themedConfirm({ title: 'Leave this conversation', yes: 'Leave', yesIcon: 'fas fa-right-from-bracket', bad: true, content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-right-from-bracket', title: titleFor(c, this._mine), kind: 'Conversation', lead: '**You keep what you can see now and get nothing new.** Everyone sees a line saying you left.' }) });
-        if (ok) { const r = await svc().leave(c.id, me.key); if (!r.ok) ui.notifications?.warn(`NCM | ${r.error}`); this.panel = false; }
+        if (ok) { const r = await svc().leave(c.id, me.key); if (!r.ok) ncmNotify.warn(`NCM | ${r.error}`); this.panel = false; }
         return this.paint();
       }
       case 'rename': {
         const v = await themedPrompt({ title: 'Name this conversation', label: 'Save', content: dialogBodyHtml({ icon: 'fas fa-pen', title: titleFor(c, this._mine), kind: 'Conversation', field: { name: 'ncmConvTitle', label: 'Name', value: c.title, placeholder: 'Blank shows the names' } }), read: (root) => root.querySelector('input')?.value ?? '' });
-        if (v !== null && v !== undefined) { const r = await svc().rename(c.id, me?.key || null, v); if (!r.ok) ui.notifications?.warn(`NCM | ${r.error}`); }
+        if (v !== null && v !== undefined) { const r = await svc().rename(c.id, me?.key || null, v); if (!r.ok) ncmNotify.warn(`NCM | ${r.error}`); }
         return this.paint();
       }
-      case 'rmline': { const r = await svc().removeLine(c.id, t.dataset.id); if (!r.ok) ui.notifications?.warn(`NCM | ${r.error}`); return undefined; }
+      case 'rmline': { const r = await svc().removeLine(c.id, t.dataset.id); if (!r.ok) ncmNotify.warn(`NCM | ${r.error}`); return undefined; }
       case 'delete': {
         const ok = await themedConfirm({ title: 'Delete this conversation', yes: 'Delete', yesIcon: 'fas fa-trash', bad: true, content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-trash', title: titleFor(c), kind: 'Conversation', lead: '**Every line goes, for everyone.** This can\'t be undone.' }) });
         if (ok) await svc().destroy(c.id);
@@ -576,7 +577,7 @@ export class ConversationPane {
     const src = hit.source || {};
     const phone = gm ? gmNumberOf(src) : (game.nightcity?.callService?.numberForContact?.(src) || src.phone || '');
     const email = src.email || '';
-    if (!email && !phone) { ui.notifications?.warn(`NCM | ${hit.name} has no address or number to share.`); return; }
+    if (!email && !phone) { ncmNotify.warn(`NCM | ${hit.name} has no address or number to share.`); return; }
     let what = 'both';
     if (email && phone) {
       what = await themedPrompt({ title: 'What to share', label: 'Share', icon: 'fas fa-share-nodes', content: dialogBodyHtml({ icon: 'fas fa-share-nodes', title: hit.name, kind: 'Share', lead: 'Everyone here can save what you share.', extraHtml: `<label class="ncm-dlgb__field"><span class="ncm-dlgb__fk">Share</span><select><option value="both">Address and number</option><option value="email">Address only</option><option value="number">Number only</option></select></label>` }), read: (root) => root.querySelector('select')?.value });
@@ -584,7 +585,7 @@ export class ConversationPane {
     }
     const card = { name: hit.name, role: src.role || '', portrait: src.portrait || '', contactId: src.masterContactId || (gm ? src.id : '') || '', email: what === 'number' ? '' : email, phone: what === 'email' ? '' : this._fullNumber(phone) };
     const sent = await svc().send(c.id, { asKey: me.key, kind: 'card', card });
-    if (sent && !sent.ok && sent.error) ui.notifications?.warn(`NCM | ${sent.error}`);
+    if (sent && !sent.ok && sent.error) ncmNotify.warn(`NCM | ${sent.error}`);
     this._paintPending();
   }
 
@@ -598,7 +599,7 @@ export class ConversationPane {
     const merged = await game.nightcity?.contactShareService?._mergeExisting?.(actorId, contact);
     if (!merged) {
       const res = await game.nightcity?.contactRepository?.addContact?.(actorId, contact);
-      if (res && res.success === false) { ui.notifications?.warn(`NCM | ${res.error}`); return; }
+      if (res && res.success === false) { ncmNotify.warn(`NCM | ${res.error}`); return; }
     }
     const row = this.host?.querySelector(`[data-line="${CSS.escape(lineId)}"]`);
     if (row) { const tmp = document.createElement('div'); tmp.innerHTML = this._lineHtml(line, null, c); const next = tmp.querySelector('article'); next?.classList.add('is-cont'); if (next) { next.querySelector('.ncm-conv__drop')?.classList.add('is-savednow'); row.querySelector('.ncm-conv__drop')?.replaceWith(next.querySelector('.ncm-conv__drop')); } }
@@ -659,7 +660,7 @@ export function startConversationDialog({ host, actorId = null, gm = false }) {
         if (!others.length) { st.err = 'Add someone to talk to.'; return paint(); }
         const res = await s.start({ as: st.as, members: others, title: st.title });
         if (!res.ok) { st.err = res.error || 'That did not work.'; return paint(); }
-        if (res.refused?.length) ui.notifications?.warn(`NCM | ${res.refused.join(' ')}`);
+        if (res.refused?.length) ncmNotify.warn(`NCM | ${res.refused.join(' ')}`);
         if (gm) saveRecent(pushRecentNpc(readRecent(), st.as));
         close(res.id);
       }

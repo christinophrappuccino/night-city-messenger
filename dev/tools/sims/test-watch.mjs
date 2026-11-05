@@ -73,7 +73,7 @@ op._send(rec, { force: true });
 ok(!last('snap'), 'nothing is sent while nobody watches');
 
 // a watcher joins → an immediate picture, addressed to them
-op.onSocket({ type: 'join', shareId: rec.shareId, userId: 'w1' });
+op.onSocket({ type: 'join', shareId: rec.shareId, userId: 'w1' }, 'w1');
 ok(rec.watchers.has('w1') && last('snap')?.snap.html === '<b>one</b>' && last('snap')?.userIds.join() === 'w1', 'a joiner gets a picture at once');
 const before = sent.length;
 op._send(rec);
@@ -98,16 +98,16 @@ op._send(rec);
 // a second watcher gets the whole picture; the first gets only the edit
 snapBody = { html: '<b>four</b>' };
 sent.length = 0;
-op.onSocket({ type: 'join', shareId: rec.shareId, userId: 'w3' });
+op.onSocket({ type: 'join', shareId: rec.shareId, userId: 'w3' }, 'w3');
 ok(last('snap')?.userIds.join() === 'w3' && last('snap')?.snap.html === '<b>four</b>', 'a second watcher gets the whole picture');
 ok(last('edit')?.userIds.join() === 'w1' && last('edit').seq === last('snap').seq, 'the first gets the edit, on the same numbering');
 sent.length = 0;
-op.onSocket({ type: 'resync', shareId: rec.shareId, userId: 'w3' });
+op.onSocket({ type: 'resync', shareId: rec.shareId, userId: 'w3' }, 'w3');
 ok(last('snap')?.userIds.join() === 'w3' && last('snap')?.seq === rec.seq, 'a watcher who missed an edit can ask for the whole picture');
 sent.length = 0;
-op.onSocket({ type: 'resync', shareId: rec.shareId, userId: 'stranger' });
+op.onSocket({ type: 'resync', shareId: rec.shareId, userId: 'stranger' }, 'stranger');
 ok(!sent.length, 'someone who is not watching gets nothing');
-op.onSocket({ type: 'leave', shareId: rec.shareId, userId: 'w3' });
+op.onSocket({ type: 'leave', shareId: rec.shareId, userId: 'w3' }, 'w3');
 
 // pacing
 snapBody = { html: 'y'.repeat(100000) };
@@ -122,7 +122,7 @@ snapBody = { html: '<b>five</b>' };
 
 // someone loading late hears what is on offer
 sent.length = 0;
-op.onSocket({ type: 'ask', userId: 'w2' });
+op.onSocket({ type: 'ask', userId: 'w2' }, 'w2');
 ok(last('offer')?.to === 'w2' && last('offer')?.shareId === rec.shareId, 'a late client is told');
 
 // a watcher drops
@@ -152,45 +152,45 @@ const win = { got: [], update(s) { this.got.push(s); }, ended() { this.over = tr
 let opened = 0;
 w._openWindow = () => { opened += 1; return win; };
 sent.length = 0;
-w.onSocket({ type: 'offer', shareId: 'op:term', userId: 'op', who: 'Rache', what: 'WS-7F' });
+w.onSocket({ type: 'offer', shareId: 'op:term', userId: 'op', who: 'Rache', what: 'WS-7F' }, 'op');
 ok(w.offers.size === 1, 'an offer is remembered');
-w.onSocket({ type: 'offer', shareId: 'mine', userId: 'w1', who: 'me', what: 'x' });
+w.onSocket({ type: 'offer', shareId: 'mine', userId: 'w1', who: 'me', what: 'x' }, 'w1');
 ok(w.offers.size === 1, 'my own offer does not come back to me');
-w.onSocket({ type: 'offer', shareId: 'other', userId: 'op', who: 'x', what: 'y', to: 'someone-else' });
+w.onSocket({ type: 'offer', shareId: 'other', userId: 'op', who: 'x', what: 'y', to: 'someone-else' }, 'op');
 ok(w.offers.size === 1, 'an offer addressed to someone else is not mine');
 w.watch('op:term');
 ok(opened === 1 && last('join')?.shareId === 'op:term' && last('join')?.userId === 'w1', 'Watch opens the copy and joins');
 w.watch('op:term');
 ok(opened === 1, 'a second click does not open a second copy');
-w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w1'], seq: 5, snap: { html: 'a', w: 800 } });
+w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w1'], seq: 5, snap: { html: 'a', w: 800 } }, 'op');
 ok(win.got.length === 1, 'my picture lands');
-w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w9'], seq: 5, snap: { html: 'b' } });
+w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w9'], seq: 5, snap: { html: 'b' } }, 'op');
 ok(win.got.length === 1, 'someone else\'s does not');
-w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 6, edit: [1, 0, 'b'], meta: null });
+w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 6, edit: [1, 0, 'b'], meta: null }, 'op');
 ok(win.got[1]?.html === 'ab' && win.got[1]?.w === 800, 'an edit updates the picture and keeps the look');
-w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 7, edit: null, meta: { w: 900 } });
+w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 7, edit: null, meta: { w: 900 } }, 'op');
 ok(win.got[2]?.html === 'ab' && win.got[2]?.w === 900, 'a look change keeps the picture');
-w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 7, edit: [0, 2, 'old'], meta: null });
+w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 7, edit: [0, 2, 'old'], meta: null }, 'op');
 ok(win.got.length === 3, 'a stale edit is ignored');
-w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w1'], seq: 6, snap: { html: 'stale' } });
+w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w1'], seq: 6, snap: { html: 'stale' } }, 'op');
 ok(win.got.length === 3, 'so is a stale whole picture');
 sent.length = 0;
-w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 9, edit: [0, 2, 'skip'], meta: null });
+w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 9, edit: [0, 2, 'skip'], meta: null }, 'op');
 ok(win.got.length === 3 && last('resync')?.userId === 'w1', 'a gap is never applied: it asks for the whole picture');
 sent.length = 0;
-w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 10, edit: [0, 2, 'skip'], meta: null });
+w.onSocket({ type: 'edit', shareId: 'op:term', userIds: ['w1'], seq: 10, edit: [0, 2, 'skip'], meta: null }, 'op');
 ok(!last('resync'), 'and does not ask again for every edit until the answer comes');
-w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w1'], seq: 10, snap: { html: 'whole', w: 900 } });
+w.onSocket({ type: 'snap', shareId: 'op:term', userIds: ['w1'], seq: 10, snap: { html: 'whole', w: 900 } }, 'op');
 ok(win.got[3]?.html === 'whole', 'the whole picture puts it right');
-w.onSocket({ type: 'tooBig', shareId: 'op:term', userIds: ['w1'] });
+w.onSocket({ type: 'tooBig', shareId: 'op:term', userIds: ['w1'] }, 'op');
 ok(win.big, 'too big is said');
-w.onSocket({ type: 'end', shareId: 'op:term' });
+w.onSocket({ type: 'end', shareId: 'op:term' }, 'op');
 ok(win.over && !w.watching.size && !w.offers.size, 'the operator stopping ends the copy');
-w.onSocket({ type: 'offer', shareId: 'o2', userId: 'op', who: 'R', what: 'S' });
-w.dismiss('o2');
-ok(w.offers.get('o2').dismissed, 'dismiss sticks');
-w.onSocket({ type: 'offer', shareId: 'o2', userId: 'op', who: 'R', what: 'S' });
-ok(w.offers.get('o2').dismissed, 'and survives a repeat offer');
+w.onSocket({ type: 'offer', shareId: 'op:o2', userId: 'op', who: 'R', what: 'S' }, 'op');
+w.dismiss('op:o2');
+ok(w.offers.get('op:o2').dismissed, 'dismiss sticks');
+w.onSocket({ type: 'offer', shareId: 'op:o2', userId: 'op', who: 'R', what: 'S' }, 'op');
+ok(w.offers.get('op:o2').dismissed, 'and survives a repeat offer');
 w.onUserGone('op');
 ok(!w.offers.size, 'an operator dropping withdraws their offers');
 game.user.id = 'op';
@@ -211,7 +211,7 @@ ok(/'watchMode'[\s\S]{0,500}default: 'player'/.test(sm), 'setting: players choos
 const mirror = read('scripts/utils/watchMirror.js');
 ok(mirror.includes("SECRET_TYPES = new Set(['password', 'hidden', 'file'])") && mirror.includes('ncmSetMasked'), 'secret fields leave their values behind');
 ok(/n\.removeAttribute\('id'\)/.test(mirror), 'ids are stripped: a copy must not collide with a window the watcher has open');
-ok(mirror.includes('/^on/i.test(a.name)') && mirror.includes('javascript:') && mirror.includes("'script, link"), 'scripts and handlers cannot travel');
+ok(mirror.includes("name.startsWith('on')") && mirror.includes('javascript:') && /MIRROR_DROP = new Set\(\['script', 'style', 'link'/.test(mirror), 'scripts and handlers cannot travel');
 const css = read('styles/components/watch.css');
 ok(/\.ncm-watch__mirror \{[\s\S]*?position: absolute !important/.test(css), 'the copy is pinned back from .ncm-app\'s position: fixed');
 ok(css.includes('.ncm-app.ncm-watch-window > .window-content'), 'the watch window\'s content rule stops at its own content');

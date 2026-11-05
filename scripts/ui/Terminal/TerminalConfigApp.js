@@ -10,6 +10,7 @@
  *   terminalConfig as a JSON blob (the spam/theme pattern).
  */
 
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_MAILBOX_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
 import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveDisplayName, getPlayerCharacters, isPersonActor } from '../../utils/helpers.js';
@@ -1054,7 +1055,7 @@ export class TerminalConfigApp extends BaseApplication {
     presets.push({ name, config: this._collectFullPreset() });
     await this._setFullPresets(presets);
     this.render(false);
-    ui.notifications.info(`Saved terminal preset: ${name}`);
+    ncmNotify.info(`Saved terminal preset: ${name}`);
   }
 
   static async _onApplyFullPreset(event, target) {
@@ -1076,7 +1077,7 @@ export class TerminalConfigApp extends BaseApplication {
     this._themeDraft = null; // the preset's theme is now the saved theme
     this._revertThemePreview();
     this.render(false);
-    ui.notifications.info(`Applied terminal preset: ${entry.name}`);
+    ncmNotify.info(`Applied terminal preset: ${entry.name}`);
   }
 
   static async _onOverwriteFullPreset(event, target) {
@@ -1086,7 +1087,7 @@ export class TerminalConfigApp extends BaseApplication {
     presets[index] = { name: presets[index].name, config: this._collectFullPreset() };
     await this._setFullPresets(presets);
     this.render(false);
-    ui.notifications.info(`Overwrote terminal preset: ${presets[index].name}`);
+    ncmNotify.info(`Overwrote terminal preset: ${presets[index].name}`);
   }
 
   static async _onDeleteFullPreset(event, target) {
@@ -1094,12 +1095,12 @@ export class TerminalConfigApp extends BaseApplication {
     const presets = this._getFullPresets();
     if (!presets[index]) return;
     const name = presets[index].name;
-    const confirmed = await adminConfirm({ title: 'Delete Terminal Preset', content: `<p>Delete "${name}" from the library?</p>` });
+    const confirmed = await adminConfirm({ title: 'Delete Terminal Preset', content: `<p>Delete "${escapeHtml(name)}" from the library?</p>` });
     if (!confirmed) return;
     presets.splice(index, 1);
     await this._setFullPresets(presets);
     this.render(false);
-    ui.notifications.info(`Deleted terminal preset: ${name}`);
+    ncmNotify.info(`Deleted terminal preset: ${name}`);
   }
 
   static _onExportFullPreset(event, target) {
@@ -1115,7 +1116,7 @@ export class TerminalConfigApp extends BaseApplication {
     a.download = `ncm-terminal-preset-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    ui.notifications.info(`Exported terminal preset: ${name}`);
+    ncmNotify.info(`Exported terminal preset: ${name}`);
   }
 
   static _onImportFullPreset() {
@@ -1127,15 +1128,15 @@ export class TerminalConfigApp extends BaseApplication {
       if (!file) return;
       try {
         const parsed = JSON.parse(await file.text());
-        if (!parsed?.ncmTerminalPreset || !parsed.config) return ui.notifications.warn('Not a terminal preset file.');
+        if (!parsed?.ncmTerminalPreset || !parsed.config) return ncmNotify.warn('Not a terminal preset file.');
         const presets = this._getFullPresets();
         presets.push({ name: parsed.name || file.name.replace(/\.json$/i, ''), config: parsed.config });
         await this._setFullPresets(presets);
         this.render(false);
-        ui.notifications.info(`Imported terminal preset: ${parsed.name} — apply it from the library list.`);
+        ncmNotify.info(`Imported terminal preset: ${parsed.name} — apply it from the library list.`);
       } catch (err) {
         log.error(`Terminal preset import failed: ${err.message}`);
-        ui.notifications.error('Failed to import preset file.');
+        ncmNotify.error('Failed to import preset file.');
       }
     });
     input.click();
@@ -1481,9 +1482,9 @@ export class TerminalConfigApp extends BaseApplication {
   static async _onTermNumberGive() {
     const s = game.nightcity?.callService;
     const number = s?.suggestNumbers?.({ count: 1 })[0]?.number;
-    if (!number) { ui.notifications?.warn('The place table is empty.'); return; }
+    if (!number) { ncmNotify.warn('The place table is empty.'); return; }
     const r = await s.setTerminalNumber(this.item, { number });
-    if (!r.ok) ui.notifications?.warn(r.error);
+    if (!r.ok) ncmNotify.warn(r.error);
     this.render();
   }
 
@@ -1599,13 +1600,13 @@ export class TerminalConfigApp extends BaseApplication {
           await this.terminalService.addAccount(this.item, foundry.utils.mergeObject(
             { security: { ...(kit.security || {}) } }, seed, { inplace: false }));
         }
-        ui.notifications.info(`Seeded ${kit.accounts.length} account${kit.accounts.length === 1 ? '' : 's'} from: ${kit.label}`);
+        ncmNotify.info(`Seeded ${kit.accounts.length} account${kit.accounts.length === 1 ? '' : 's'} from: ${kit.label}`);
       }
       this._themeDraft = null; // saved — context reads cfg.theme again
       this._presetKit = null;
       this._stagedMailboxStyle = null;
-      ui.notifications.info('Terminal configuration saved.');
-    } else ui.notifications.error(res?.error || 'Save failed.');
+      ncmNotify.info('Terminal configuration saved.');
+    } else ncmNotify.error(res?.error || 'Save failed.');
     this.render(false);
   }
 
@@ -1863,7 +1864,7 @@ export class TerminalConfigApp extends BaseApplication {
     for (const key of Object.keys(COLOR_VAR_MAP)) delete draft[key];
     this._applyThemeLive();
     this.render(false);
-    ui.notifications.info('Colors reset to preset defaults.');
+    ncmNotify.info('Colors reset to preset defaults.');
   }
 
   // ─── Saved terminal themes (world setting, shared across terminals) ───
@@ -1894,7 +1895,7 @@ export class TerminalConfigApp extends BaseApplication {
     themes.push({ name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }), mailboxStyle: this._currentMailboxStyle() });
     await this._setTermThemes(themes);
     this.render(false);
-    ui.notifications.info(`Saved terminal theme: ${name}`);
+    ncmNotify.info(`Saved terminal theme: ${name}`);
   }
 
   static _onApplyTermTheme(event, target) {
@@ -1916,7 +1917,7 @@ export class TerminalConfigApp extends BaseApplication {
     themes[index] = { name: themes[index].name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }), mailboxStyle: this._currentMailboxStyle() };
     await this._setTermThemes(themes);
     this.render(false);
-    ui.notifications.info(`Overwrote theme: ${themes[index].name}`);
+    ncmNotify.info(`Overwrote theme: ${themes[index].name}`);
   }
 
   static async _onDeleteTermTheme(event, target) {
@@ -1924,12 +1925,12 @@ export class TerminalConfigApp extends BaseApplication {
     const themes = this._getTermThemes();
     if (!themes[index]) return;
     const name = themes[index].name;
-    const confirmed = await adminConfirm({ title: 'Delete Theme', content: `<p>Delete saved terminal theme "${name}"?</p>` });
+    const confirmed = await adminConfirm({ title: 'Delete Theme', content: `<p>Delete saved terminal theme "${escapeHtml(name)}"?</p>` });
     if (!confirmed) return;
     themes.splice(index, 1);
     await this._setTermThemes(themes);
     this.render(false);
-    ui.notifications.info(`Deleted theme: ${name}`);
+    ncmNotify.info(`Deleted theme: ${name}`);
   }
 
   static _onExportTermTheme() {
@@ -1943,7 +1944,7 @@ export class TerminalConfigApp extends BaseApplication {
     a.download = `ncm-terminal-theme-${(theme.preset || 'custom').replace(/\s+/g, '-')}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    ui.notifications.info('Terminal theme exported.');
+    ncmNotify.info('Terminal theme exported.');
   }
 
   static _onImportTermTheme() {
@@ -1959,16 +1960,16 @@ export class TerminalConfigApp extends BaseApplication {
         const theme = parsed.ncmTerminalTheme ? parsed.theme : parsed;
         const known = ['preset', 'fontDisplay', 'fontMono', 'fontTitle', 'textScale', 'contrast', ...Object.keys(COLOR_VAR_MAP)];
         if (!theme || typeof theme !== 'object' || !known.some(k => k in theme)) {
-          return ui.notifications.warn('Not a terminal theme file.');
+          return ncmNotify.warn('Not a terminal theme file.');
         }
         this._themeDraft = { preset: 'classic', ...foundry.utils.deepClone(theme) };
         if (TERMINAL_MAILBOX_STYLES.some(s => s.key === parsed.mailboxStyle)) this._stagedMailboxStyle = parsed.mailboxStyle;
         this._applyThemeLive();
         this.render(false);
-        ui.notifications.info('Terminal theme imported — Save to keep it.');
+        ncmNotify.info('Terminal theme imported — Save to keep it.');
       } catch (err) {
         log.error(`Terminal theme import failed: ${err.message}`);
-        ui.notifications.error('Failed to import theme file.');
+        ncmNotify.error('Failed to import theme file.');
       }
     });
     input.click();
@@ -2001,7 +2002,7 @@ export class TerminalConfigApp extends BaseApplication {
         const name = normalizeFolderPath(inp.value);
         if (!name) return;
         const res = await svc.saveFileFolder(item, { scope: inp.dataset.scope, path: name });
-        if (!res.success) { ui.notifications.warn(res.error || 'Could not add the folder.'); return; }
+        if (!res.success) { ncmNotify.warn(res.error || 'Could not add the folder.'); return; }
         this._ctFocusNewdir = inp.dataset.scope;
         this.render(false);
       });
@@ -2023,7 +2024,7 @@ export class TerminalConfigApp extends BaseApplication {
         if (mode === 'accounts') { await this._pickGateAccounts(scope, path); return; }
         const cur = svc.getFileFolders(item).find(f => f.scope === scope && f.path === path);
         const res = await svc.saveFileFolder(item, { ...(cur || {}), scope, path, gate: { mode, min: cur?.gate?.min ?? 1, accountIds: cur?.gate?.accountIds || [] } });
-        if (!res.success) ui.notifications.warn(res.error || 'Could not save the folder.');
+        if (!res.success) ncmNotify.warn(res.error || 'Could not save the folder.');
         this.render(false);
       });
     });
@@ -2053,7 +2054,7 @@ export class TerminalConfigApp extends BaseApplication {
           await svc.saveFileFolder(item, { scope, path });
         }
         const res = await svc.moveFile(item, id, { scope, path: path || '' });
-        if (!res.success) ui.notifications.warn(res.error || 'Could not move the entry.');
+        if (!res.success) ncmNotify.warn(res.error || 'Could not move the entry.');
         this.render(false);
       });
     });
@@ -2235,7 +2236,7 @@ export class TerminalConfigApp extends BaseApplication {
         const found = mcs.getByEmail(email);
         if (found) {
           data.masterContactId = found.id;
-          ui.notifications.info(`Linked to master contact "${found.name}".`);
+          ncmNotify.info(`Linked to master contact "${found.name}".`);
         } else {
           const created = await mcs.addContact({
             name: data.displayName || data.username || email.split('@')[0],
@@ -2252,7 +2253,7 @@ export class TerminalConfigApp extends BaseApplication {
           });
           if (created?.success) {
             data.masterContactId = created.contact.id;
-            ui.notifications.info(`Created master contact "${created.contact.name}".`);
+            ncmNotify.info(`Created master contact "${created.contact.name}".`);
           }
         }
       }
@@ -2266,8 +2267,8 @@ export class TerminalConfigApp extends BaseApplication {
     let res;
     if (id === 'new') res = await this.terminalService.addAccount(this.item, data);
     else res = await this.terminalService.updateAccount(this.item, id, data);
-    if (res?.success) { this._editingAccountId = null; this._editorLink = null; ui.notifications.info('Account saved.'); }
-    else ui.notifications.error(res?.error || 'Account save failed.');
+    if (res?.success) { this._editingAccountId = null; this._editorLink = null; ncmNotify.info('Account saved.'); }
+    else ncmNotify.error(res?.error || 'Account save failed.');
     this.render(false);
   }
 
@@ -2359,7 +2360,7 @@ export class TerminalConfigApp extends BaseApplication {
     const name = await this._askText({ title: 'New sub-folder', label: `Inside /${path}` });
     if (!name) return;
     const res = await this.terminalService.saveFileFolder(this.item, { scope, path: `${path}/${normalizeFolderPath(name)}` });
-    if (!res.success) ui.notifications.warn(res.error || 'Could not add the folder.');
+    if (!res.success) ncmNotify.warn(res.error || 'Could not add the folder.');
     this._ctDirClosed.delete(`${scope}:${path}`);
     this.render(false);
   }
@@ -2370,8 +2371,8 @@ export class TerminalConfigApp extends BaseApplication {
     if (!name || normalizeFolderPath(name) === cur) return;
     const parent = parentPath(path);
     const res = await this.terminalService.renameFileFolder(this.item, scope, path, parent ? `${parent}/${normalizeFolderPath(name)}` : normalizeFolderPath(name));
-    if (!res.success) ui.notifications.warn(res.error || 'Could not rename the folder.');
-    else if (res.moved) ui.notifications.info(`Folder renamed — ${res.moved} file${res.moved === 1 ? '' : 's'} re-filed.`);
+    if (!res.success) ncmNotify.warn(res.error || 'Could not rename the folder.');
+    else if (res.moved) ncmNotify.info(`Folder renamed — ${res.moved} file${res.moved === 1 ? '' : 's'} re-filed.`);
     this.render(false);
   }
   static async _onCtFolderRemove(event, target) {
@@ -2379,7 +2380,7 @@ export class TerminalConfigApp extends BaseApplication {
     const ok = await adminConfirm({ title: 'Delete Folder', content: `<p>Delete <strong>/${Handlebars.escapeExpression(path)}</strong>? Its files and sub-folders move up one level — nothing is deleted from the machine.</p>` });
     if (!ok) return;
     const res = await this.terminalService.removeFileFolder(this.item, scope, path);
-    if (!res.success) ui.notifications.warn(res.error || 'Could not delete the folder.');
+    if (!res.success) ncmNotify.warn(res.error || 'Could not delete the folder.');
     this.render(false);
   }
   static async _onCtGateAccounts(event, target) {
@@ -2398,9 +2399,9 @@ export class TerminalConfigApp extends BaseApplication {
     if (!acct) return;
     const { messages, copied, identity } = svc.gatherIdentityMail(this.item, accountId);
     if (!acct.actorId && !acct.masterContactId) {
-      return ui.notifications.warn('Link this account to a character or contact first (edit login & security → Link Identity).');
+      return ncmNotify.warn('Link this account to a character or contact first (edit login & security → Link Identity).');
     }
-    if (!messages.length) return ui.notifications.info(`${identity || 'This identity'} has no Agent mail to import.`);
+    if (!messages.length) return ncmNotify.info(`${identity || 'This identity'} has no Agent mail to import.`);
     const byId = new Map(messages.map(m => [m.messageId, m]));
     const when = (ts) => { try { return formatCyberDate(ts, { dateOnly: true }); } catch { return ''; } };
     const entries = messages.map(m => {
@@ -2425,8 +2426,8 @@ export class TerminalConfigApp extends BaseApplication {
     const chosen = (Array.isArray(picks) ? picks : []).map(p => byId.get(p.id)).filter(Boolean);
     if (!chosen.length) return;
     const res = await svc.copyMessagesToAccount(this.item, accountId, chosen);
-    if (!res.success) return ui.notifications.error(res.error || 'Import failed.');
-    ui.notifications.info(`Imported ${res.copied} message${res.copied === 1 ? '' : 's'}${res.skipped ? ` (${res.skipped} skipped)` : ''}.`);
+    if (!res.success) return ncmNotify.error(res.error || 'Import failed.');
+    ncmNotify.info(`Imported ${res.copied} message${res.copied === 1 ? '' : 's'}${res.skipped ? ` (${res.skipped} skipped)` : ''}.`);
     this.render(false);
   }
 
@@ -2458,7 +2459,7 @@ export class TerminalConfigApp extends BaseApplication {
     const ok = await adminConfirm({ title: 'Delete Entry', content: '<p>Permanently delete this entry from the terminal?</p>' });
     if (!ok) return;
     const res = await this.terminalService.removeAccountMessage(this.item, id);
-    if (!res.success) ui.notifications.warn(res.error || 'Could not delete the entry.');
+    if (!res.success) ncmNotify.warn(res.error || 'Could not delete the entry.');
     this.render(false);
   }
   static _onCtOpenTerminal() { game.nightcity?.openTerminal?.(this.item); }
@@ -2473,12 +2474,12 @@ export class TerminalConfigApp extends BaseApplication {
   }
   static _onRemoveBootLogLine(event, target) { target.closest('.ncm-cfg-boot-log-entry')?.remove(); }
 
-  static async _onForceUnlock() { await this.terminalService.forceUnlock(this.item); ui.notifications.info('Terminal force-unlocked (GM bypass).'); this.render(false); }
+  static async _onForceUnlock() { await this.terminalService.forceUnlock(this.item); ncmNotify.info('Terminal force-unlocked (GM bypass).'); this.render(false); }
   static async _onRelock() {
     const ok = await adminConfirm({ title: 'Relock Terminal', content: '<p>Wipe all sessions and reset lockouts?</p>' });
     if (!ok) return;
     await this.terminalService.relock(this.item);
-    ui.notifications.info('Terminal relocked.');
+    ncmNotify.info('Terminal relocked.');
     this.render(false);
   }
 
@@ -2504,11 +2505,11 @@ export class TerminalConfigApp extends BaseApplication {
         // Fresh ids for imported accounts so they don't collide.
         if (Array.isArray(cfg.accounts)) cfg.accounts = cfg.accounts.map(a => ({ ...a, id: `acct_${generateId()}` }));
         await this.terminalService.updateConfig(this.item, cfg);
-        ui.notifications.info('Terminal configuration imported.');
+        ncmNotify.info('Terminal configuration imported.');
         this.render(false);
       } catch (err) {
         log.error(`Terminal import failed: ${err.message}`);
-        ui.notifications.error('Import failed — invalid file.');
+        ncmNotify.error('Import failed — invalid file.');
       }
     };
     input.click();

@@ -7,6 +7,7 @@
  *              call AudioHelper.play() directly.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOUND_PATHS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 import { sanitizeSoundOverrides, soundSource } from '../utils/soundCatalog.js';
@@ -53,7 +54,7 @@ export class SoundService {
     if (!s || s.off) return;
     const vol = (s.volume ?? 1) * (this._settings.getTheme().soundVolume ?? 0.5);
     try { await getAudioHelper().play({ src: s.src, volume: Math.min(1, vol), loop: false }, false); }
-    catch { ui.notifications?.warn?.('That sound file could not be played.'); }
+    catch { ncmNotify.warn?.('That sound file could not be played.'); }
   }
 
   /**
@@ -94,6 +95,17 @@ export class SoundService {
       // Sound files may not exist yet — fail silently
       log.debug(`Sound not available: ${soundId}`);
     }
+  }
+
+  /**
+   * Play a file that is not on the Sound board (a payphone's own ring, say), with the user's sound switch and volume.
+   * @param {string} src @param {{volume?: number}} [o]
+   */
+  async playFile(src, { volume = 1 } = {}) {
+    const prefs = this._settings.getTheme();
+    if (!prefs.soundEnabled || !src) return;
+    try { await getAudioHelper().play({ src, volume: Math.min(1, volume * (prefs.soundVolume ?? 0.5)), loop: false }, false); }
+    catch { log.debug(`Sound file not available: ${src}`); }
   }
 
   /**

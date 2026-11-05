@@ -19,9 +19,11 @@
  *              `{{else if isX}}` branch in content-body.hbs. Nothing else.
  */
 
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { CONTENT_TYPES } from '../../utils/constants.js';
 import { log, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { cleanHtml } from '../../utils/richText.js';
+import { payloadCanRun } from '../../utils/contentIntents.js';
 
 /**
  * Display info per content type. `accent` is a palette key consumed by CSS
@@ -736,9 +738,11 @@ const ENRICHERS = {
       executedAtLabel: cd.executedAt ? (() => { try { return formatCyberDate(cd.executedAt); } catch { return ''; } })() : '',
       isActive, expired, expiresLabel,
       killed: !!cd.killed,
-      scanReport: cd.scanReport || '',
-      // Execute affordance: runnable when not spent and (charges left OR untracked).
-      canRun: !cd.executed || (isActive === false && cd.charges > 1),
+      // Rendered raw ({{{scanReport}}}); it can carry names a player chose (accounts,
+      // files) and contentData can be written by relays — inline-clean it (SEC-14).
+      scanReport: cleanHtml(cd.scanReport || '', { mode: 'inline' }),
+      // Execute affordance: runnable until its charges are spent (each run takes one; none set = one use).
+      canRun: !cd.executed || (isActive === false && payloadCanRun(cd)),
       gated: !!cd.executeRequire,
       executeDV: Number(cd.executeDV) || 9,
       hasMacro: !!cd.effect?.macroId,
@@ -1581,7 +1585,10 @@ export function enrichContent(entry, ctx = {}) {
   // A plain message body renders raw ({{{body}}}) — clean it at render so pasted
   // inline colours/backgrounds can't paint black-on-dark, and a tagless body keeps
   // its line breaks. Module tokens (`var(--ncm-*)`) and palette colours survive.
-  if (enriched.isMessage && enriched.body) enriched.body = cleanHtml(enriched.body, { mode: 'rich' });
+  // Every type, not only messages: an entry with an unknown or missing type falls
+  // through to content-body.hbs's FALLBACK branch, which also renders {{{body}}}
+  // raw (audit SEC-14).
+  if (enriched.body) enriched.body = cleanHtml(enriched.body, { mode: 'rich' });
 
   // Per-type contentData processing.
   const enrich = ENRICHERS[type];
@@ -2421,7 +2428,7 @@ export function openGalleryImage(target, { host = null } = {}) {
         rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--frame" data-action="terminalExfil" data-exfil="saveFrame" data-index="${fIdx}" data-tooltip="You can’t copy a live stream — but you can capture what it’s showing"><i class="fas fa-camera"></i> SAVE FRAME${sdv}</button>`);
       }
       if (d.noCopy) rail.push(`<span class="ncm-imgv__btn ncm-imgv__btn--nocopy" data-tooltip="A live feed isn’t a file — capture a frame instead"><i class="fas fa-ban"></i> CAN’T COPY A STREAM</span>`);
-      if (ptz && !canDrive) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--ctl" data-action="camAction" data-cam-act="control" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Seize the camera head — DV ${controlDV}"><i class="fas fa-satellite-dish"></i> TAKE CONTROL · DV ${controlDV}</button>`);
+      if (ptz && !canDrive) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--ctl" data-action="camAction" data-cam-act="control" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Seize the camera head — DV ${tipText(controlDV)}"><i class="fas fa-satellite-dish"></i> TAKE CONTROL · DV ${controlDV}</button>`);
       if (d.loopDv) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--loop" data-action="camAction" data-cam-act="loop" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Freeze this camera on old footage"><i class="fas fa-rotate"></i> LOOP · DV ${_escHtml(d.loopDv)}</button>`);
       if (d.cutDv) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--cut" data-action="camAction" data-cam-act="cut" data-index="${fIdx}" data-entry-id="${_escHtml(entryId)}" data-tooltip="Kill this channel"><i class="fas fa-scissors"></i> CUT FEED · DV ${_escHtml(d.cutDv)}</button>`);
       if (gm && d.sceneId) rail.push(`<button type="button" class="ncm-imgv__btn ncm-imgv__btn--gm" data-action="goToScene" data-scene-id="${_escHtml(d.sceneId)}" data-tooltip="GM — go to this camera's scene"><i class="fas fa-map"></i> GO TO SCENE</button>`);
@@ -2479,14 +2486,14 @@ export function openGalleryImage(target, { host = null } = {}) {
     const caption = frames[idx]?.dataset?.caption || '';
     const label = frames[idx]?.dataset?.label || '';
     const Popout = (typeof ImagePopout !== 'undefined') ? ImagePopout : foundry.applications?.apps?.ImagePopout;
-    if (!Popout) { ui.notifications?.warn('NCM | Image broadcast unavailable.'); return; }
+    if (!Popout) { ncmNotify.warn('NCM | Image broadcast unavailable.'); return; }
     try {
       const p = new Popout(src, { title: caption || label || 'Recovered image', uuid: null });
-      if (typeof p.shareImage === 'function') { p.shareImage(); ui.notifications?.info('NCM | Image shown to players.'); }
+      if (typeof p.shareImage === 'function') { p.shareImage(); ncmNotify.info('NCM | Image shown to players.'); }
       else p.render(true);
     } catch (err) {
       log.error(`Gallery image share failed: ${err.message}`);
-      ui.notifications?.error('NCM | Could not share image.');
+      ncmNotify.error('NCM | Could not share image.');
     }
   }
 }

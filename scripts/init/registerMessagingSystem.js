@@ -7,6 +7,7 @@
  *              and wires UI launch functions to real Application classes.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, getPlayerActor, isSelectableCharacter } from '../utils/helpers.js';
 
@@ -31,6 +32,9 @@ import { ContactManagerApp } from '../ui/ContactManager/ContactManagerApp.js';
 
 // Verification
 import { Phase2Verification } from '../tests/Phase2Verification.js';
+
+/** How long after a GM connects a player sends the mail it was holding (the GM's client loads its handlers first). */
+export const GM_CONNECT_FLUSH_DELAY_MS = 5000;
 
 /**
  * Track open application instances for reuse / singleton-per-actor behavior
@@ -450,7 +454,7 @@ export function registerMessagingSystem(initializer) {
         await ns.showCharacterSelect();
       } catch (err) {
         console.error('NCM | Failed to open character select:', err);
-        ui.notifications.error('NCM | Failed to open character select. Check console.');
+        ncmNotify.error('NCM | Failed to open character select. Check console.');
       }
     };
 
@@ -525,28 +529,12 @@ export function registerMessagingSystem(initializer) {
     // Shared-message chat cards: the per-client add-contact button + its click.
     registerChatCardHooks();
 
-    // When a message is received, show notification and update badge.
-    // The toast + receive sound (with per-message dedup) live in
-    // showMessageNotification so socket + document-sync don't double-fire.
+    // When a message is received, show the notification. The toast + receive sound (with per-message dedup)
+    // live in showMessageNotification so socket + document-sync don't double-fire. The unread BADGE is kept by
+    // NotificationService's own listeners — a second set here recounted every inbox again on every mail event
+    // (audit PERF-01).
     eventBus.on(EVENTS.MESSAGE_RECEIVED, (data) => {
-      if (notificationService) {
-        notificationService.showMessageNotification(data);
-        notificationService.refreshBadge();
-      }
-    });
-
-    // When a message is read, update the badge count
-    eventBus.on(EVENTS.MESSAGE_READ, () => {
-      if (notificationService) {
-        notificationService.refreshBadge();
-      }
-    });
-
-    // When a message is deleted, update the badge count
-    eventBus.on(EVENTS.MESSAGE_DELETED, () => {
-      if (notificationService) {
-        notificationService.refreshBadge();
-      }
+      if (notificationService) notificationService.showMessageNotification(data);
     });
 
     // Play send sound on message sent
@@ -586,7 +574,7 @@ export function registerMessagingSystem(initializer) {
         const stats = await repo.migrateJournalOrganization();
         const total = stats.inboxes + stats.contacts + stats.shards;
         if (total > 0) {
-          ui.notifications.info(
+          ncmNotify.info(
             `NCM | Journals reorganized: ${stats.inboxes} inbox(es), ${stats.contacts} NPC mail, ${stats.shards} shard(s), ${stats.pages} page(s) renamed.`
           );
         }
@@ -594,7 +582,7 @@ export function registerMessagingSystem(initializer) {
       }
     } catch (error) {
       log.error('Journal migration failed:', error);
-      ui.notifications.warn('NCM | Journal migration encountered errors. Check console.');
+      ncmNotify.warn('NCM | Journal migration encountered errors. Check console.');
     }
   });
 
@@ -623,6 +611,18 @@ export function registerMessagingSystem(initializer) {
       } catch (error) {
         log.warn('Failed to flush message queue:', error.message);
       }
+    }
+    // Mail held because no GM was online goes out when a GM connects (audit DATA-14) — it used to wait for this
+    // player's next reload or a network change. A short wait lets the GM's client finish loading its handlers.
+    if (!game.user.isGM) {
+      Hooks.on('userConnected', (user, connected) => {
+        if (!connected || !user?.isGM) return;
+        setTimeout(() => {
+          const ms = game.nightcity?.messageService;
+          if (!ms?.queueSize || game.nightcity?.networkService?.isDeadZone) return;
+          ms.flushQueue().catch((error) => log.warn('Failed to flush message queue:', error.message));
+        }, GM_CONNECT_FLUSH_DELAY_MS);
+      });
     }
   });
 
@@ -686,7 +686,7 @@ function _resolveActorId(actorId) {
     if (actor) {
       // Verify ownership (GM can access any actor)
       if (!actor.isOwner && !isGM()) {
-        ui.notifications.warn('NCM | You do not own that character.');
+        ncmNotify.warn('NCM | You do not own that character.');
         return null;
       }
       return actorId;
@@ -701,7 +701,7 @@ function _resolveActorId(actorId) {
       }
     }
 
-    ui.notifications.warn('NCM | Actor or contact not found.');
+    ncmNotify.warn('NCM | Actor or contact not found.');
     return null;
   }
 
@@ -718,6 +718,6 @@ function _resolveActorId(actorId) {
     }
   }
 
-  ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.');
+  ncmNotify.warn('NCM | No character assigned. Set your character in User Configuration.');
   return null;
 }

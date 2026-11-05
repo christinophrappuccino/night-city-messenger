@@ -7,6 +7,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
 import { d10Odds } from '../../utils/rolls.js';
 import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker, applyContrastToElement, buildShardThemePrefs, guardSecretInputs, canEditShard } from '../../utils/helpers.js';
@@ -1006,7 +1007,7 @@ export class ItemInboxApp extends BaseApplication {
   /** @private A player's integrity write relays — a GM must be online for it to land. */
   _igCanWrite() {
     if (isGM() || game.users?.activeGM) return true;
-    ui.notifications.warn('NCM | No GM connected — the GM must be online for this to take effect.');
+    ncmNotify.warn('NCM | No GM connected — the GM must be online for this to take effect.');
     return false;
   }
 
@@ -1016,7 +1017,7 @@ export class ItemInboxApp extends BaseApplication {
     if (!entry || !cfg || !(level > 0) || !this._igCanWrite()) return;
     const actor = resolveOperator();
     const force = isGM() && !actor;
-    if (!actor && !force) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
+    if (!actor && !force) { ncmNotify.warn('NCM | Pick an operator first.'); return; }
     const dv = reconDV(level, cfg);
     const res = await runSecurityConsole({
       title: 'Reconstruct entry', icon: 'fas fa-screwdriver-wrench', accent: 'cyan', host: this.element,
@@ -1041,7 +1042,7 @@ export class ItemInboxApp extends BaseApplication {
     if (!cfg || !this._igCanWrite()) return;
     const actor = resolveOperator();
     const force = isGM() && !actor;
-    if (!actor && !force) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
+    if (!actor && !force) { ncmNotify.warn('NCM | Pick an operator first.'); return; }
     const res = await runSecurityConsole({
       title: `Repair ${T('short', 'lower')}`, icon: 'fas fa-screwdriver-wrench', accent: 'cyan', host: this.element,
       intro: `Patch the damaged sectors. Success restores ${cfg.repairPts} integrity.`,
@@ -1058,8 +1059,8 @@ export class ItemInboxApp extends BaseApplication {
     const cfg = this.dataShardService?.getIntegrityConfig(this.item);
     if (!cfg || !this._igCanWrite()) return;
     const actor = resolveOperator();
-    if (!actor) { ui.notifications.warn('NCM | Pick an operator first.'); return; }
-    if (cfg.salvaged.includes(actor.id)) { ui.notifications.warn(`NCM | ${actor.name} has already tried to salvage this ${T('short', 'lower')}.`); return; }
+    if (!actor) { ncmNotify.warn('NCM | Pick an operator first.'); return; }
+    if (cfg.salvaged.includes(actor.id)) { ncmNotify.warn(`NCM | ${actor.name} has already tried to salvage this ${T('short', 'lower')}.`); return; }
     const res = await runSecurityConsole({
       title: `Salvage ${T('short', 'lower')}`, icon: 'fas fa-microchip', accent: 'red', host: this.element,
       intro: `Pull whatever survived off the burned cells. One attempt — if it fails, this chip is gone for good for ${actor.name}. On a success it comes back at ${cfg.dead.salvagePct}%, badly damaged.`,
@@ -1157,7 +1158,7 @@ export class ItemInboxApp extends BaseApplication {
     if (!this.item) return;
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.');
+      ncmNotify.warn('NCM | No character assigned. Set your character in User Configuration.');
       return;
     }
 
@@ -1167,7 +1168,7 @@ export class ItemInboxApp extends BaseApplication {
     // Get available skills — dialog handles selection
     const availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
     if (availableSkills.length === 0) {
-      ui.notifications.warn(`NCM | No skills configured for this ${T('short', 'lower')}.`);
+      ncmNotify.warn(`NCM | No skills configured for this ${T('short', 'lower')}.`);
       return;
     }
 
@@ -1257,7 +1258,7 @@ export class ItemInboxApp extends BaseApplication {
     if (!this.item) return;
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -1278,7 +1279,7 @@ export class ItemInboxApp extends BaseApplication {
       const hackInfo = this.dataShardService.getLayerHackInfo(this.item, actor.id, layer);
       if (hackInfo.isLockedOut) {
         const mins = Math.ceil(hackInfo.lockoutRemaining / 60);
-        ui.notifications.warn(`NCM | Layer hacking locked out. ${mins > 9999 ? 'Permanent' : `${mins}m remaining`}.`);
+        ncmNotify.warn(`NCM | Layer hacking locked out. ${mins > 9999 ? 'Permanent' : `${mins}m remaining`}.`);
         return;
       }
     }
@@ -1286,7 +1287,7 @@ export class ItemInboxApp extends BaseApplication {
     // Get available skills
     const availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
     if (availableSkills.length === 0) {
-      ui.notifications.warn(`NCM | No skills configured for this ${T('short', 'lower')}.`);
+      ncmNotify.warn(`NCM | No skills configured for this ${T('short', 'lower')}.`);
       return;
     }
 
@@ -1408,7 +1409,7 @@ export class ItemInboxApp extends BaseApplication {
       const switchResult = await networkService.switchNetwork(networkId);
       if (switchResult?.success === false) {
         this._transitionActive = false;
-        ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
+        ncmNotify.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
         return;
       }
 
@@ -1433,7 +1434,7 @@ export class ItemInboxApp extends BaseApplication {
     } catch (err) {
       this._transitionActive = false;
       console.error('NCM | Failed to switch network from shard overlay:', err);
-      ui.notifications.warn('NCM | Could not switch network.');
+      ncmNotify.warn('NCM | Could not switch network.');
     }
   }
 
@@ -1441,7 +1442,7 @@ export class ItemInboxApp extends BaseApplication {
     if (!this.item) return;
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -1452,7 +1453,7 @@ export class ItemInboxApp extends BaseApplication {
     const EXCLUDED_TYPES = new Set(['skill', 'role', 'cyberware']);
     const allItems = (actor.items?.contents ?? []).filter(i => !EXCLUDED_TYPES.has(i.type));
     if (allItems.length === 0) {
-      ui.notifications.warn('NCM | No presentable items in inventory.');
+      ncmNotify.warn('NCM | No presentable items in inventory.');
       return;
     }
 
@@ -1559,7 +1560,7 @@ export class ItemInboxApp extends BaseApplication {
     if (config?.keyItemConsumeOnUse) {
       const confirm = await playerConfirm({
         title: 'Consume Access Token',
-        content: `<p>Using <strong>${selectedItem.name}</strong> will <strong>remove it from your inventory</strong> if correct. Continue?</p>`,
+        content: `<p>Using <strong>${escapeHtml(selectedItem.name)}</strong> will <strong>remove it from your inventory</strong> if correct. Continue?</p>`,
       });
       if (!confirm) return;
     }
@@ -1664,7 +1665,7 @@ export class ItemInboxApp extends BaseApplication {
     if (!this.item) return;
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -1674,7 +1675,7 @@ export class ItemInboxApp extends BaseApplication {
     const password = passwordInput?.value ?? '';
 
     if (!password.trim()) {
-      ui.notifications.warn('NCM | Enter a password.');
+      ncmNotify.warn('NCM | Enter a password.');
       return;
     }
 
@@ -1695,9 +1696,9 @@ export class ItemInboxApp extends BaseApplication {
         sound: 'login-success',
       });
     } else if (result.locked) {
-      ui.notifications.error('NCM | Account locked — too many failed attempts.');
+      ncmNotify.error('NCM | Account locked — too many failed attempts.');
     } else {
-      ui.notifications.warn(`NCM | Login failed. ${result.attemptsRemaining ?? 0} attempts remaining.`);
+      ncmNotify.warn(`NCM | Login failed. ${result.attemptsRemaining ?? 0} attempts remaining.`);
     }
 
     this._transitionActive = false;
@@ -1710,7 +1711,7 @@ export class ItemInboxApp extends BaseApplication {
   static async _onForceDecrypt(event, target) {
     if (!isGM() || !this.item) return;
     await this.dataShardService.forceDecrypt(this.item);
-    ui.notifications.info(`NCM | ${T('short')} force-decrypted.`);
+    ncmNotify.info(`NCM | ${T('short')} force-decrypted.`);
     this.render();
   }
 
@@ -1725,7 +1726,7 @@ export class ItemInboxApp extends BaseApplication {
     await this.dataShardService.relockShard(this.item);
     this.selectedMessageId = null;
     if (this._lockoutInterval) { clearInterval(this._lockoutInterval); this._lockoutInterval = null; }
-    ui.notifications.info(`NCM | ${T('short')} relocked.`);
+    ncmNotify.info(`NCM | ${T('short')} relocked.`);
     this.render(true);
   }
 
@@ -1749,7 +1750,7 @@ export class ItemInboxApp extends BaseApplication {
       // composer: the addition is rolled for, and the shard's own rule decides.
       const actor = resolveOperator();
       const verdict = canEditShard(this.item, actor);
-      if (!verdict.ok) { ui.notifications?.warn(`NCM | ${verdict.reason}`); return; }
+      if (!verdict.ok) { ncmNotify.warn(`NCM | ${verdict.reason}`); return; }
       game.nightcity?.openEncoder?.({ item: this.item, actor });
       return;
     }
@@ -1783,7 +1784,7 @@ export class ItemInboxApp extends BaseApplication {
 
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -1796,9 +1797,9 @@ export class ItemInboxApp extends BaseApplication {
     });
 
     if (result.success) {
-      ui.notifications.info('NCM | Message decrypted.');
+      ncmNotify.info('NCM | Message decrypted.');
     } else {
-      ui.notifications.warn('NCM | Decryption failed.');
+      ncmNotify.warn('NCM | Decryption failed.');
     }
     this.render();
   }
@@ -2198,7 +2199,7 @@ export class ItemInboxApp extends BaseApplication {
     if (!this.item) return;
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
 
@@ -2246,7 +2247,7 @@ export class ItemInboxApp extends BaseApplication {
         sound: 'eddies-claim',
       });
     } else {
-      ui.notifications.warn(`NCM | ${result.error || 'Claim failed.'}`);
+      ncmNotify.warn(`NCM | ${result.error || 'Claim failed.'}`);
     }
 
     this._transitionActive = false;
@@ -2257,7 +2258,7 @@ export class ItemInboxApp extends BaseApplication {
   static async _onSiphonFunds(event, target) {
     if (!this.item) return;
     const actor = resolveOperator();
-    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+    if (!actor) { ncmNotify.warn('NCM | No character assigned.'); return; }
     const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
     if (!entryId) return;
     const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
@@ -2291,7 +2292,7 @@ export class ItemInboxApp extends BaseApplication {
     try {
       const existing = (await repo.getContacts(viewerChar.id)) || [];
       if (existing.some(c => (c.email || '').toLowerCase() === sender.email.toLowerCase())) {
-        ui.notifications.info(`NCM | ${sender.name} is already in your contacts.`);
+        ncmNotify.info(`NCM | ${sender.name} is already in your contacts.`);
         return;
       }
       // Carry portrait + linked actor + master-contact id (the PortraitService
@@ -2302,7 +2303,7 @@ export class ItemInboxApp extends BaseApplication {
         portrait: sender.portrait || null,
         masterContactId: sender.contactId || null,
       });
-      ui.notifications.info(`NCM | Added ${sender.name} to your contacts.`);
+      ncmNotify.info(`NCM | Added ${sender.name} to your contacts.`);
       this.render(true);
     } catch (err) { log.error(`Add sender to contacts failed: ${err.message}`); }
   }
@@ -2518,11 +2519,11 @@ export class ItemInboxApp extends BaseApplication {
     if (!sceneId) return;
     const scene = game.scenes?.get(sceneId);
     if (!scene) {
-      ui.notifications.warn('NCM | Scene not found.');
+      ncmNotify.warn('NCM | Scene not found.');
       return;
     }
     scene.view();
-    ui.notifications.info(`NCM | Viewing scene: ${scene.name}`);
+    ncmNotify.info(`NCM | Viewing scene: ${scene.name}`);
   }
 
   static _onEditEntry(event, target) {

@@ -5,6 +5,7 @@
  * @description Shared utility functions used across the module
  */
 
+import { ncmNotify } from './notify.js';
 import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, SHARD_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS, CONTRAST_SPREAD } from './constants.js';
 import { NON_PERSON_ACTOR_TYPES } from './emailDirectory.js';
 import { resolveShardEditing } from '../ui/content/EncoderModel.js';
@@ -73,6 +74,97 @@ export function localize(key, data = {}) {
  */
 export function isGM() {
   return game.user?.isGM ?? false;
+}
+
+/**
+ * Is THIS client the one GM that should handle shared work (relayed requests,
+ * reapers, migrations)? With two GMs connected, `isGM()` is true on both and
+ * the work runs twice; `game.users.activeGM` names exactly one of them (a full
+ * GM before an Assistant). With no active GM recorded, any GM qualifies.
+ * Same rule as SchedulingService._isDeliverer.
+ * @returns {boolean}
+ */
+export function isPrimaryGM() {
+  if (!isGM()) return false;
+  const active = game.users?.activeGM;
+  return !active || active.id === game.user?.id;
+}
+
+/**
+ * Did a socket packet come from a GM? Pass the server-verified sender id the
+ * SocketManager hands to every handler — never an id read from the payload.
+ * @param {string|null|undefined} userId
+ * @returns {boolean}
+ */
+export function isFromGM(userId) {
+  if (!userId) return false;
+  return !!game.users?.get(userId)?.isGM;
+}
+
+/**
+ * Does this user own this actor? A GM owns every actor. Accepts an Actor or an
+ * actor id. Used to check that a relayed request acts for a character the
+ * sender really controls.
+ * @param {string|null|undefined} userId - server-verified sender id
+ * @param {Actor|string|null|undefined} actorOrId
+ * @returns {boolean}
+ */
+export function userOwnsActor(userId, actorOrId) {
+  if (!userId || !actorOrId) return false;
+  const user = game.users?.get(userId);
+  if (!user) return false;
+  if (user.isGM) return true;
+  const actor = typeof actorOrId === 'string' ? game.actors?.get(actorOrId) : actorOrId;
+  if (!actor) return false;
+  const OWNER = globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+  if (typeof actor.testUserPermission === 'function') return !!actor.testUserPermission(user, OWNER);
+  return (actor.ownership?.[userId] ?? actor.ownership?.default ?? 0) >= OWNER;
+}
+
+/**
+ * Run a macro that a program, payload or resident links to — on the GM's client,
+ * with GM rights — ONLY when a GM wrote that macro (audit SEC-02).
+ *
+ * The GM's tools (Malware Workshop, the entry composer) are the only places a
+ * program gets a linked macro, so a legitimate link always points at a GM's
+ * macro. Refusing any other author means that even forged program data can never
+ * make the GM's client run a macro a player wrote. A refused macro is reported
+ * to the GM, never silently skipped.
+ * @param {string} macroId
+ * @param {object} [scope] - passed to Macro#execute (e.g. { actor, item })
+ * @param {string} [label] - what linked it, for the GM's warning
+ * @returns {Promise<boolean>} true when the macro ran
+ */
+export async function runGmMacro(macroId, scope = {}, label = 'A program') {
+  if (!macroId || !isGM()) return false;
+  const macro = game.macros?.get(macroId);
+  if (!macro) { log.warn(`${label}: linked macro ${macroId} not found`); return false; }
+  const author = macro.author ?? game.users?.get(macro._source?.author ?? macro.author?.id);
+  if (!author?.isGM) {
+    ncmNotify.warn(`NCM | ${label} links the macro "${macro.name}", which was not run: only a macro written by a GM can run from a program. Its author is ${author?.name || 'unknown'} — recreate it as a GM to use it here.`, { permanent: true });
+    log.warn(`${label}: refused macro "${macro.name}" (${macroId}) — author is not a GM`);
+    return false;
+  }
+  try { await macro.execute(scope); return true; }
+  catch (err) { log.error(`${label}: macro "${macro.name}" failed: ${err.message}`); return false; }
+}
+
+/**
+ * Remove every `macroId` key from data a player sent (an encoded entry, a content
+ * update, a resident). Players never author macro links; only the GM's tools do.
+ * Returns a deep copy; the input is not changed.
+ * @param {*} data
+ * @returns {*}
+ */
+export function stripMacroRefs(data) {
+  if (Array.isArray(data)) return data.map(stripMacroRefs);
+  if (!data || typeof data !== 'object') return data;
+  const out = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (k === 'macroId') continue;
+    out[k] = stripMacroRefs(v);
+  }
+  return out;
 }
 
 /**
@@ -829,7 +921,7 @@ export function gateSkillsOf(gate) {
   return one.name ? [one] : [];
 }
 
-export function canOperate(actor, override = null, { standalone = false, label = 'Operator tools require' } = {}) {
+export function canOperate(actor, override = null, { standalone = false, label = 'Operator tools require', user = game.user } = {}) {
   let gate;
   if (standalone) {
     // The caller owns the WHOLE gate (e.g. the Shard Encoder's `encoderConfig.gate`).
@@ -843,7 +935,7 @@ export function canOperate(actor, override = null, { standalone = false, label =
   }
 
   if (gate.mode !== 'gated') return { ok: true };                 // ungated
-  if (gate.allowGM && game.user?.isGM) return { ok: true };       // GM escape
+  if (gate.allowGM && user?.isGM) return { ok: true };            // GM escape (the user being judged, not always this client)
   if (!actor) return { ok: false, reason: 'No operator assigned.' };
   if (Array.isArray(gate.actors) && gate.actors.includes(actor.id)) return { ok: true }; // allowlist
 
@@ -904,8 +996,9 @@ export function canOperate(actor, override = null, { standalone = false, label =
  * @returns {{ ok: boolean, reason?: string, off?: boolean }} `off` = authoring is
  *   switched off world-wide, as opposed to this character not qualifying.
  */
-export function canEncode(actor, { requireActor = true } = {}) {
-  if (game.user?.isGM) return { ok: true };   // the GM authors through the config sheet regardless
+export function canEncode(actor, { requireActor = true, user = game.user } = {}) {
+  // `user` is who is being judged: this client by default; the GM passes a relaying player (audit SEC-05).
+  if (user?.isGM) return { ok: true };   // the GM authors through the config sheet regardless
 
   let cfg;
   try { cfg = game.settings?.get(MODULE_ID, 'encoderConfig') ?? {}; } catch { cfg = {}; }
@@ -915,7 +1008,7 @@ export function canEncode(actor, { requireActor = true } = {}) {
   if (!gate || gate.mode !== 'gated') return { ok: true };
   if (!requireActor && !actor) return { ok: true };  // the door shows; the window asks for an operator
 
-  return canOperate(actor, gate, { standalone: true, label: 'Encoding a shard requires' });
+  return canOperate(actor, gate, { standalone: true, label: 'Encoding a shard requires', user });
 }
 
 /**
@@ -932,16 +1025,16 @@ export function canEncode(actor, { requireActor = true } = {}) {
  * @param {Actor|null} actor the operating character
  * @returns {{ ok: boolean, reason?: string, locked?: boolean, mode?: string }}
  */
-export function canEditShard(item, actor) {
+export function canEditShard(item, actor, { user = game.user } = {}) {
   if (!item?.getFlag?.(MODULE_ID, 'isDataShard')) return { ok: false, reason: 'That is not a data shard.' };
-  if (game.user?.isGM) return { ok: true, mode: 'gm' };
+  if (user?.isGM) return { ok: true, mode: 'gm' };
   const config = item.getFlag(MODULE_ID, 'config') || {};
   const mode = resolveShardEditing(config);
   if (mode === 'locked') return { ok: false, locked: true, mode, reason: 'This shard is read-only — its contents are locked.' };
   if (mode === 'maker' && (!actor || config.playerMade?.actorId !== actor.id)) {
     return { ok: false, locked: true, mode, reason: `Only ${config.playerMade?.actorName || 'the character who encoded it'} can rewrite this shard.` };
   }
-  const enc = canEncode(actor);
+  const enc = canEncode(actor, { user });
   if (!enc.ok) return { ...enc, mode };
   let cfg;
   try { cfg = game.settings?.get(MODULE_ID, 'encoderConfig') ?? {}; } catch { cfg = {}; }
@@ -968,7 +1061,7 @@ export async function setOperatorActor(actorId) {
 export async function openOperatorPicker(host = null) {
   const owned = getOperatorActors();
   if (owned.length <= 1) {
-    ui.notifications.info(owned.length
+    ncmNotify.info(owned.length
       ? `NCM | You only control one character (${owned[0].name}).`
       : 'NCM | You have no characters assigned.');
     return false;
@@ -978,7 +1071,7 @@ export async function openOperatorPicker(host = null) {
   const picked = await runOperatorSelect({ actors: owned, currentId: current, host });
   if (!picked || picked === current) return false;
   await setOperatorActor(picked);
-  ui.notifications.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
+  ncmNotify.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
   return true;
 }
 

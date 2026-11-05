@@ -23,7 +23,7 @@
         <button type="button" class="ncm-sb__play" data-action="play" data-id="{{id}}" data-tooltip="Play it" aria-label="Play {{label}}" {{#if off}}disabled{{/if}}><i class="fas fa-play"></i></button>
         <div class="ncm-sb__id">
           <div class="ncm-sb__nm">{{label}}
-            {{#if off}}<span class="ncm-sb__tag is-bad">off</span>{{else}}{{#if custom}}<span class="ncm-sb__tag is-act" data-tooltip="{{src}}"><i class="fas fa-file-audio"></i>{{file}}</span>{{else}}<span class="ncm-sb__tag">module's own</span>{{/if}}{{/if}}
+            {{#if off}}<span class="ncm-sb__tag is-bad">off</span>{{else}}{{#if custom}}<span class="ncm-sb__tag is-act" data-tooltip="{{ncm-tip src}}"><i class="fas fa-file-audio"></i>{{file}}</span>{{else}}<span class="ncm-sb__tag">module's own</span>{{/if}}{{/if}}
           </div>
           <div class="ncm-sb__wh">{{where}}</div>
         </div>

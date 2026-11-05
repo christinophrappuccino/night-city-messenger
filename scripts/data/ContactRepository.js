@@ -14,6 +14,7 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { isSelectableCharacter } from '../utils/helpers.js';
+import { serializeMethods } from '../utils/serialize.js';
 
 /**
  * Default contact shape — ensures all fields exist even on legacy data.
@@ -574,3 +575,10 @@ export class ContactRepository {
     return actors;
   }
 }
+
+// A character's contact list is one flag array: add / update / remove queue per character so two at once
+// cannot drop one (B4 / INT-06). The helpers that call updateContact (trust, favourite…) are not wrapped,
+// so nothing waits on itself.
+serializeMethods(ContactRepository.prototype, ['addContact', 'updateContact', 'reverifyAllContacts', 'gmOverrideVerification', 'removeContact'],
+  (args) => (args[0] ? `contacts:${args[0]}` : null));
+serializeMethods(ContactRepository.prototype, ['addCustomTag', 'removeCustomTag'], (args) => (args[0] ? `contactTags:${args[0]}` : null));

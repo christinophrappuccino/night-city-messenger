@@ -185,8 +185,10 @@ const base = () => ({ fromActorId: 'v', subject: 'Heist tonight', body: 'Be ther
   ok(relay.data._fanout.every(c => Array.isArray(c.participants) && c.participants.length === 3), 'relayed copies carry participants (sender + the two who passed)');
   // GM side handles it
   game.user = { id: 'u-gm', isGM: true };
+  // who may send is test-mail-relays' job (A3d); this sim is about delivery
+  svc.checkRelaySender = async () => ({ ok: true });
   await svc.handleMessageRelay(relay.data, 'u-p');
-  const ack = emitted.find(e => e.op === SOCKET_OPS.MESSAGE_DELIVERED);
+  const ack = emitted.find(e => e.op === SOCKET_OPS.MESSAGE_DELIVERED && !e.data.accepted);   // the final answer, after 'accepted' (B3)
   ok(ack && ack.data.delivered === 2 && ack.data.forUserId === 'u-p' && Array.isArray(ack.data.results), 'GM fans out and acks with delivered count + results');
   ok(created.filter(c => c.data.status?.sent).length === 1, 'the GM wrote exactly one sent copy for the relayed fan-out');
   game.user = { id: 'u-p', isGM: false };

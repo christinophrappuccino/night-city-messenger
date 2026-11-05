@@ -19,6 +19,7 @@
  * existing static delegators and keyboard shortcuts.
  */
 
+import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { proposeFor, readNumber, officeNames } from './phoneNumbersView.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, getPlayerCharacters, hiddenCharacterIds, isPersonActor } from '../../../utils/helpers.js';
@@ -179,7 +180,7 @@ export class ContactsTab extends BaseTab {
     gen.addEventListener('click', () => {
       const v = (n) => form.querySelector(`[name="${n}"]`)?.value || '';
       const pr = proposeFor(phoneTab, { id: this._selId, name: v('name'), organization: v('organization'), location: v('location') });
-      if (!pr.number) { ui.notifications?.warn('The place table is empty.'); return; }
+      if (!pr.number) { ncmNotify.warn('The place table is empty.'); return; }
       box.value = pr.number; box.dispatchEvent(new Event('input', { bubbles: true })); read(); note.textContent = `${note.textContent} ${pr.why}`;
     });
     box.insertAdjacentElement('afterend', note);
@@ -1475,8 +1476,8 @@ export class ContactsTab extends BaseTab {
       case 'ghSel': this._ghSel = this._ghSel === d.sel ? null : d.sel; return this.render(true);
       case 'ghPush': {
         const r = await game.nightcity?.contactGroupService?.pushGroupToPlayer?.(d.groupId, d.actor);
-        if (r?.success) { ui.notifications.info(`Pushed the group to ${game.actors?.get(d.actor)?.name || 'them'}.`); this._ghSel = null; }
-        else ui.notifications.warn(`Could not push the group: ${r?.error || 'unknown reason'}`);
+        if (r?.success) { ncmNotify.info(`Pushed the group to ${game.actors?.get(d.actor)?.name || 'them'}.`); this._ghSel = null; }
+        else ncmNotify.warn(`Could not push the group: ${r?.error || 'unknown reason'}`);
         return this.render(true);
       }
       case 'pGroupPeek': this._pGroupPeek = this._pGroupPeek === d.groupId ? null : d.groupId; return this.render(true);
@@ -1612,7 +1613,7 @@ export class ContactsTab extends BaseTab {
    */
   startCreateFromActor(actorId, { render = true } = {}) {
     const actor = game.actors?.get(actorId);
-    if (!actor) return ui.notifications.warn('NCM | Actor not found.');
+    if (!actor) return ncmNotify.warn('NCM | Actor not found.');
     const roleItem = actor.items?.find?.((i) => i.type === 'role');
     this._view = 'directory';
     this._creating = true; this._editing = false;
@@ -1751,7 +1752,7 @@ export class ContactsTab extends BaseTab {
 
   async _edPickIce() {
     const actors = (game.actors?.contents ?? []).filter(isIceActor);
-    if (!actors.length) return ui.notifications.warn('NCM | No Black ICE actors in this world (type "blackIce", the isBlackICE flag, or "Black ICE" in the name).');
+    if (!actors.length) return ncmNotify.warn('NCM | No Black ICE actors in this world (type "blackIce", the isBlackICE flag, or "Black ICE" in the name).');
     const pick = await showNamePicker({
       title: 'Black ICE actor', hint: "Damage comes from the actor's ATK when a breach fails.",
       entries: documentEntries(actors, { note: () => 'ICE' }), selected: this._draft?.iceActorId || '', placeholder: 'search ICE…',
@@ -1833,8 +1834,8 @@ export class ContactsTab extends BaseTab {
     const svc = this.masterContactService;
     if (!svc) return false;
     const data = this._collectForm();
-    if (!data.name) { ui.notifications.warn('Contact name is required.'); this._jumpSection('identity'); return false; }
-    if (data.email && !/^[^\s@]+@[^\s@]+$/.test(data.email)) { ui.notifications.warn(`"${data.email}" is not an address.`); this._jumpSection('addr'); return false; }
+    if (!data.name) { ncmNotify.warn('Contact name is required.'); this._jumpSection('identity'); return false; }
+    if (data.email && !/^[^\s@]+@[^\s@]+$/.test(data.email)) { ncmNotify.warn(`"${data.email}" is not an address.`); this._jumpSection('addr'); return false; }
     this._busy = true;
     try {
       let res;
@@ -1843,24 +1844,24 @@ export class ContactsTab extends BaseTab {
       const wasPhone = this._creating ? '' : (svc.getContact(this._selId)?.phone || '');
       if (this._creating) {
         res = await svc.addContact(data);
-        if (res?.success) { this._selId = res.contact.id; ui.notifications.info(`Contact "${data.name}" created.`); }
+        if (res?.success) { this._selId = res.contact.id; ncmNotify.info(`Contact "${data.name}" created.`); }
       } else if (this._selId) {
         // A save is a look: an auto-added sender stops asking.
         res = await svc.updateContact(this._selId, { ...data, reviewed: true });
-        if (res?.success) ui.notifications.info(`Contact "${data.name}" updated.`);
+        if (res?.success) ncmNotify.info(`Contact "${data.name}" updated.`);
       }
-      if (!res?.success) { ui.notifications.error(res?.error || 'Failed to save contact.'); return false; }
+      if (!res?.success) { ncmNotify.error(res?.error || 'Failed to save contact.'); return false; }
       const calls = game.nightcity?.callService;
       if (calls && typedPhone !== wasPhone) {
         const r = typedPhone ? await calls.assignNumber({ contactId: this._selId, number: typedPhone, why: 'You typed this one.' }) : await calls.releaseNumber(wasPhone);
-        if (r && !r.ok) ui.notifications.warn(`Saved, but the number was not: ${r.error}`);
+        if (r && !r.ok) ncmNotify.warn(`Saved, but the number was not: ${r.error}`);
       }
       this._editing = false; this._creating = false; this._draft = null; this._dirty.clear();
       if (!keepOpen) this.render(true);
       return true;
     } catch (err) {
       console.error(`${MODULE_ID} | ContactsTab._save`, err);
-      ui.notifications.error('Failed to save contact.');
+      ncmNotify.error('Failed to save contact.');
       return false;
     } finally { this._busy = false; }
   }
@@ -1884,7 +1885,7 @@ export class ContactsTab extends BaseTab {
   _composeTo(id) {
     const contact = this._contact(id);
     if (!contact) return;
-    if (!contact.email && !contact.actorId) return ui.notifications.warn('Contact has no email address.');
+    if (!contact.email && !contact.actorId) return ncmNotify.warn('Contact has no email address.');
     game.nightcity?.composeMessage?.({ toActorId: contact.actorId || null, to: contact.email });
   }
 
@@ -1894,7 +1895,7 @@ export class ContactsTab extends BaseTab {
     const all = this.masterContactService.getAll();
     const inboxId = contact.actorId || (groupKeyOf(all, contact)?.startsWith('c:') ? groupKeyOf(all, contact).slice(2) : contact.id);
     const opened = MessageRepository && game.journal?.find?.((j) => MessageRepository.identifyInbox(j)?.ownerId === inboxId);
-    if (!opened && !contact.actorId) ui.notifications.info(`NCM | ${contact.name} has no mail yet — the inbox opens empty.`);
+    if (!opened && !contact.actorId) ncmNotify.info(`NCM | ${contact.name} has no mail yet — the inbox opens empty.`);
     game.nightcity?.openInbox?.(inboxId);
   }
 
@@ -1902,11 +1903,11 @@ export class ContactsTab extends BaseTab {
     const contact = this._contact(id);
     const m = this._mail(this.masterContactService.getAll()).byContact.get(contact?.id);
     const latest = m?.latest;
-    if (!latest) return ui.notifications.warn('Nothing waiting.');
+    if (!latest) return ncmNotify.warn('Nothing waiting.');
     const page = game.journal?.get(latest.journalId)?.pages?.get(latest.pageId);
     const repo = this.messageRepository || game.nightcity?.messageRepository;
     const msg = page ? repo?._pageToMessage?.(page) : null;
-    if (!msg) return ui.notifications.warn('That message is gone.');
+    if (!msg) return ncmNotify.warn('That message is gone.');
     // Reply AS the identity the mail reached (the identities rules).
     game.nightcity?.openComposer?.({ mode: 'reply', originalMessage: msg, fromContactId: contact.id });
   }
@@ -1916,7 +1917,7 @@ export class ContactsTab extends BaseTab {
     const page = game.journal?.get(journalId)?.pages?.get(pageId);
     const repo = this.messageRepository || game.nightcity?.messageRepository;
     const msg = page ? repo?._pageToMessage?.(page) : null;
-    if (!msg) return ui.notifications.warn('That message is gone.');
+    if (!msg) return ncmNotify.warn('That message is gone.');
     game.nightcity?.openComposer?.({ mode: 'reply', originalMessage: msg, fromContactId: asId });
   }
 
@@ -1933,7 +1934,7 @@ export class ContactsTab extends BaseTab {
 
   async _looksRight(id) {
     const r = await this.masterContactService?.updateContact?.(id, { reviewed: true });
-    if (!r?.success) ui.notifications.warn(r?.error || 'Could not save.');
+    if (!r?.success) ncmNotify.warn(r?.error || 'Could not save.');
     this.render(true);
   }
 
@@ -1955,7 +1956,7 @@ export class ContactsTab extends BaseTab {
     const next = String(voice ?? '').trim();
     if (!c || (c.voice || '') === next) return;
     const r = await this.masterContactService.updateContact(id, { voice: next });
-    if (!r?.success) return ui.notifications.warn(r?.error || 'Could not save the voice note.');
+    if (!r?.success) return ncmNotify.warn(r?.error || 'Could not save the voice note.');
     log.info(`Voice saved for ${c.name}`);
     if (identityRole(this.masterContactService.getAll() || [], c)) this.render(true);   // aliases read it
   }
@@ -1979,7 +1980,7 @@ export class ContactsTab extends BaseTab {
 
   async _setPrimary(id) {
     const res = await this.masterContactService?.setPrimaryIdentity?.(id);
-    if (!res?.success) return ui.notifications.warn(res?.error || 'Could not change the main identity.');
+    if (!res?.success) return ncmNotify.warn(res?.error || 'Could not change the main identity.');
     this.render(true);
   }
 
@@ -2006,8 +2007,8 @@ export class ContactsTab extends BaseTab {
     const picked = await this._aliasPrompt(who.name);
     if (!picked) return;
     const res = actor ? await svc.addIdentity(actor.id, picked) : await svc.addContactIdentity(contactId, picked);
-    if (!res?.success) return ui.notifications.error(res?.error || 'Could not add the alias.');
-    ui.notifications.info(`${res.contact.name} (${res.contact.email}) is now an alias of ${who.name}.`);
+    if (!res?.success) return ncmNotify.error(res?.error || 'Could not add the alias.');
+    ncmNotify.info(`${res.contact.name} (${res.contact.email}) is now an alias of ${who.name}.`);
     this._selectContact(res.contact.id, { force: !this._dirty.size });
     this.render(true);
   }
@@ -2019,8 +2020,8 @@ export class ContactsTab extends BaseTab {
     const picked = await this._aliasPrompt(actor.name);
     if (!picked) return;
     const res = await svc.addIdentity(actorId, picked);
-    if (!res?.success) return ui.notifications.error(res?.error || 'Could not add the identity.');
-    ui.notifications.info(`${res.contact.name} (${res.contact.email}) is now an identity of ${actor.name}.`);
+    if (!res?.success) return ncmNotify.error(res?.error || 'Could not add the identity.');
+    ncmNotify.info(`${res.contact.name} (${res.contact.email}) is now an identity of ${actor.name}.`);
     this.render(true);
   }
 
@@ -2033,7 +2034,7 @@ export class ContactsTab extends BaseTab {
   /** Drop one character out of the character lists; Tools → Hidden Characters brings it back. */
   async _hideCharacter(actorId) {
     await game.settings.set(MODULE_ID, 'hiddenCharacters', [...new Set([...hiddenCharacterIds(), actorId])]);
-    ui.notifications.info(`${game.actors?.get(actorId)?.name || 'Character'} hidden. Bring them back in Tools → Hidden Characters.`);
+    ncmNotify.info(`${game.actors?.get(actorId)?.name || 'Character'} hidden. Bring them back in Tools → Hidden Characters.`);
     return this.render(true);
   }
 
@@ -2065,7 +2066,7 @@ export class ContactsTab extends BaseTab {
       }, { width: 500, classes: [...THEMED_DIALOG_CLASSES, 'ncm-pe-dialog'] }).render(true);
     });
     if (!picked) return;
-    if (picked.email && !looksLikeAddress(picked.email)) return ui.notifications.warn(`"${picked.email}" is not an address.`);
+    if (picked.email && !looksLikeAddress(picked.email)) return ncmNotify.warn(`"${picked.email}" is not an address.`);
     const patch = {};
     if (picked.name && picked.name !== actor.name) patch.name = picked.name;
     if (picked.img && picked.img !== actor.img) patch.img = picked.img;
@@ -2078,9 +2079,9 @@ export class ContactsTab extends BaseTab {
         if (twin) await this.masterContactService.updateContact(twin.id, { email: picked.email });
       }
     } catch (err) {
-      return ui.notifications.error(`Could not save ${actor.name}: ${err.message}`);
+      return ncmNotify.error(`Could not save ${actor.name}: ${err.message}`);
     }
-    if (Object.keys(patch).length || (picked.email && lc(picked.email) !== lc(oldEmail))) ui.notifications.info(`Saved ${picked.name || actor.name}.`);
+    if (Object.keys(patch).length || (picked.email && lc(picked.email) !== lc(oldEmail))) ncmNotify.info(`Saved ${picked.name || actor.name}.`);
     this._mailCache = null;
     if (addAlias) return this._addIdentityForActor(actorId);
     return this.render(true);
@@ -2145,9 +2146,9 @@ export class ContactsTab extends BaseTab {
       }, { width: 460, classes: [...THEMED_DIALOG_CLASSES, 'ncm-pe-dialog'] }).render(true);
     });
     if (!picked?.name) return null;
-    if (picked.email && !looksLikeAddress(picked.email)) { ui.notifications.warn(`"${picked.email}" is not an address.`); return null; }
+    if (picked.email && !looksLikeAddress(picked.email)) { ncmNotify.warn(`"${picked.email}" is not an address.`); return null; }
     const taken = picked.email ? this.masterContactService.getByEmail?.(picked.email) : null;
-    if (taken) { ui.notifications.warn(`${picked.email} already belongs to ${taken.name} in the directory.`); return null; }
+    if (taken) { ncmNotify.warn(`${picked.email} already belongs to ${taken.name} in the directory.`); return null; }
     return picked;
   }
 
@@ -2156,7 +2157,7 @@ export class ContactsTab extends BaseTab {
     if (!c) return;
     const { id: _drop, createdAt, updatedAt, primaryIdentity, identityOf, ...rest } = foundry.utils.deepClone(c);
     const res = await this.masterContactService.addContact({ ...rest, name: `${c.name} (copy)`, email: '', actorId: null });
-    if (!res?.success) return ui.notifications.error(res?.error || 'Could not duplicate.');
+    if (!res?.success) return ncmNotify.error(res?.error || 'Could not duplicate.');
     this._selectContact(res.contact.id, { force: true });
     this._startEdit(res.contact.id, 'identity');
   }
@@ -2177,8 +2178,8 @@ export class ContactsTab extends BaseTab {
     });
     if (!yes) return;
     const res = await this.masterContactService.removeContact(id);
-    if (!res?.success) return ui.notifications.error(res?.error || 'Failed to delete contact.');
-    ui.notifications.info(`Contact "${c.name}" deleted.`);
+    if (!res?.success) return ncmNotify.error(res?.error || 'Failed to delete contact.');
+    ncmNotify.info(`Contact "${c.name}" deleted.`);
     if (this._selId === id) { this._selId = null; this._editing = false; this._draft = null; this._dirty.clear(); }
     this.render(true);
   }
@@ -2195,7 +2196,7 @@ export class ContactsTab extends BaseTab {
     const svc = this.masterContactService;
     const list = svc.getAll().filter((c) => c.folder === oldName);
     for (const c of list) await svc.updateContact(c.id, { folder: newName });
-    ui.notifications.info(`Renamed "${oldName}" to "${newName}" (${list.length} contacts).`);
+    ncmNotify.info(`Renamed "${oldName}" to "${newName}" (${list.length} contacts).`);
     this.render(true);
   }
 
@@ -2235,7 +2236,7 @@ export class ContactsTab extends BaseTab {
     });
     if (!Array.isArray(picks) || !picks.length) return;
     for (const p of picks) await svc.setNpcKnows(p.id, c.id, true);
-    ui.notifications?.info(`${c.name} shared with ${picks.length} NPC${picks.length === 1 ? '' : 's'}.`);
+    ncmNotify.info(`${c.name} shared with ${picks.length} NPC${picks.length === 1 ? '' : 's'}.`);
     return this.app.render();
   }
 
@@ -2254,7 +2255,7 @@ export class ContactsTab extends BaseTab {
     });
     if (!Array.isArray(picks) || !picks.length) return;
     for (const p of picks) await svc.setNpcKnows(npc.id, p.id, true);
-    ui.notifications?.info(`Added ${picks.length} to ${npc.name}'s contacts.`);
+    ncmNotify.info(`Added ${picks.length} to ${npc.name}'s contacts.`);
     return this.app.render();
   }
 
@@ -2269,7 +2270,7 @@ export class ContactsTab extends BaseTab {
       if (!ok) return;
     }
     const r = await svc.setNpcKnows(npcId, targetId, on);
-    if (r && r.success === false && r.error) ui.notifications?.warn(r.error);
+    if (r && r.success === false && r.error) ncmNotify.warn(r.error);
     return this.app.render();
   }
 
@@ -2282,7 +2283,7 @@ export class ContactsTab extends BaseTab {
     const plural = list.length > 1 ? `${list.length} ${what}s` : `this ${what}`;
     return !!(await adminConfirm({
       title: 'Take back?',
-      content: `<p>Take ${shown} back from <b>${who}</b>?</p><p>This removes ${plural} from their own list. ${esc(note) || 'You can share again later.'}</p>`,
+      content: `<p>Take ${shown} back from <b>${escapeHtml(who)}</b>?</p><p>This removes ${plural} from their own list. ${esc(note) || 'You can share again later.'}</p>`,
     }));
   }
 
@@ -2292,8 +2293,8 @@ export class ContactsTab extends BaseTab {
     if (!c) return;
     if (!(await this._confirmTakeBack(c.name, actorId))) return;
     const r = await this._setKnows(cid, actorId, false);
-    if (r?.success) ui.notifications.info(`Took ${c.name} back from ${who}.`);
-    else ui.notifications.warn(`Could not take ${c.name} back from ${who}.`);
+    if (r?.success) ncmNotify.info(`Took ${c.name} back from ${who}.`);
+    else ncmNotify.warn(`Could not take ${c.name} back from ${who}.`);
     this._mailCache = null;
     return this.render(true);
   }
@@ -2301,8 +2302,8 @@ export class ContactsTab extends BaseTab {
   async _regroupPush(masterId, actorId) {
     const svc = game.nightcity?.contactGroupService;
     const r = await svc?.pushGroupToPlayer?.(masterId, actorId);
-    if (r?.success) ui.notifications.info(`Updated ${game.actors?.get(actorId)?.name || 'their'} copy of the group.`);
-    else ui.notifications.warn(`Could not update the group: ${r?.error || 'unknown reason'}`);
+    if (r?.success) ncmNotify.info(`Updated ${game.actors?.get(actorId)?.name || 'their'} copy of the group.`);
+    else ncmNotify.warn(`Could not update the group: ${r?.error || 'unknown reason'}`);
     return this.render(true);
   }
 
@@ -2310,7 +2311,7 @@ export class ContactsTab extends BaseTab {
     const svc = game.nightcity?.contactGroupService;
     const g = (svc?.getActorGroups?.(actorId) ?? []).find((x) => x.id === copyId);
     if (!g) return;
-    const ok = await adminConfirm({ title: 'Take the group back', content: `<p>Remove <b>${g.name}</b> from ${game.actors?.get(actorId)?.name || 'their'} groups? The contacts in it stay in their list.</p>` });
+    const ok = await adminConfirm({ title: 'Take the group back', content: `<p>Remove <b>${escapeHtml(g.name)}</b> from ${escapeHtml(game.actors?.get(actorId)?.name || 'their')} groups? The contacts in it stay in their list.</p>` });
     if (!ok) return;
     await svc?.deleteActorGroup?.(actorId, copyId);
     return this.render(true);
@@ -2378,7 +2379,7 @@ export class ContactsTab extends BaseTab {
       const on = !this._knowsNow(cid, actorId);
       if (!on && !(await this._confirmTakeBack(this._contact(cid)?.name, actorId))) return;
       const res = await this._setKnows(cid, actorId, on);
-      if (!res?.success) ui.notifications.warn(res?.error || 'Could not change that.');
+      if (!res?.success) ncmNotify.warn(res?.error || 'Could not change that.');
       else if (record) this._mxChanges.push({ cid, aid: actorId, on });
     } finally { this._busy = false; }
     this.render(true);
@@ -2425,7 +2426,7 @@ export class ContactsTab extends BaseTab {
         const on = !now(cid);
         if (!on && !(await confirmIt(this._contact(cid)?.name))) return;
         const res = await this._setKnows(cid, actorId, on, opts);
-        if (!res?.success) ui.notifications.warn(res?.error || 'Could not change that.');
+        if (!res?.success) ncmNotify.warn(res?.error || 'Could not change that.');
         else this._mxChanges.push({ cid, aid: actorId, on, part });
       } finally { this._busy = false; }
       return this.render(true);
@@ -2479,8 +2480,8 @@ export class ContactsTab extends BaseTab {
     if (!what) return;
     let n = 0, bad = null;
     for (const p of picks) { const r = await svc.pushToPlayer(p.id, actorId, { what }); if (r?.success) n++; else bad = bad || r?.error; }
-    ui.notifications.info(`NCM | Shared ${n} contact${n === 1 ? '' : 's'} with ${actor.name}.`);
-    if (bad) ui.notifications.warn(`NCM | Some shares failed: ${bad}`);
+    ncmNotify.info(`NCM | Shared ${n} contact${n === 1 ? '' : 's'} with ${actor.name}.`);
+    if (bad) ncmNotify.warn(`NCM | Some shares failed: ${bad}`);
     this.render(true);
   }
 
@@ -2489,7 +2490,7 @@ export class ContactsTab extends BaseTab {
     const actor = game.actors?.get(actorId);
     if (!svc || !actor) return;
     const groups = svc.getMasterGroups();
-    if (!groups.length) return ui.notifications.warn('NCM | No GM groups yet — make one in the Groups view.');
+    if (!groups.length) return ncmNotify.warn('NCM | No GM groups yet — make one in the Groups view.');
     const held = new Set(svc.getActorGroups(actorId).map((g) => g.sharedFrom?.groupId).filter(Boolean));
     const pick = await showNamePicker({
       title: `Push a group to ${actor.name}`,
@@ -2499,8 +2500,8 @@ export class ContactsTab extends BaseTab {
     });
     if (!pick?.id) return;
     const r = await svc.pushGroupToPlayer(pick.id, actorId);
-    if (!r?.success) ui.notifications.warn(`NCM | ${r?.error || 'Push failed.'}`);
-    else ui.notifications.info(`NCM | Pushed "${pick.name}" to ${actor.name} (${r.shared} contacts shared${r.failed?.length ? `, failed: ${r.failed.join(', ')}` : ''}).`);
+    if (!r?.success) ncmNotify.warn(`NCM | ${r?.error || 'Push failed.'}`);
+    else ncmNotify.info(`NCM | Pushed "${pick.name}" to ${actor.name} (${r.shared} contacts shared${r.failed?.length ? `, failed: ${r.failed.join(', ')}` : ''}).`);
     this.render(true);
   }
 
@@ -2515,12 +2516,12 @@ export class ContactsTab extends BaseTab {
     if (copy) {
       if (!(await this._confirmTakeBack(group.name, actorId, { what: 'group', note: 'The contacts it shared stay with them.' }))) return;
       const r = await svc.deleteActorGroup(actorId, copy.id);
-      if (!r?.success) ui.notifications.warn(`NCM | ${r?.error || 'Could not take it back.'}`);
-      else ui.notifications.info(`NCM | Took "${group.name}" back from ${actor.name}. Contacts it shared stay with them.`);
+      if (!r?.success) ncmNotify.warn(`NCM | ${r?.error || 'Could not take it back.'}`);
+      else ncmNotify.info(`NCM | Took "${group.name}" back from ${actor.name}. Contacts it shared stay with them.`);
     } else {
       const r = await svc.pushGroupToPlayer(groupId, actorId);
-      if (!r?.success) ui.notifications.warn(`NCM | ${r?.error || 'Push failed.'}`);
-      else ui.notifications.info(`NCM | Pushed "${group.name}" to ${actor.name} (${r.shared} contacts shared).`);
+      if (!r?.success) ncmNotify.warn(`NCM | ${r?.error || 'Push failed.'}`);
+      else ncmNotify.info(`NCM | Pushed "${group.name}" to ${actor.name} (${r.shared} contacts shared).`);
     }
     this.render(true);
   }
@@ -2555,7 +2556,7 @@ export class ContactsTab extends BaseTab {
   onClearSelection() {}
   onToggleGroup() {}
   onToggleOverflow() { this._newOpen = !this._newOpen; this.render(true); }
-  onBurnContact() { ui.notifications.info('NCM | Burning contacts is retired from the current scope.'); }
+  onBurnContact() { ncmNotify.info('NCM | Burning contacts is retired from the current scope.'); }
   onBatchShare() {}
   onBatchTag() {}
   onBatchBurn() {}
@@ -2577,8 +2578,8 @@ export class ContactsTab extends BaseTab {
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
     if (!actorId || !contactId || !game.user.isGM) return;
     const result = await game.nightcity?.contactRepository?.gmOverrideVerification(actorId, contactId, true);
-    if (result?.success) { ui.notifications.info('Contact force-verified.'); this.render(true); }
-    else ui.notifications.error(result?.error || 'Verification failed.');
+    if (result?.success) { ncmNotify.info('Contact force-verified.'); this.render(true); }
+    else ncmNotify.error(result?.error || 'Verification failed.');
   }
 
   async onGMUnverifyContact(event, target) {
@@ -2586,8 +2587,8 @@ export class ContactsTab extends BaseTab {
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
     if (!actorId || !contactId || !game.user.isGM) return;
     const result = await game.nightcity?.contactRepository?.gmOverrideVerification(actorId, contactId, false);
-    if (result?.success) { ui.notifications.info('Verification revoked.'); this.render(true); }
-    else ui.notifications.error(result?.error || 'Failed to unverify.');
+    if (result?.success) { ncmNotify.info('Verification revoked.'); this.render(true); }
+    else ncmNotify.error(result?.error || 'Failed to unverify.');
   }
 
   /**
@@ -2608,9 +2609,9 @@ export class ContactsTab extends BaseTab {
     const npcs = this._npcHolders().filter((n) => !own.has(n.id));
     const single = contactIds.length === 1 ? entryOf(contactIds[0]) : null;
     const knowsAlready = new Set(single ? (mcs?.knownByNpcs?.(single.id) || []).map((n) => `npc:${n.id}`) : []);
-    if (!playerActors.length && !npcs.length) return ui.notifications.warn('NCM | Nobody to share with yet.');
+    if (!playerActors.length && !npcs.length) return ncmNotify.warn('NCM | Nobody to share with yet.');
     const names = contactIds.map((id) => (id.startsWith('pc-') ? game.actors?.get(id.slice(3))?.name : this._contact(id)?.name)).filter(Boolean);
-    if (!names.length) return ui.notifications.warn('NCM | Nothing to share — the selected contacts no longer exist.');
+    if (!names.length) return ncmNotify.warn('NCM | Nothing to share — the selected contacts no longer exist.');
     const picks = await showNamePicker({
       title: names.length === 1 ? `Share ${names[0]} with…` : `Share ${names.length} contacts with…`,
       hint: "Each lands in that character's or NPC's own contact list. Re-sharing never duplicates.",
@@ -2641,8 +2642,8 @@ export class ContactsTab extends BaseTab {
         if (r?.success) shared++; else firstError = firstError || r?.error || 'unknown error';
       }
     }
-    if (shared) ui.notifications.info(`NCM | Shared ${names.length === 1 ? names[0] : `${names.length} contacts`} with ${picks.length} ${picks.length === 1 ? 'character or NPC' : 'characters and NPCs'}.`);
-    if (firstError) ui.notifications.warn(`NCM | Some shares failed: ${firstError}`);
+    if (shared) ncmNotify.info(`NCM | Shared ${names.length === 1 ? names[0] : `${names.length} contacts`} with ${picks.length} ${picks.length === 1 ? 'character or NPC' : 'characters and NPCs'}.`);
+    if (firstError) ncmNotify.warn(`NCM | Some shares failed: ${firstError}`);
     this.render(true);
   }
 
@@ -2671,8 +2672,8 @@ export class ContactsTab extends BaseTab {
     const group = await editGroupDialog({}, { memberSource: () => this._groupMemberSource() });
     if (!group) return this.render(true);
     const r = await game.nightcity?.contactGroupService?.saveMasterGroup(group);
-    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
-    ui.notifications.info(`NCM | Group "${group.name}" saved. Push it to players from Groups.`);
+    if (!r?.success) return ncmNotify.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    ncmNotify.info(`NCM | Group "${group.name}" saved. Push it to players from Groups.`);
     this._view = 'groups';
     this._gSel = r.group?.id || group.id || this._gSel;
     this.render(true);
@@ -2686,7 +2687,7 @@ export class ContactsTab extends BaseTab {
     const group = await editGroupDialog(existing, { memberSource: () => this._groupMemberSource() });
     if (!group) return;
     const r = await svc.saveMasterGroup(group);
-    if (!r?.success) return ui.notifications.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
+    if (!r?.success) return ncmNotify.warn(`NCM | ${r?.error || 'Could not save the group.'}`);
     this.render(true);
   }
 
@@ -2712,7 +2713,7 @@ export class ContactsTab extends BaseTab {
     const group = svc?.getMasterGroup(id);
     if (!group) return;
     const pcs = getPlayerCharacters();
-    if (!pcs.length) return ui.notifications.warn('NCM | No player characters to push to.');
+    if (!pcs.length) return ncmNotify.warn('NCM | No player characters to push to.');
     const already = new Set(svc.sharedWith(id).map((s) => s.actorId));
     const picks = await showNamePicker({
       title: `Push "${group.name}" to…`,
@@ -2727,7 +2728,7 @@ export class ContactsTab extends BaseTab {
       const r = await svc.pushGroupToPlayer(id, p.id);
       lines.push(r?.success ? `${p.name}: shared (${r.shared} contacts)${r.failed?.length ? `, failed: ${r.failed.join(', ')}` : ''}` : `${p.name}: ${r?.error || 'failed'}`);
     }
-    ui.notifications.info(`NCM | Pushed "${group.name}" — ${lines.join(' · ')}`);
+    ncmNotify.info(`NCM | Pushed "${group.name}" — ${lines.join(' · ')}`);
     this.render(true);
   }
 
@@ -2750,12 +2751,12 @@ export class ContactsTab extends BaseTab {
     const groups = game.nightcity?.contactGroupService?.exportMaster?.() || [];
     this._download({ ncmMasterContacts: 1, exportedAt: new Date().toISOString(), contacts, groups },
       `ncm-master-contacts-${new Date().toISOString().slice(0, 10)}.json`);
-    ui.notifications.info(`Exported ${contacts.length} contacts.`);
+    ncmNotify.info(`Exported ${contacts.length} contacts.`);
   }
 
   async onImportContactsJSON() {
     const svc = this.masterContactService;
-    if (!svc) return ui.notifications.warn('Master contact service not available.');
+    if (!svc) return ncmNotify.warn('Master contact service not available.');
     const input = document.createElement('input');
     input.type = 'file'; input.accept = '.json'; input.style.display = 'none';
     document.body.appendChild(input);
@@ -2767,7 +2768,7 @@ export class ContactsTab extends BaseTab {
         // Accept the {ncmMasterContacts, contacts, groups} envelope as well as a bare array.
         const contacts = Array.isArray(parsed) ? parsed : parsed?.contacts;
         const groups = Array.isArray(parsed?.groups) ? parsed.groups : [];
-        if (!Array.isArray(contacts)) return ui.notifications.error('Invalid format — expected a JSON array of contacts.');
+        if (!Array.isArray(contacts)) return ncmNotify.error('Invalid format — expected a JSON array of contacts.');
         let imported = 0, skipped = 0;
         const existingEmails = new Set((svc.getAll() || []).map((c) => c.email?.toLowerCase()));
         for (const c of contacts) {
@@ -2791,14 +2792,14 @@ export class ContactsTab extends BaseTab {
           const gr = await game.nightcity?.contactGroupService?.importMaster?.(groups);
           if (gr) {
             groupNote = ` Groups: ${gr.imported} imported${gr.skipped ? `, ${gr.skipped} skipped` : ''}.`;
-            if (gr.unresolved.length) ui.notifications.warn(`NCM | Group members not found in this world: ${gr.unresolved.join('; ')}`, { permanent: true });
+            if (gr.unresolved.length) ncmNotify.warn(`NCM | Group members not found in this world: ${gr.unresolved.join('; ')}`, { permanent: true });
           }
         }
-        ui.notifications.info(`Imported ${imported} contacts. ${skipped ? `${skipped} skipped (duplicates or invalid).` : ''}${groupNote}`);
+        ncmNotify.info(`Imported ${imported} contacts. ${skipped ? `${skipped} skipped (duplicates or invalid).` : ''}${groupNote}`);
         this.render(true);
       } catch (err) {
         console.error('NCM | Import contacts failed:', err);
-        ui.notifications.error('Failed to parse JSON file.');
+        ncmNotify.error('Failed to parse JSON file.');
       } finally { input.remove(); }
     });
     input.click();
@@ -2812,8 +2813,8 @@ export class ContactsTab extends BaseTab {
     });
     if (!confirmed) return this.render(true);
     const result = await this.masterContactService?.importFromActors();
-    if (result?.success) ui.notifications.info(`NCM | Added ${result.imported} contact${result.imported !== 1 ? 's' : ''} from world actors.`);
-    else ui.notifications.warn('NCM | Sync failed.');
+    if (result?.success) ncmNotify.info(`NCM | Added ${result.imported} contact${result.imported !== 1 ? 's' : ''} from world actors.`);
+    else ncmNotify.warn('NCM | Sync failed.');
     this.render(true);
   }
 

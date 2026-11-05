@@ -100,6 +100,7 @@ export const EVENTS = Object.freeze({
   CALL_LOGGED: 'call:logged',       // { kind: 'log'|'voicemail' } — a call-log or voicemail page appeared / changed / went
   CALL_GLITCH: 'call:glitch',       // { callId } — the GM made the line stutter
   CALL_TRACED: 'call:traced',       // { callId, from } — a withheld caller was revealed to this client
+  PAYPHONE_STATE: 'call:payphoneState', // { id } — someone lifted or hung up a payphone's handset
   LINE_UPDATED: 'call:lineUpdated', // { number } — a number / line setting changed
   CALL_LINE: 'call:line',           // { callId, line, mine } — a typed line arrived on a call (or was sent from here)
   CALL_TYPING: 'call:typing',       // { callId, side, on } — the other side started / stopped typing
@@ -201,6 +202,7 @@ export const SOCKET_OPS = Object.freeze({
   CALL_LOG_REQUEST: 'call:logRequest',
   CALL_LINE_REQUEST: 'call:lineRequest',
   CALL_EMERGENCY: 'call:emergency',
+  PAYPHONE: 'call:payphone',                 // a booth's state (who is on it, the speaker) and a pick-up race, every client
   CONVERSATION_REQUEST: 'conversation:request',   // a player's write, for the GM to land
   CONVERSATION_RESULT: 'conversation:result',     // how it went, for that player
   CALL_OVERHEARD: 'call:overheard',
@@ -218,6 +220,8 @@ export const SOCKET_OPS = Object.freeze({
   // GM→everyone: end an actor's live terminal session (Admin → Terminals →
   // Log out) — the open viewer drops to its login screen. { actorId, targets[], message }.
   TERMINAL_KICK: 'terminal:kick',
+  // GM→everyone: Admin → Tools → Force Refresh — re-read NCM's directory and redraw every open NCM window. { at }.
+  ADMIN_FORCE_REFRESH: 'admin:forceRefresh',
   // Player→GM: a shard-integrity write. The integrity number lives on the item
   // and entry damage on the GM-owned shard journal, so a player's failed breach,
   // reconstruct, repair or salvage relays here. { op, itemUuid, ... } — ops:
@@ -233,6 +237,79 @@ export const SOCKET_OPS = Object.freeze({
   // Player→GM: a network-node write (switch off/on, jam, a log line). Nodes live in a world setting, so a
   // player's action relays here. { op, nodeId, userId, ... } — ops: 'state' | 'log'.
   NETWORK_NODE_REQUEST: 'network:nodeRequest',
+});
+
+/**
+ * Trust class of every socket op (audit remediation, AUDIT-REMEDIATION-PLAN.md §4.1).
+ * The SocketManager hands every handler the SERVER-verified sender id; this table
+ * says what a handler may assume about that sender.
+ *   request — player → active GM. The GM checks the sender may do this.
+ *   result  — GM → player(s). Only meaningful when the sender is a GM.
+ *   peer    — player ↔ player (or broadcast). Each handler checks the sender is
+ *             the party it claims to be.
+ *   unused  — declared, no handler registered.
+ * Every SOCKET_OPS key appears here exactly once (sim: test-socket-identity).
+ * Recorded in batch A1; enforcement is added op by op in later batches.
+ */
+export const SOCKET_TRUST = Object.freeze({
+  MESSAGE_RELAY: 'request',
+  MESSAGE_DELIVERED: 'result',
+  MESSAGE_QUEUE_SYNC: 'request',
+  MESSAGE_QUEUE_CMD: 'result',
+  MESSAGE_NOTIFY: 'result',
+  MESSAGE_STATUS_UPDATE: 'peer',
+  SCHEDULE_SYNC: 'request',
+  INBOX_REFRESH: 'result',
+  NETWORK_STATE_CHANGED: 'peer',
+  SHARD_STATE_CHANGED: 'unused',
+  CONTACT_SHARE_RELAY: 'request',
+  CONTACT_SHARE_NOTIFY: 'result',
+  CONTACT_SHARE_CONFIRM: 'result',
+  TRACE_COMPLETE: 'peer',
+  LOG_RELAY: 'request',
+  SHARD_CONVERT_REQUEST: 'request',
+  SHARD_CONVERT_RESULT: 'result',
+  SHARD_UNCONVERT_REQUEST: 'request',
+  SHARD_UNCONVERT_RESULT: 'result',
+  ANON_TRACE_REQUEST: 'request',
+  TERMINAL_STATE_CHANGED: 'unused',
+  TERMINAL_EXFIL_REQUEST: 'request',
+  TERMINAL_NET_REQUEST: 'request',
+  TERMINAL_SESSION_REQUEST: 'request',
+  TERMINAL_EXFIL_RESULT: 'result',
+  BANK_SIPHON_REQUEST: 'request',
+  CONTENT_UPDATE_REQUEST: 'request',
+  PAYLOAD_EFFECT_REQUEST: 'request',
+  TERMINAL_RESIDENT_REQUEST: 'request',
+  TRACE_REQUEST: 'request',
+  SHARD_PRICE_REQUEST: 'request',
+  SHARD_PRICE_RESULT: 'result',
+  NET_RESOLVE_REQUEST: 'request',
+  NET_RESOLVE_RESULT: 'result',
+  NET_RESOLVE_CANCEL: 'request',
+  NET_RESOLVE_STATE: 'result',
+  SECURITY_LOCKOUT: 'result',
+  SECURITY_NOTIFY: 'peer',
+  CALL: 'peer',
+  WATCH: 'peer',
+  CALL_LOG_REQUEST: 'request',
+  CALL_LINE_REQUEST: 'request',
+  // Mixed op: add/started go to the GM; arrive/auto/round updates are broadcast.
+  CALL_EMERGENCY: 'peer',
+  PAYPHONE: 'peer',
+  CONVERSATION_REQUEST: 'request',
+  CONVERSATION_RESULT: 'result',
+  // Mixed op: join/leave/enhance/save go to the GM; prompt/joined/line/ended come from it.
+  CALL_OVERHEARD: 'peer',
+  CALL_VM_REQUEST: 'request',
+  CALL_AUDIO: 'request',
+  SECURITY_REPORT: 'request',
+  SECURITY_CLEAR: 'result',
+  TERMINAL_KICK: 'result',
+  ADMIN_FORCE_REFRESH: 'result',
+  SHARD_INTEGRITY_REQUEST: 'request',
+  SHARD_STATE_REQUEST: 'request',
+  NETWORK_NODE_REQUEST: 'request',
 });
 
 // ─── Netrunning binding (design §5) ───
@@ -1089,6 +1166,7 @@ export const SOUND_PATHS = Object.freeze({
   'voicemail-beep': 'calls/voicemail-beep.wav',
   'em-alert': 'calls/em-alert.wav', 'em-sting-backup': 'calls/em-sting-backup.wav', 'em-sting-trauma': 'calls/em-sting-trauma.wav', 'em-monitor': 'calls/em-monitor.wav', 'em-dispatch': 'calls/em-dispatch.wav',
   'em-radio-in': 'calls/em-radio-in.wav', 'em-radio-out': 'calls/em-radio-out.wav', 'em-arrive-trauma': 'calls/em-arrive-trauma.wav', 'em-arrive-backup': 'calls/em-arrive-backup.wav',
+  'payphone-ring': 'calls/payphone-ring.wav', 'payphone-hook': 'calls/payphone-hook.wav', 'payphone-chip': 'calls/payphone-chip.wav',
 });
 
 export const ESSENTIAL_EFFECTS = Object.freeze(['ncm-fade-in', 'ncm-fade-out']);

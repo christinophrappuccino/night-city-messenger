@@ -18,6 +18,7 @@
  *      - "Open Data Shard" / "Configure Shard" / "Remove Shard Data" on shard items
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { accessMenuEntries } from './AccessPoints.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, canEncode, canEditShard, resolveOperator } from '../utils/helpers.js';
@@ -106,11 +107,11 @@ export class ShardSheetOverride {
         name: withShardPrefix(label, prefix),
         [`flags.${MODULE_ID}.config.shardName`]: label,
       });
-      ui.notifications.info(`Renamed to "${label}".`);
+      ncmNotify.info(`Renamed to "${label}".`);
       this._refreshItemViews(item);
     } catch (err) {
       log.warn('ShardSheetOverride: rename failed', err);
-      ui.notifications.warn(`NCM | Could not rename "${item.name}" — you may not have permission to edit it.`);
+      ncmNotify.warn(`NCM | Could not rename "${item.name}" — you may not have permission to edit it.`);
     }
   }
 
@@ -209,11 +210,14 @@ export class ShardSheetOverride {
         return;
       }
 
-      // Not a shard — nothing to intercept
-      if (!item.getFlag(MODULE_ID, 'isDataShard')) return;
+      // A terminal opens its login screen, the way a shard opens its viewer (audit COMPAT-02: the Cyberpunk RED
+      // system's own hotbar macros open an item's SHEET, so a dragged terminal used to show the raw gear sheet).
+      const isTerminal = !!item.getFlag(MODULE_ID, 'isTerminal');
+      // Not a shard or a terminal — nothing to intercept
+      if (!isTerminal && !item.getFlag(MODULE_ID, 'isDataShard')) return;
 
-      // Launch our shard viewer
-      const openFn = game.nightcity?.openDataShard;
+      // Launch our viewer
+      const openFn = isTerminal ? game.nightcity?.openTerminal : game.nightcity?.openDataShard;
       if (openFn) {
         // Hide the sheet element instantly to prevent visual flash
         const el = sheet.element?.[0] ?? sheet.element;
@@ -222,7 +226,7 @@ export class ShardSheetOverride {
         sheet.close({ force: true });
         openFn(item);
       } else {
-        log.warn('ShardSheetOverride: openDataShard not available, leaving default sheet open');
+        log.warn(`ShardSheetOverride: ${isTerminal ? 'openTerminal' : 'openDataShard'} not available, leaving default sheet open`);
       }
     } catch (err) {
       log.error(`ShardSheetOverride: renderItemSheet intercept error — ${err.message}`);
@@ -457,10 +461,10 @@ export class ShardSheetOverride {
   async _convertToTerminal(item) {
     const svc = game.nightcity?.terminalService;
     if (!svc) return;
-    if (item.getFlag(MODULE_ID, 'isTerminal')) return ui.notifications.warn('Already a terminal.');
+    if (item.getFlag(MODULE_ID, 'isTerminal')) return ncmNotify.warn('Already a terminal.');
     const res = await svc.convertToTerminal(item);
-    if (!res?.success) return ui.notifications.error(res?.error || 'Conversion failed.');
-    ui.notifications.info(`"${item.name}" is now a Terminal.`);
+    if (!res?.success) return ncmNotify.error(res?.error || 'Conversion failed.');
+    ncmNotify.info(`"${item.name}" is now a Terminal.`);
     // Re-render the directory + any actor sheets so the terminal badge +
     // left-click intercept appear immediately (mirrors shard convert / remove).
     // Without this the item looked unchanged until a manual refresh.
@@ -502,7 +506,7 @@ export class ShardSheetOverride {
     });
     if (!ok) return;
     await game.nightcity?.terminalService?.removeTerminal(item);
-    ui.notifications.info('Terminal data removed.');
+    ncmNotify.info('Terminal data removed.');
     // Re-render the directory + any actor sheets so the terminal badge/intercept
     // are dropped (the entry DOM is rebuilt fresh, clearing ncmProcessed).
     setTimeout(() => {
@@ -761,7 +765,7 @@ export class ShardSheetOverride {
   async _launchConversionFlow(item, actor) {
     const dataShardService = game.nightcity?.dataShardService;
     if (!dataShardService) {
-      ui.notifications.error('Night City Messenger: DataShardService not available');
+      ncmNotify.error('Night City Messenger: DataShardService not available');
       return;
     }
 
@@ -772,9 +776,9 @@ export class ShardSheetOverride {
         const who = actor || resolveOperator();
         const verdict = canEditShard(item, who);
         if (verdict.ok) { game.nightcity?.openEncoder?.({ item, actor: who }); return; }
-        if (verdict.locked) { ui.notifications.warn(`NCM | ${verdict.reason}`); return; }
+        if (verdict.locked) { ncmNotify.warn(`NCM | ${verdict.reason}`); return; }
       }
-      ui.notifications.warn(`This item is already ${withArticle(T('one', 'lower'))}.`);
+      ncmNotify.warn(`This item is already ${withArticle(T('one', 'lower'))}.`);
       return;
     }
 
@@ -782,7 +786,7 @@ export class ShardSheetOverride {
     if (isGM()) {
       const result = await dataShardService.convertToDataShard(item);
       if (result?.success) {
-        ui.notifications.info(`"${item.name}" converted to ${T('one', 'lower')}.`);
+        ncmNotify.info(`"${item.name}" converted to ${T('one', 'lower')}.`);
         setTimeout(() => {
           ui.items?.render();
           for (const sheet of Object.values(ui.windows)) {
@@ -790,7 +794,7 @@ export class ShardSheetOverride {
           }
         }, 150);
       } else {
-        ui.notifications.error(`Failed to convert to ${T('one', 'lower')}: ${result?.error || 'Unknown error'}`);
+        ncmNotify.error(`Failed to convert to ${T('one', 'lower')}: ${result?.error || 'Unknown error'}`);
       }
       return;
     }
@@ -802,11 +806,11 @@ export class ShardSheetOverride {
     // which program to build. The Payload / Malware tiles switch branch.
     const verdict = canEncode(actor);
     if (!verdict.ok) {
-      ui.notifications.warn(`NCM | ${verdict.reason}`);
+      ncmNotify.warn(`NCM | ${verdict.reason}`);
       return;
     }
     if (!ShardSheetOverride.isBlankFor(item)) {
-      ui.notifications.warn(`NCM | ${ShardSheetOverride.blankRefusal()}`);
+      ncmNotify.warn(`NCM | ${ShardSheetOverride.blankRefusal()}`);
       return;
     }
     game.nightcity?.openEncoder?.({ item, actor });
@@ -848,7 +852,7 @@ export class ShardSheetOverride {
           if (!success) throw new Error('Request denied or timed out');
         }
 
-        ui.notifications.info(`${T('short')} data removed from "${item.name}"`);
+        ncmNotify.info(`${T('short')} data removed from "${item.name}"`);
         setTimeout(() => {
           ui.items?.render();
           for (const sheet of Object.values(ui.windows)) {
@@ -856,7 +860,7 @@ export class ShardSheetOverride {
           }
         }, 150);
       } catch (err) {
-        ui.notifications.error(`Failed to remove ${T('short', 'lower')} data: ${err.message}`);
+        ncmNotify.error(`Failed to remove ${T('short', 'lower')} data: ${err.message}`);
       }
     }
   }

@@ -6,6 +6,7 @@
  *              SocketManager initialization, and the postReady health check.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { log } from '../utils/helpers.js';
 import { MODULE_ID } from '../utils/constants.js';
 import { runMigrations } from '../core/MigrationRunner.js';
@@ -80,7 +81,7 @@ export function registerReadyServices(initializer) {
       if (!actor) {
         actor = game.user?.character;
         if (!actor) {
-          ui.notifications.warn('NCM | No actor assigned to open email setup.');
+          ncmNotify.warn('NCM | No actor assigned to open email setup.');
           return null;
         }
       }
@@ -104,7 +105,7 @@ export function registerReadyServices(initializer) {
      * @param {object} [opts] { target?:{kind,item,accountId?,onSave?}, program?, libId? }
      */
     game.nightcity.openMalwareWorkshop = (opts = {}) => {
-      if (!game.user?.isGM) { ui.notifications?.warn('NCM | The Malware Workshop is GM-only.'); return null; }
+      if (!game.user?.isGM) { ncmNotify.warn('NCM | The Malware Workshop is GM-only.'); return null; }
       const existing = Object.values(ui.windows).find((w) => w.id === 'ncm-malware-workshop');
       if (existing) existing.close({ animate: false });
       const app = new MalwareWorkshopApp(opts);
@@ -130,7 +131,7 @@ export function registerReadyServices(initializer) {
       const { canEncode, resolveOperator } = await import('../utils/helpers.js');
       const verdict = canEncode(opts.actor || resolveOperator());
       if (!verdict.ok) {
-        ui.notifications?.warn(`NCM | ${verdict.reason}`);
+        ncmNotify.warn(`NCM | ${verdict.reason}`);
         return null;
       }
       const { ShardEncoderApp } = await import('../ui/ShardEncoder/ShardEncoderApp.js');
@@ -148,7 +149,7 @@ export function registerReadyServices(initializer) {
     const { ProgramDeckApp } = await import('../ui/ProgramDeck/ProgramDeckApp.js');
     game.nightcity.openProgramDeck = (itemOrId) => {
       const item = (typeof itemOrId === 'string') ? game.items?.get(itemOrId) : itemOrId;
-      if (!item) { ui.notifications?.warn('NCM | No item for the Program Deck.'); return null; }
+      if (!item) { ncmNotify.warn('NCM | No item for the Program Deck.'); return null; }
       const existing = Object.values(ui.windows).find((w) => w.id === 'ncm-program-deck');
       if (existing) existing.close({ animate: false });
       const app = new ProgramDeckApp({ item });

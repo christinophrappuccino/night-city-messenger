@@ -69,7 +69,7 @@
       {{#if uplink.wired}}
         <span class="ncm-term__hud-seg ncm-term__hud-wired" data-tooltip="Hardline — wired connection"><i class="fas fa-network-wired"></i></span>
       {{else}}
-        <span class="ncm-term__hud-seg ncm-term__bars{{#if uplink.offline}} ncm-term__bars--off{{/if}}" data-tooltip="Uplink signal: {{uplink.sigLabel}}"><b class="{{#if (gt uplink.signal 0)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 25)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 50)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 80)}}on{{/if}}"></b></span>
+        <span class="ncm-term__hud-seg ncm-term__bars{{#if uplink.offline}} ncm-term__bars--off{{/if}}" data-tooltip="Uplink signal: {{ncm-tip uplink.sigLabel}}"><b class="{{#if (gt uplink.signal 0)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 25)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 50)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 80)}}on{{/if}}"></b></span>
       {{/if}}
       {{#if hud.isAdmin}}<span class="ncm-term__hud-sep">·</span><span class="ncm-term__hud-seg ncm-term__hud-admin"><i class="fas fa-user-shield"></i> ADMIN</span>{{/if}}
       <span class="ncm-term__hud-spacer"></span>
@@ -79,7 +79,7 @@
       {{#if hud.operator}}
         <span class="ncm-term__hud-seg ncm-term__hud-op{{#if hud.canSwitchOperator}} is-switchable{{/if}}"
               {{#if hud.canSwitchOperator}}data-action="terminalSwitchOperator"{{/if}}
-              data-tooltip="Operating as {{hud.operator}} — rolls, eddies and skill checks use this character.{{#if hud.canSwitchOperator}} Click to switch.{{/if}}">
+              data-tooltip="Operating as {{ncm-tip hud.operator}} — rolls, eddies and skill checks use this character.{{#if hud.canSwitchOperator}} Click to switch.{{/if}}">
           <i class="fas fa-user-gear"></i> {{hud.operator}}{{#if hud.canSwitchOperator}} <i class="fas fa-chevron-down ncm-term__hud-opcv"></i>{{/if}}
         </span>
       {{else}}
@@ -93,7 +93,7 @@
       {{#if hud.tools}}
         <span class="ncm-term__hud-seg ncm-term__hud-tools{{#if hud.tools.open}} is-open{{/if}}{{#unless hud.tools.canOperate}} is-locked{{/unless}}"
               data-action="terminalOperatorTools"
-              data-tooltip="{{#if hud.tools.canOperate}}Operator tools — upload, hacking{{else}}{{hud.tools.reason}}{{/if}}">
+              data-tooltip="{{#if hud.tools.canOperate}}Operator tools — upload, hacking{{else}}{{ncm-tip hud.tools.reason}}{{/if}}">
           <i class="fas fa-user-secret"></i> OPS <i class="fas fa-chevron-down ncm-term__hud-opcv"></i>
           {{#if hud.tools.open}}
             <div class="ncm-term__opsmenu">
@@ -101,7 +101,7 @@
               {{#each hud.tools.items}}
                 <div class="ncm-term__opsitem{{#if this.disabled}} is-disabled{{/if}}{{#if this.soon}} is-soon{{/if}}"
                      {{#unless this.disabled}}data-action="{{this.action}}"{{/unless}}
-                     {{#if this.reason}}data-tooltip="{{this.reason}}"{{/if}}>
+                     {{#if this.reason}}data-tooltip="{{ncm-tip this.reason}}"{{/if}}>
                   <span class="ncm-term__opsico"><i class="{{this.icon}}"></i></span>
                   <span class="ncm-term__opsnm">
                     <span class="ncm-term__opst">{{this.label}}{{#if this.soon}} <span class="ncm-term__opssoon">SOON</span>{{/if}}</span>
@@ -129,7 +129,7 @@
         </span>
       {{/if}}
       {{!-- SEND AS THE ACCOUNT (config.accountMail.compose): write mail as whoever owns it. --}}
-      {{#if composeAs}}<span class="ncm-term__hud-seg ncm-term__hud-compose" data-action="terminalComposeAs" data-tooltip="Write mail as {{composeAs.name}} ({{composeAs.email}}) — to anyone in their address book"><i class="fas fa-pen-to-square"></i> WRITE</span>{{/if}}
+      {{#if composeAs}}<span class="ncm-term__hud-seg ncm-term__hud-compose" data-action="terminalComposeAs" data-tooltip="Write mail as {{ncm-tip composeAs.name}} ({{ncm-tip composeAs.email}}) — to anyone in their address book"><i class="fas fa-pen-to-square"></i> WRITE</span>{{/if}}
       {{#if isGM}}<span class="ncm-term__hud-seg ncm-term__hud-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
       {{#if hud.trace}}<span class="ncm-term__hud-seg ncm-term__hud-trace"><i class="fa-regular fa-clock"></i> TRACE {{hud.trace}}</span>{{/if}}
     </div>

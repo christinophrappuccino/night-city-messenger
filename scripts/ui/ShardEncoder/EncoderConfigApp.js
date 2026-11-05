@@ -21,6 +21,7 @@
  *   NOTHING is written until Save: `this.draft` is the working copy.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, SKILL_MAP } from '../../utils/constants.js';
 import { log, isGM, isSelectableCharacter } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -75,7 +76,7 @@ export class EncoderConfigApp extends BaseApplication {
    */
   async render(options, _options) {
     if (!isGM()) {
-      ui.notifications?.warn('NCM | Player authoring is a GM setting.');
+      ncmNotify.warn('NCM | Player authoring is a GM setting.');
       return this;
     }
     return super.render(options, _options);
@@ -671,13 +672,13 @@ export class EncoderConfigApp extends BaseApplication {
       await game.nightcity?.settingsManager?.setEncoderConfig(clean);
       this.draft = clean;
       this.dirty = false;
-      ui.notifications?.info('NCM | Player authoring saved.');
+      ncmNotify.info('NCM | Player authoring saved.');
       this._mount();
       // The item doors read the setting directly — repaint any open sheet.
       setTimeout(() => { ui.items?.render(); Object.values(ui.windows).forEach((w) => { if (w.actor) w.render(false); }); }, 100);
     } catch (err) {
       log.error('EncoderConfig: save failed', err);
-      ui.notifications?.error('NCM | Could not save — see the console.');
+      ncmNotify.error('NCM | Could not save — see the console.');
     }
   }
 

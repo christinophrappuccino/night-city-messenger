@@ -9,6 +9,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAULTS } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
@@ -294,7 +295,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     this._markDirty();
     this._applyLive();
     this.render(true);
-    ui.notifications.info('Theme reset to defaults.');
+    ncmNotify.info('Theme reset to defaults.');
   }
 
   static async _onSave(event, target) {
@@ -310,11 +311,11 @@ export class ThemeCustomizerApp extends BaseApplication {
           }
         }
       } catch { /* non-critical */ }
-      ui.notifications.info('Theme saved.');
+      ncmNotify.info('Theme saved.');
       this.render(true);
     } catch (error) {
       console.error(`${MODULE_ID} | ThemeCustomizerApp._onSave:`, error);
-      ui.notifications.error('Failed to save theme.');
+      ncmNotify.error('Failed to save theme.');
     }
   }
 
@@ -623,7 +624,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     this._markDirty();
     this._applyLive();
     this.render(true);
-    ui.notifications.info('Colors reset to preset defaults.');
+    ncmNotify.info('Colors reset to preset defaults.');
   }
 
   static async _onSaveAsCustomPreset(event, target) {
@@ -644,7 +645,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     presets.push({ name, ...foundry.utils.deepClone(this._workingPrefs) });
     await this._setCustomPresets(presets);
     this.render(true);
-    ui.notifications.info(`Saved custom preset: ${name}`);
+    ncmNotify.info(`Saved custom preset: ${name}`);
   }
 
   static async _onApplyCustomPreset(event, target) {
@@ -668,7 +669,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     presets[index] = { name, ...foundry.utils.deepClone(this._workingPrefs) };
     await this._setCustomPresets(presets);
     this.render(true);
-    ui.notifications.info(`Overwritten preset: ${name}`);
+    ncmNotify.info(`Overwritten preset: ${name}`);
   }
 
   static async _onDeleteCustomPreset(event, target) {
@@ -677,13 +678,13 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (isNaN(index) || !presets[index]) return;
 
     const name = presets[index].name;
-    const confirmed = await playerConfirm({ title: 'Delete Preset', content: `<p>Delete custom preset "${name}"?</p>` });
+    const confirmed = await playerConfirm({ title: 'Delete Preset', content: `<p>Delete custom preset "${escapeHtml(name)}"?</p>` });
     if (!confirmed) return;
 
     presets.splice(index, 1);
     await this._setCustomPresets(presets);
     this.render(true);
-    ui.notifications.info(`Deleted preset: ${name}`);
+    ncmNotify.info(`Deleted preset: ${name}`);
   }
 
   static _onExportTheme(event, target) {
@@ -695,7 +696,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     a.download = `ncm-theme-${(this._workingPrefs.preset || 'custom').replace(/\s+/g, '-')}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    ui.notifications.info('Theme exported.');
+    ncmNotify.info('Theme exported.');
   }
 
   static _onImportTheme(event, target) {
@@ -709,7 +710,7 @@ export class ThemeCustomizerApp extends BaseApplication {
         const text = await file.text();
         const imported = JSON.parse(text);
         if (!imported.preset && !imported.colors) {
-          ui.notifications.warn('Invalid theme file.');
+          ncmNotify.warn('Invalid theme file.');
           return;
         }
         this._workingPrefs = foundry.utils.mergeObject(
@@ -720,10 +721,10 @@ export class ThemeCustomizerApp extends BaseApplication {
         this._markDirty();
         this._applyLive();
         this.render(true);
-        ui.notifications.info('Theme imported successfully.');
+        ncmNotify.info('Theme imported successfully.');
       } catch (err) {
         console.error(`${MODULE_ID} | Import failed:`, err);
-        ui.notifications.error('Failed to import theme file.');
+        ncmNotify.error('Failed to import theme file.');
       }
     });
     input.click();

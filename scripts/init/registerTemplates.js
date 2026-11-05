@@ -10,6 +10,7 @@
 
 import { TEMPLATES, MODULE_ID } from '../utils/constants.js';
 import { log, formatCyberDate, truncate } from '../utils/helpers.js';
+import { registerTipHelper } from '../utils/notify.js';
 import { registerShardTermHelper } from '../utils/shardTerm.js';
 import { registerTagHueHelper, setRoleColorResolver } from '../utils/tagHue.js';
 
@@ -21,20 +22,17 @@ function _isBlock(options) {
   return options && typeof options === 'object' && typeof options.fn === 'function';
 }
 
+/** Handlebars' trailing options argument (every helper call gets one, block or subexpression). */
+function _isOptions(o) {
+  return !!o && typeof o === 'object' && 'hash' in o && ('data' in o || 'name' in o || 'loc' in o);
+}
+
 export function registerTemplates(initializer) {
-  initializer.register('preInit', 20, 'Template preloading', async () => {
-    // Collect all template paths that exist
-    const paths = Object.values(TEMPLATES);
-
-    // Preload — Foundry will skip any that don't exist on disk yet
-    try {
-      await loadTemplates(paths);
-      log.info(`Templates preloaded (${paths.length} registered)`);
-    } catch (error) {
-      // Non-fatal — templates load lazily on first render too
-      log.warn('Template preloading had errors (this is OK during early development):', error.message);
-    }
-
+  // Synchronous (audit COMPAT-01): the helpers register now and the template fetch is STARTED, not awaited.
+  // Awaiting ~110 fetches here held every later init task (settings, the canvas layer, keybindings, the
+  // enricher) behind the network, and on a slow host they landed after Foundry's init had finished — the
+  // keybindings then threw. The returned promise is part of `initDone`, which the ready phase waits for.
+  initializer.register('preInit', 20, 'Template preloading', () => {
     // ─── Comparison Helpers (block + subexpression safe) ───
 
     Handlebars.registerHelper('eq', function (a, b, options) {
@@ -75,24 +73,22 @@ export function registerTemplates(initializer) {
 
     // ─── Logic Helpers (block + subexpression safe) ───
 
-    Handlebars.registerHelper('and', function () {
-      const args = Array.from(arguments);
-      const last = args[args.length - 1];
-      if (_isBlock(last)) {
-        args.pop();
-        return args.every(Boolean) ? last.fn(this) : last.inverse(this);
-      }
-      return args.every(Boolean);
+    // These REPLACE Foundry's own and/or for every template in the game (Foundry's token HUD among them), so they must
+    // drop Handlebars' trailing options object EVERY time, block or not. The old versions only dropped it for a block, so
+    // a subexpression `(or a b)` also counted the options object, which is always truthy: `(or locked …)` came out true
+    // and the token HUD's elevation box rendered disabled for everyone (testers 2026-11-03, v2.0.7).
+    Handlebars.registerHelper('and', function (...args) {
+      const options = _isOptions(args[args.length - 1]) ? args.pop() : null;
+      const result = args.every(Boolean);
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
     });
 
-    Handlebars.registerHelper('or', function () {
-      const args = Array.from(arguments);
-      const last = args[args.length - 1];
-      if (_isBlock(last)) {
-        args.pop();
-        return args.some(Boolean) ? last.fn(this) : last.inverse(this);
-      }
-      return args.some(Boolean);
+    Handlebars.registerHelper('or', function (...args) {
+      const options = _isOptions(args[args.length - 1]) ? args.pop() : null;
+      const result = args.some(Boolean);
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
     });
 
     Handlebars.registerHelper('not', function (val, options) {
@@ -126,6 +122,13 @@ export function registerTemplates(initializer) {
     Handlebars.registerHelper('sub', (a, b) => (a || 0) - (b || 0));
     // 0→A, 1→B … (option labels); wraps past Z back to A.
     Handlebars.registerHelper('letter', (i) => String.fromCharCode(65 + (((i || 0) % 26) + 26) % 26));
+
+    // Tooltip text (audit SEC-16). Foundry renders data-tooltip as HTML after the
+    // browser decodes the attribute, so a value needs escaping twice: this helper
+    // escapes once and returns a plain string, which Handlebars escapes again.
+    // Every {{…}} inside a data-tooltip="…" in the templates goes through it
+    // (sim: test-tooltip-text).
+    registerTipHelper(Handlebars);
     registerTagHueHelper(Handlebars);
     setRoleColorResolver((id) => (game.nightcity?.masterContactService?.getCustomRoles?.() || []).find((r) => r.id === id)?.color || null);
     Handlebars.registerHelper('ncm-json', (context) => JSON.stringify(context, null, 2));
@@ -170,5 +173,11 @@ export function registerTemplates(initializer) {
     });
 
     log.info('Handlebars helpers registered');
+
+    // Preload — Foundry will skip any that don't exist on disk yet. Non-fatal: templates load lazily on first render too.
+    const paths = Object.values(TEMPLATES);
+    return loadTemplates(paths)
+      .then(() => log.info(`Templates preloaded (${paths.length} registered)`))
+      .catch((error) => log.warn('Template preloading had errors (this is OK during early development):', error?.message));
   });
 }

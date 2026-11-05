@@ -25,7 +25,7 @@
   </div>
 
   <div class="ncm-acc2-stats">
-    {{#each stats}}<button type="button" class="ncm-acc2-stat{{#if tone}} is-{{tone}}{{/if}}{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="stat" data-stat="{{k}}" aria-pressed="{{on}}" data-tooltip="{{tip}}"><b>{{n}}</b><span>{{l}}</span></button>{{/each}}
+    {{#each stats}}<button type="button" class="ncm-acc2-stat{{#if tone}} is-{{tone}}{{/if}}{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="stat" data-stat="{{k}}" aria-pressed="{{on}}" data-tooltip="{{ncm-tip tip}}"><b>{{n}}</b><span>{{l}}</span></button>{{/each}}
   </div>
   {{#if narrowed}}<div class="ncm-acc2-narrow"><i class="fas fa-filter"></i>Narrowed by your search or filters.<button type="button" data-action="tabAct" data-op="clearAll">Show everything</button></div>{{/if}}
 
@@ -44,7 +44,7 @@
         <div class="ncm-acc2-shelf__row">
           {{#each scenes}}
           <button type="button" class="ncm-acc2-sc{{#if on}} is-on{{/if}}" data-action="tabAct" data-op="scene" data-scene-id="{{id}}">
-            <span class="ncm-acc2-mm" style="aspect-ratio:{{aspect}};--tc:{{ncm-hue name}}{{#if thumb}};background-image:url('{{thumb}}'){{/if}}">
+            <span class="ncm-acc2-mm" style="aspect-ratio:{{aspect}};--tc:{{ncm-hue name}}{{#if thumb}};background-image:url('{{ncm-css-url thumb}}'){{/if}}">
               {{#each points}}<i class="pt{{#if isArea}} is-area{{/if}}{{#if hidden}} is-hid{{/if}}{{#if broken}} is-bad{{/if}}" style="left:{{x}}%;top:{{y}}%;--kc:var(--ncm-hue-{{hue}}){{#if isArea}};width:{{aw}}%;height:{{ah}}%{{/if}}" data-pt-id="{{id}}"></i>{{/each}}
             </span>
             <span class="ncm-acc2-sc__f"><b>{{name}}</b>{{#if viewed}}<i class="fas fa-eye v" data-tooltip="You are looking at this scene"></i>{{/if}}{{#if hasHidden}}<i class="fas fa-eye-slash h" data-tooltip="Something here is hidden from players"></i>{{/if}}{{#if hasBad}}<i class="fas fa-triangle-exclamation x" data-tooltip="Something here points at a deleted terminal or shard"></i>{{/if}}<span class="c">{{count}}</span></span>
@@ -80,7 +80,7 @@
         {{#unless viewed}}<button type="button" class="ncm-acc2-btn" data-action="tabAct" data-op="viewScene" data-scene-id="{{id}}" data-tooltip="Switch your view to this scene"><i class="fas fa-eye"></i>View scene</button>{{/unless}}
         <button type="button" class="ncm-acc2-btn ncm-acc2-btn--pri" data-action="tabAct" data-op="place" data-scene-id="{{id}}" data-tooltip="Pick a terminal or shard, then where and how players get in"><i class="fas fa-map-pin"></i>Place…</button>
       </div>
-      <div class="ncm-acc2-big" style="aspect-ratio:{{aspect}}{{#if thumb}};background-image:url('{{thumb}}'){{/if}};--tc:{{ncm-hue name}}">
+      <div class="ncm-acc2-big" style="aspect-ratio:{{aspect}}{{#if thumb}};background-image:url('{{ncm-css-url thumb}}'){{/if}};--tc:{{ncm-hue name}}">
         {{#each points}}
           {{#if ring}}<span class="ring" style="left:{{x}}%;top:{{y}}%;width:{{ring}}%"></span>{{/if}}
           <span class="pt{{#if isArea}} is-area{{/if}}{{#if hidden}} is-hid{{/if}}{{#if broken}} is-bad{{/if}}" style="left:{{x}}%;top:{{y}}%;--kc:var(--ncm-hue-{{hue}}){{#if isArea}};width:{{aw}}%;height:{{ah}}%{{/if}}" data-pt-id="{{id}}">{{n}}</span>

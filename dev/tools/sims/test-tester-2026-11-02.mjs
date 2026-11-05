@@ -141,7 +141,8 @@ const wallet = (over = {}) => ({
   update(u) { this.system.wealth = u['system.wealth']; return Promise.resolve(); }, ...over,
 });
 const later = new Date(Date.now() + 3600000).toISOString();
-const makeSvc = () => { const s = new SchedulingService(); s._persistScheduled = async () => {}; return s; };
+// The client that saves the schedule (B5: anyone else asks it over the socket — test-schedule-requests covers that).
+const makeSvc = () => { const s = new SchedulingService(); s._persistScheduled = async () => {}; s._isDeliverer = () => true; return s; };
 game.nightcity.socketManager = { emit() {}, register() {} };
 game.nightcity.eventBus = { emit() {} };
 game.user.isGM = false;
@@ -232,7 +233,7 @@ let mig = creditOldScheduled([
 ok(mig.list.map((e) => e.eddiesHeld).join() === '300,100,200,,,0,40' && mig.changed === 3, 'old entries get eddies × recipients; no character, no eddies or a recorded figure are left alone');
 ok(creditOldScheduled(mig.list).changed === 0, 'running it twice changes nothing');
 const mrSrc = src('scripts/core/MigrationRunner.js');
-ok(/DATA_SCHEMA_VERSION = 5;/.test(mrSrc) && mrSrc.includes('to: 5,') && mrSrc.includes('_loadScheduled'), 'migration v5 is registered and refreshes the running service');
+ok(Number(mrSrc.match(/DATA_SCHEMA_VERSION = (\d+);/)?.[1]) >= 5 && mrSrc.includes('to: 5,') && mrSrc.includes('_loadScheduled'), 'migration v5 is registered and refreshes the running service');
 
 // ═══ 10. Refused at delivery ═══
 const rig = (sendResult) => {

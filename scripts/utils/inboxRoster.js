@@ -11,6 +11,7 @@ import { MODULE_ID } from './constants.js';
 import { groupKeyOf, identitiesOfContact, identityRole } from './identities.js';
 import { getPlayerCharacters, isSelectableCharacter } from './helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
+import { memoByRevision } from './mailRevision.js';
 
 export const ROSTER_GROUPS = [['player', 'Player characters'], ['npc', 'NPCs'], ['system', 'System addresses']];
 export const RECENT_INBOXES = 5;
@@ -84,8 +85,17 @@ function mailCounts() {
   return out;
 }
 
-/** The world's roster. GM only: a player's list stays the characters they own. */
+const ROSTER_MEMO = {};
+
+/**
+ * The world's roster. GM only: a player's list stays the characters they own. Remembered until mail, an actor, a
+ * user or the directory changes (audit PERF-06: with the Switch-inbox drawer open, every viewer render walked all mail).
+ */
 export function gmInboxRoster() {
+  return memoByRevision(ROSTER_MEMO, 'roster', null, gmInboxRosterNow);
+}
+
+function gmInboxRosterNow() {
   const flagMail = (a) => a?.getFlag?.(MODULE_ID, 'email') || '';
   const mcs = game.nightcity?.masterContactService;
   const players = getPlayerCharacters().map((p) => ({ actorId: p.actorId, name: p.actorName, img: p.actor?.img, email: flagMail(p.actor), playerName: p.playerName }));

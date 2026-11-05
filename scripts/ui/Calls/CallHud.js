@@ -13,6 +13,7 @@
  *   kept across redraws, so typing is never lost when the call badge redraws.
  */
 
+import { ncmNotify, tipText } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { callProfile, signalLine } from '../../utils/callProfile.js';
 import { OUTCOMES, MODE_INFO, formatDuration, callSeconds, sideOf, typeOutMs } from '../../utils/callModel.js';
@@ -47,8 +48,13 @@ const FRAME = (label) => `<svg class="ncm-ch-frm" viewBox="0 0 100 110" preserve
   <rect class="ncm-ch-acc" x="98.6" y="30" width="3" height="10"/></svg>`;
 
 export class CallHud {
+  /** Is this screen drawn for a GM? Never true for a preview copy marked asPlayer (audit COMPAT-03: the preview used to overwrite game.user.isGM). */
+  get _gmView() { return !!game.user?.isGM && !this.asPlayer; }
+
   constructor(service) {
     this.service = service;
+    /** Draw the call screen as a PLAYER sees it, even on a GM client (the Admin → Phone previews set this on their own copy). */
+    this.asPlayer = false;
     this.root = null;
     /** @type {Map<string, {call: object, role: string, waiting?: boolean, endedAt?: number}>} */
     this.shown = new Map();
@@ -77,7 +83,7 @@ export class CallHud {
     bus.on(EVENTS.VOICEMAIL_LEFT, (e) => { if (e?.vm) this._voicemailNotice(e.vm); });
     bus.on(EVENTS.CALL_GLITCH, (e) => this._glitch(e?.callId));
     bus.on(EVENTS.CALL_TRACED, (e) => {
-      if (e?.from) ui.notifications?.info(`Trace complete — the withheld number was ${e.from.name || 'someone'}${e.from.number ? ` (${e.from.number})` : ''}.`, { permanent: true });
+      if (e?.from) ncmNotify.info(`Trace complete — the withheld number was ${e.from.name || 'someone'}${e.from.number ? ` (${e.from.number})` : ''}.`, { permanent: true });
     });
     bus.on(EVENTS.CALL_LINE, (e) => {
       if (!e?.line) return;
@@ -102,6 +108,8 @@ export class CallHud {
 
   _onEvent({ call, role, waiting, quiet }, ended = false) {
     if (!call || role === 'watch') { if (quiet && call) this._drop(call.id); return; }
+    // a payphone ringing on this scene: the booth's own prompt shows it (PayphoneService), not a phone ringing in your pocket
+    if (role === 'callee' && call.state === 'ringing' && call.to?.kind === 'payphone') return;
     const prev = this.shown.get(call.id);
     this.shown.set(call.id, { call, role, waiting: waiting ?? prev?.waiting ?? false, endedAt: ended ? Date.now() : null });
     if (ended) setTimeout(() => this._out(call.id), ENDED_HOLD_MS);
@@ -186,8 +194,8 @@ export class CallHud {
     const o = role === 'caller' ? call.to : call.from;
     // what the line's type decides is the same for everyone: a name it shows, or only the number
     if (o.showOnly === 'name') return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', org: o.org || '', orgArt: o.orgArt || '', known: true };
-    if (o.showOnly === 'number' && !game.user.isGM) return { name: o.number || 'Unknown number', img: '', number: o.number || '', known: false };
-    if (game.user.isGM) return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', known: true };
+    if (o.showOnly === 'number' && !this._gmView) return { name: o.number || 'Unknown number', img: '', number: o.number || '', known: false };
+    if (this._gmView) return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', known: true };
     const actor = game.actors?.get(role === 'caller' ? call.from?.actorId : call.to?.actorId);
     const contacts = actor?.getFlag?.(MODULE_ID, 'contacts') || [];
     const home = this.service.homeCode;
@@ -218,7 +226,7 @@ export class CallHud {
     const { call, role } = v;
     const other = this._other(call, role);
     const st = call.state;
-    const gmCallee = game.user.isGM && role === 'callee';
+    const gmCallee = this._gmView && role === 'callee';
     let kind, tone, sigState, keys = [];
     if (st === 'ringing' && role === 'callee') {
       kind = gmCallee ? `${call.from?.name || 'Someone'} is calling` : call.from?.word ? `Incoming · ${call.from.word}` : 'Incoming call'; tone = 'ring'; sigState = 'ring';
@@ -228,7 +236,7 @@ export class CallHud {
     } else if (st === 'live') {
       kind = call.remoteHeld ? 'On hold' : 'Holocall'; tone = 'live'; sigState = 'live'; keys = [['hangup', 'N', 'Hang up', 'bad']];
       // a withheld caller can be traced from the other end (a skill check; the GM reveals it on a success)
-      if (role === 'callee' && call.from?.anon && !call.traced && !game.user.isGM) keys.unshift(['trace', 'T', 'Trace', '']);
+      if (role === 'callee' && call.from?.anon && !call.traced && !this._gmView) keys.unshift(['trace', 'T', 'Trace', '']);
     } else if (st === 'voicemail') {
       const leaving = call.vmStep === 'leave';
       kind = leaving ? 'Leave a message' : 'Voicemail'; tone = 'vm'; sigState = 'vm';
@@ -256,7 +264,7 @@ export class CallHud {
     const waitHtml = waiting ? this._waitingHtml(waiting) : '';
     const hidden = call.from?.anon && !call.traced;
     const anonHtml = !hidden ? '' : role === 'caller' ? '<span class="ncm-ch-anon"><i class="fas fa-user-secret"></i> Your number is withheld</span>'
-      : `<span class="ncm-ch-anon"><i class="fas fa-user-secret"></i> Number withheld${game.user.isGM ? ' — they cannot see who' : ''}</span>`;
+      : `<span class="ncm-ch-anon"><i class="fas fa-user-secret"></i> Number withheld${this._gmView ? ' — they cannot see who' : ''}</span>`;
     const whyHtml = st === 'ended' && call.dropReason ? `<div class="ncm-ch-why"><i class="fas fa-tower-broadcast"></i> ${esc(call.dropReason)}</div>` : '';
     const heldHtml = heldOther ? `<div class="ncm-ch-heldnote"><i class="fas fa-pause"></i> On hold · ${esc(this._other(heldOther.call, heldOther.role).name)}
       <span class="ncm-ch-keys"><span class="ncm-ch-key" data-act="resume" data-id="${esc(heldOther.call.id)}"><kbd>H</kbd>Swap back</span></span></div>` : '';
@@ -267,7 +275,7 @@ export class CallHud {
       const info = MODE_INFO[m] || { label: m, icon: 'fa-circle', tip: '' };
       const off = !usable.includes(m);
       const tip = off ? (m === 'dictate' ? this.service.dictateBlock : '') || 'Not available here.' : info.tip;
-      return `<span class="ncm-ch-mode${m === myMode ? ' on' : ''}${off ? ' is-off' : ''}" data-mode="${esc(m)}" data-id="${esc(call.id)}" data-tooltip="${esc(tip)}" data-tooltip-direction="DOWN"><i class="fas ${esc(info.icon)}"></i> ${esc(info.label)}</span>`;
+      return `<span class="ncm-ch-mode${m === myMode ? ' on' : ''}${off ? ' is-off' : ''}" data-mode="${esc(m)}" data-id="${esc(call.id)}" data-tooltip="${tipText(tip)}" data-tooltip-direction="DOWN"><i class="fas ${esc(info.icon)}"></i> ${esc(info.label)}</span>`;
     }).join('')}</div>` : '';
     const keysHtml = keys.length ? `<div class="ncm-ch-keys">${keys.map(([act, k, label, cls]) => `<span class="ncm-ch-key ${cls}" data-act="${act}" data-id="${esc(call.id)}"><kbd>${k}</kbd>${esc(label)}</span>`).join('')}</div>` : '';
     return `<div class="ncm-ch-call is-${tone}" data-call="${esc(call.id)}"${st === 'ringing' && role === 'callee' && call.from?.ring ? ` data-ring="${esc(call.from.ring)}"` : ''}>${pic}<div class="ncm-ch-txt">
@@ -320,7 +328,7 @@ export class CallHud {
     if (mode === 'dictate') {
       const block = s.dictateBlock;
       if (block) {
-        ui.notifications?.warn(`NCM | ${block}`);
+        ncmNotify.warn(`NCM | ${block}`);
         if ((s.usableModes || []).includes('type')) s.setMode?.(callId, 'type');
         return;
       }
@@ -710,7 +718,7 @@ export class CallHud {
     if (this.service.recordingOn) ways.unshift(['audio', 'fa-microphone', 'Record', canRecord ? 'Leave a voice message' : recTip]);
     if (game.user.isGM) ways.push(['tts', 'fa-volume-high', 'Read it out', 'Played in a voice when they listen']);
     const kind = this._vmKind.get(id) || 'typed';
-    say.innerHTML = `<span class="ncm-ch-vmkind">${ways.map(([k, ic, lb, tip]) => `<span data-vmk="${k}" class="${kind === k ? 'on' : ''}${k === 'audio' && !canRecord ? ' is-off' : ''}"${tip ? ` data-tooltip="${esc(tip)}"` : ''}><i class="fas ${ic}"></i> ${lb}</span>`).join('')}</span><span class="ncm-ch-vmbody"></span>`;
+    say.innerHTML = `<span class="ncm-ch-vmkind">${ways.map(([k, ic, lb, tip]) => `<span data-vmk="${k}" class="${kind === k ? 'on' : ''}${k === 'audio' && !canRecord ? ' is-off' : ''}"${tip ? ` data-tooltip="${tipText(tip)}"` : ''}><i class="fas ${ic}"></i> ${lb}</span>`).join('')}</span><span class="ncm-ch-vmbody"></span>`;
     this.subs.appendChild(say);
     const paint = (k) => {
       const body = say.querySelector('.ncm-ch-vmbody');
@@ -726,13 +734,13 @@ export class CallHud {
       const input = body.querySelector('input');
       input.addEventListener('keydown', (e) => {
         e.stopPropagation();
-        if (e.key === 'Enter') { e.preventDefault(); this.service.leaveVoicemail(id, input.value, { kind: this._vmKind.get(id) || 'typed' }).then((r) => { if (!r?.ok && r?.error) ui.notifications?.warn(r.error); }); }
+        if (e.key === 'Enter') { e.preventDefault(); this.service.leaveVoicemail(id, input.value, { kind: this._vmKind.get(id) || 'typed' }).then((r) => { if (!r?.ok && r?.error) ncmNotify.warn(r.error); }); }
         else if (e.key === 'Escape') input.blur();
       });
       setTimeout(() => input.focus({ preventScroll: true }), 0);
     };
     say.querySelectorAll('[data-vmk]').forEach((c) => c.addEventListener('click', () => {
-      if (c.classList.contains('is-off')) { ui.notifications?.warn(c.dataset.tooltip || 'Recording is not available.'); return; }
+      if (c.classList.contains('is-off')) { ncmNotify.warn(c.dataset.tooltip || 'Recording is not available.'); return; }
       this._vmKind.set(id, c.dataset.vmk);
       say.querySelectorAll('[data-vmk]').forEach((x) => x.classList.toggle('on', x === c));
       paint(c.dataset.vmk);
@@ -753,7 +761,7 @@ export class CallHud {
         });
         if (btn) btn.innerHTML = '<i class="fas fa-square"></i> Stop';
         say.classList.add('is-recording');
-      } catch (err) { ui.notifications?.warn(err.message); this._rec.delete(id); }
+      } catch (err) { ncmNotify.warn(err.message); this._rec.delete(id); }
     };
     const stopRec = async () => {
       const slot = this._rec.get(id);
@@ -766,10 +774,10 @@ export class CallHud {
     };
     const sendRec = async () => {
       const clip = await stopRec();
-      if (!clip?.blob?.size) { ui.notifications?.warn('Record a message first.'); return; }
+      if (!clip?.blob?.size) { ncmNotify.warn('Record a message first.'); return; }
       const base64 = await blobToBase64(clip.blob);
       const r = await this.service.leaveVoicemail(id, '', { kind: 'audio', audio: { base64, mime: clip.mime, ms: clip.ms } });
-      if (!r?.ok && r?.error) ui.notifications?.warn(r.error);
+      if (!r?.ok && r?.error) ncmNotify.warn(r.error);
       this._rec.delete(id);
     };
     say.addEventListener('click', (e) => {
@@ -810,7 +818,7 @@ export class CallHud {
       if (e.target.closest('[data-close]')) el.remove();
       if (e.target.closest('[data-play]')) { if (vm.kind === 'audio') playAudio(vm.audio); else speak(vm.text, { voice: vm.voice }); }
       const cb = e.target.closest('[data-callback]');
-      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback, game.user.isGM && to.contactId ? { contactId: to.contactId } : {}).then((r) => { if (!r.ok && r.error) ui.notifications?.warn(r.error); }); }
+      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback, game.user.isGM && to.contactId ? { contactId: to.contactId } : {}).then((r) => { if (!r.ok && r.error) ncmNotify.warn(r.error); }); }
     });
     wrap.appendChild(el);
     setTimeout(() => el.remove(), 20000);
@@ -830,7 +838,7 @@ export class CallHud {
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-close]')) el.remove();
       const cb = e.target.closest('[data-callback]');
-      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback).then((r) => { if (!r.ok && r.error) ui.notifications?.warn(r.error); }); }
+      if (cb) { el.remove(); this.service.placeCall(cb.dataset.callback).then((r) => { if (!r.ok && r.error) ncmNotify.warn(r.error); }); }
     });
     wrap.appendChild(el);
     setTimeout(() => el.remove(), 12000);

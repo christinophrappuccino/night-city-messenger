@@ -21,6 +21,7 @@
  *   - this.app._getRelativeTime(ts)        — used by logActivity timestamps
  */
 
+import { ncmNotify, escapeHtml } from '../../../utils/notify.js';
 import { showAccessMenu } from '../../../integrations/AccessPoints.js';
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
@@ -432,7 +433,7 @@ export class ShardsTab extends BaseTab {
     const item = itemId ? this.app.constructor._findItem(itemId) : null;
     if (!item) return;
     const res = await this.dataShardService?.updateConfig?.(item, { integrity: { enabled: on } });
-    if (res && !res.success) ui.notifications.warn(`NCM | ${res.error || 'Could not change integrity'}`);
+    if (res && !res.success) ncmNotify.warn(`NCM | ${res.error || 'Could not change integrity'}`);
     this.render();
   }
 
@@ -446,21 +447,21 @@ export class ShardsTab extends BaseTab {
     try {
       if (kind === 'repair') {
         const res = await svc.repairIntegrity(item, cfg?.repairPts ?? 15);
-        if (!res?.success) ui.notifications.warn(`NCM | Repair failed: ${res?.error || 'Unknown'}`);
+        if (!res?.success) ncmNotify.warn(`NCM | Repair failed: ${res?.error || 'Unknown'}`);
       } else if (kind === 'brick') {
         this.app._animationActive = false;
-        const ok = await adminConfirm({ title: 'Brick this shard', content: `<p>Take <strong>${item.name}</strong> to 0 integrity? Players will find it dead. Repair or Salvage brings it back.</p>` });
+        const ok = await adminConfirm({ title: 'Brick this shard', content: `<p>Take <strong>${escapeHtml(item.name)}</strong> to 0 integrity? Players will find it dead. Repair or Salvage brings it back.</p>` });
         if (!ok) return;
         this.app._animationActive = true;
         const res = await svc.setIntegrity(item, 0, { uncorrupt: false });
-        if (!res?.success) ui.notifications.warn(`NCM | Brick failed: ${res?.error || 'Unknown'}`);
+        if (!res?.success) ncmNotify.warn(`NCM | Brick failed: ${res?.error || 'Unknown'}`);
       } else if (kind === 'salvage') {
         const res = await svc.salvageShard(item, 'GM', true);
-        if (res?.success) ui.notifications.info(`NCM | ${item.name} salvaged — back at ${res.newIntegrity ?? '?'}, its entries badly damaged.`);
-        else ui.notifications.warn(`NCM | Salvage failed: ${res?.error || 'Unknown'}`);
+        if (res?.success) ncmNotify.info(`NCM | ${item.name} salvaged — back at ${res.newIntegrity ?? '?'}, its entries badly damaged.`);
+        else ncmNotify.warn(`NCM | Salvage failed: ${res?.error || 'Unknown'}`);
       }
     } catch (err) {
-      ui.notifications.error(`NCM | ${err.message}`);
+      ncmNotify.error(`NCM | ${err.message}`);
     } finally {
       this.app._animationActive = false;
     }
@@ -607,7 +608,7 @@ export class ShardsTab extends BaseTab {
     const shardName = item?.name || 'Unknown Shard';
     this._activityLog.unshift({
       type, icon,
-      text: `<span class="ncm-activity-actor">${actorName}</span> ${text} — <span class="ncm-activity-shard">${shardName}</span>`,
+      text: `<span class="ncm-activity-actor">${escapeHtml(actorName)}</span> ${escapeHtml(text)} — <span class="ncm-activity-shard">${escapeHtml(shardName)}</span>`,
       time: this.app._getRelativeTime?.(Date.now()),
       timestamp: Date.now(),
     });
@@ -1068,11 +1069,11 @@ export class ShardsTab extends BaseTab {
     if (!item) return;
     const confirmed = await adminConfirm({
       title: 'Force Decrypt',
-      content: `<p>Force-decrypt <strong>${item.name}</strong>? This bypasses all security.</p>`,
+      content: `<p>Force-decrypt <strong>${escapeHtml(item.name)}</strong>? This bypasses all security.</p>`,
     });
     if (!confirmed) return;
     await item.update({ [`flags.${MODULE_ID}.state.decrypted`]: true });
-    ui.notifications.info(`Force-decrypted: ${item.name}`);
+    ncmNotify.info(`Force-decrypted: ${item.name}`);
     this.render(true);
   }
 
@@ -1083,7 +1084,7 @@ export class ShardsTab extends BaseTab {
     if (!item) return;
     const confirmed = await adminConfirm({
       title: 'Relock Shard',
-      content: `<p>Relock <strong>${item.name}</strong>? All security state will be fully reset (encryption, login, key item, hack attempts, lockout, boot, expiration).</p>`,
+      content: `<p>Relock <strong>${escapeHtml(item.name)}</strong>? All security state will be fully reset (encryption, login, key item, hack attempts, lockout, boot, expiration).</p>`,
     });
     if (!confirmed) return;
     await this._relock(item);
@@ -1095,12 +1096,12 @@ export class ShardsTab extends BaseTab {
       this.app._animationActive = true;
       const result = await this.dataShardService?.relockShard(item);
       this.app._animationActive = false;
-      if (result?.success) ui.notifications.info(`NCM | Relocked: ${item.name}`);
-      else ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+      if (result?.success) ncmNotify.info(`NCM | Relocked: ${item.name}`);
+      else ncmNotify.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
     } catch (err) {
       this.app._animationActive = false;
       console.error(`${MODULE_ID} | relockShard failed:`, err);
-      ui.notifications.error(`NCM | Relock failed: ${err.message}`);
+      ncmNotify.error(`NCM | Relock failed: ${err.message}`);
     }
   }
 
@@ -1127,7 +1128,7 @@ export class ShardsTab extends BaseTab {
     }
 
     if (!candidates.length) {
-      ui.notifications.warn('NCM | No unconverted items found. Create an item first.');
+      ncmNotify.warn('NCM | No unconverted items found. Create an item first.');
       return;
     }
 
@@ -1220,16 +1221,16 @@ export class ShardsTab extends BaseTab {
 
     if (!uuid) return;
     const item = await fromUuid(uuid);
-    if (!item) { ui.notifications.error('NCM | Item not found.'); return; }
+    if (!item) { ncmNotify.error('NCM | Item not found.'); return; }
 
     const result = await this.dataShardService?.convertToDataShard(item);
     if (result?.success) {
-      ui.notifications.info(`NCM | "${item.name}" converted to data shard.`);
+      ncmNotify.info(`NCM | "${item.name}" converted to data shard.`);
       ui.items?.render();
       this._selId = item.id;
       this.render();
     } else {
-      ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
+      ncmNotify.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
     }
   }
 
@@ -1243,7 +1244,7 @@ export class ShardsTab extends BaseTab {
 
     const items = game.items?.filter(i => !i.getFlag(MODULE_ID, 'isDataShard')) ?? [];
     if (!items.length) {
-      ui.notifications.warn('NCM | No unconverted items available. Create an item first.');
+      ncmNotify.warn('NCM | No unconverted items available. Create an item first.');
       return;
     }
     // Searchable picker (folder chips + type note) — never a <select> of every world item.
@@ -1258,11 +1259,11 @@ export class ShardsTab extends BaseTab {
 
     const result = await this.dataShardService?.convertToDataShard(item, {}, presetKey);
     if (result?.success) {
-      ui.notifications.info(`NCM | Created "${item.name}" with ${presetKey} preset.`);
+      ncmNotify.info(`NCM | Created "${item.name}" with ${presetKey} preset.`);
       this._selId = item.id;
       this.render();
     } else {
-      ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
+      ncmNotify.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
     }
   }
 
@@ -1276,7 +1277,7 @@ export class ShardsTab extends BaseTab {
    */
   async onArchiveShards() {
     const svc = this.dataShardService;
-    if (!svc?.surveyShardArchive) { ui.notifications.error('NCM | Data shard service unavailable.'); return; }
+    if (!svc?.surveyShardArchive) { ncmNotify.error('NCM | Data shard service unavailable.'); return; }
 
     const esc = Handlebars.escapeExpression;
     let playerOnly = true;
@@ -1333,9 +1334,9 @@ export class ShardsTab extends BaseTab {
       close: async () => {
         if (!ran) return;
         const res = await svc.archiveShardsToItems(ran);
-        if (res.error) { ui.notifications.error(`NCM | ${res.error}`); return; }
-        if (!res.created && !res.orphansRemoved) { ui.notifications.info('NCM | Nothing to copy.'); return; }
-        ui.notifications.info(`NCM | Copied ${res.created} shard${res.created === 1 ? '' : 's'} into the Items directory${res.orphansRemoved ? `, removed ${res.orphansRemoved} stale cop${res.orphansRemoved === 1 ? 'y' : 'ies'}` : ''}.`);
+        if (res.error) { ncmNotify.error(`NCM | ${res.error}`); return; }
+        if (!res.created && !res.orphansRemoved) { ncmNotify.info('NCM | Nothing to copy.'); return; }
+        ncmNotify.info(`NCM | Copied ${res.created} shard${res.created === 1 ? '' : 's'} into the Items directory${res.orphansRemoved ? `, removed ${res.orphansRemoved} stale cop${res.orphansRemoved === 1 ? 'y' : 'ies'}` : ''}.`);
         ui.items?.render(true);
         this.app.render();
       },
@@ -1355,10 +1356,10 @@ export class ShardsTab extends BaseTab {
   /** "Turn on" on the Off strip — flip the master switch, keep every other choice. */
   async onAuthoringOn() {
     const sm = this.settingsManager;
-    if (!sm?.setEncoderConfig) { ui.notifications.error('NCM | Settings unavailable.'); return; }
+    if (!sm?.setEncoderConfig) { ncmNotify.error('NCM | Settings unavailable.'); return; }
     const raw = sm.getEncoderConfigRaw?.() ?? {};
     await sm.setEncoderConfig({ ...raw, enabled: true });
-    ui.notifications.info('NCM | Player authoring is on. Open Player Authoring to choose who may encode and on what.');
+    ncmNotify.info('NCM | Player authoring is on. Open Player Authoring to choose who may encode and on what.');
     this.render();
   }
 
@@ -1374,14 +1375,14 @@ export class ShardsTab extends BaseTab {
     } catch (err) {
       log.warn(`Blank shard: Item.create failed — ${err?.message || err}`);
     }
-    if (!item) { ui.notifications.error('NCM | Could not create the item.'); return; }
+    if (!item) { ncmNotify.error('NCM | Could not create the item.'); return; }
 
     const result = await this.dataShardService?.convertToDataShard(item, {}, 'blank');
     if (!result?.success) {
-      ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
+      ncmNotify.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
       return;
     }
-    ui.notifications.info(`NCM | Created "${item.name}" — configure it now.`);
+    ncmNotify.info(`NCM | Created "${item.name}" — configure it now.`);
     this._selId = item.id;
     this.render();
     const { ItemInboxConfig } = await import('../../ItemInbox/ItemInboxConfig.js');
@@ -1390,7 +1391,7 @@ export class ShardsTab extends BaseTab {
 
   async onBulkRelockAll() {
     const shards = this._getAllDataShards().filter(i => (i.getFlag(MODULE_ID, 'state') ?? {}).decrypted === true);
-    if (!shards.length) { ui.notifications.info('NCM | No breached shards to relock.'); return; }
+    if (!shards.length) { ncmNotify.info('NCM | No breached shards to relock.'); return; }
     const confirmed = await adminConfirm({
       title: 'Relock All Shards',
       content: `<p>Relock <strong>${shards.length}</strong> breached shard${shards.length > 1 ? 's' : ''}? All session data will be reset.</p>`,
@@ -1404,21 +1405,21 @@ export class ShardsTab extends BaseTab {
     } finally {
       this.app._animationActive = false;
     }
-    ui.notifications.info(`NCM | ${shards.length} shard${shards.length > 1 ? 's' : ''} relocked.`);
+    ncmNotify.info(`NCM | ${shards.length} shard${shards.length > 1 ? 's' : ''} relocked.`);
     this.render();
   }
 
   async onPurgeDestroyed() {
     const destroyed = this._getAllDataShards().filter(i => (i.getFlag(MODULE_ID, 'state') ?? {}).destroyed === true
       || this.dataShardService?.checkIntegrity?.(i)?.isBricked);
-    if (!destroyed.length) { ui.notifications.info('NCM | No bricked shards to purge.'); return; }
+    if (!destroyed.length) { ncmNotify.info('NCM | No bricked shards to purge.'); return; }
     const confirmed = await adminConfirm({
       title: 'Purge Bricked Shards',
       content: `<p>Remove shard data from <strong>${destroyed.length}</strong> bricked shard${destroyed.length > 1 ? 's' : ''}? The items stay, but lose their shard data and journal.</p>`,
     });
     if (!confirmed) return;
     for (const item of destroyed) await this.dataShardService?.removeDataShard(item, true);
-    ui.notifications.info(`NCM | ${destroyed.length} bricked shard${destroyed.length > 1 ? 's' : ''} purged.`);
+    ncmNotify.info(`NCM | ${destroyed.length} bricked shard${destroyed.length > 1 ? 's' : ''} purged.`);
     this.render();
   }
 
@@ -1432,12 +1433,12 @@ export class ShardsTab extends BaseTab {
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     const item = itemId ? this.app.constructor._findItem(itemId) : null;
     if (!item) return;
-    if (item.parent) { ui.notifications?.info(`NCM | "${item.name}" is on ${item.parent.name}'s sheet — it follows that character's permissions.`); return; }
+    if (item.parent) { ncmNotify.info(`NCM | "${item.name}" is on ${item.parent.name}'s sheet — it follows that character's permissions.`); return; }
     // v12: a global lexical class (bare reference); v13 moves it under the namespace.
     const Cls = (typeof DocumentOwnershipConfig !== 'undefined') ? DocumentOwnershipConfig : foundry.applications?.apps?.DocumentOwnershipConfig;
-    if (!Cls) { ui.notifications?.warn('NCM | The ownership dialog is not available in this Foundry version.'); return; }
+    if (!Cls) { ncmNotify.warn('NCM | The ownership dialog is not available in this Foundry version.'); return; }
     try { new Cls(item).render(true); }
-    catch (err) { log.warn('ShardsTab: ownership dialog failed', err); ui.notifications?.warn('NCM | Could not open the ownership dialog.'); }
+    catch (err) { log.warn('ShardsTab: ownership dialog failed', err); ncmNotify.warn('NCM | Could not open the ownership dialog.'); }
   }
 
   onConfigureShardItem(event, target) {
@@ -1508,7 +1509,7 @@ export class ShardsTab extends BaseTab {
       }
     } finally { this.app._animationActive = false; }
     this._selectedIds.clear();
-    ui.notifications.info(`NCM | ${ids.length} shard${ids.length > 1 ? 's' : ''} relocked.`);
+    ncmNotify.info(`NCM | ${ids.length} shard${ids.length > 1 ? 's' : ''} relocked.`);
     this.render();
   }
 
@@ -1528,7 +1529,7 @@ export class ShardsTab extends BaseTab {
       if (res?.success) done++;
     }
     this._selectedIds.clear();
-    ui.notifications.info(`NCM | ${done} of ${items.length} unconverted.`);
+    ncmNotify.info(`NCM | ${done} of ${items.length} unconverted.`);
     ui.items?.render();
     this.render();
   }
@@ -1559,7 +1560,7 @@ export class ShardsTab extends BaseTab {
     a.download = `ncm-shards-export-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    ui.notifications.info(`NCM | Exported ${shards.length} shard${shards.length !== 1 ? 's' : ''}.`);
+    ncmNotify.info(`NCM | Exported ${shards.length} shard${shards.length !== 1 ? 's' : ''}.`);
   }
 
   /**
@@ -1595,14 +1596,14 @@ export class ShardsTab extends BaseTab {
       const file = input.files?.[0];
       if (!file) return;
       const { shards, error } = ShardsTab.parseShardImport(await file.text());
-      if (error) { ui.notifications.warn(`NCM | ${error}`); return; }
+      if (error) { ncmNotify.warn(`NCM | ${error}`); return; }
       const ok = await adminConfirm({
         title: 'Import Shards',
         content: `<p>Create <strong>${shards.length}</strong> new world item${shards.length > 1 ? 's' : ''} as shards, with ${shards.reduce((n, s) => n + s.entries.length, 0)} entries? Each starts locked; nothing existing is changed.</p>`,
       });
       if (!ok) return;
       const res = await this._importShardRecords(shards);
-      ui.notifications.info(`NCM | Imported ${res.created} shard${res.created !== 1 ? 's' : ''}${res.failed ? ` · ${res.failed} failed` : ''}${res.entryFailed ? ` · ${res.entryFailed} entries refused` : ''}.`);
+      ncmNotify.info(`NCM | Imported ${res.created} shard${res.created !== 1 ? 's' : ''}${res.failed ? ` · ${res.failed} failed` : ''}${res.entryFailed ? ` · ${res.entryFailed} entries refused` : ''}.`);
       ui.items?.render();
       this.render();
     });
@@ -1643,7 +1644,7 @@ export class ShardsTab extends BaseTab {
     } else {
       // No row given (the ⋯ menu's "Unconvert a shard…") — pick one.
       const shards = this._getAllDataShards();
-      if (!shards.length) { ui.notifications.warn('NCM | No data shards to unconvert.'); return; }
+      if (!shards.length) { ncmNotify.warn('NCM | No data shards to unconvert.'); return; }
       const pick = await showNamePicker({
         title: 'Unconvert a Data Shard',
         hint: 'The item gets its old name and art back. Its journal is kept, detached.',
@@ -1656,15 +1657,15 @@ export class ShardsTab extends BaseTab {
 
     const confirmed = await adminConfirm({
       title: 'Unconvert Data Shard',
-      content: `<p>Turn <strong>${item.name}</strong> back into a plain item? It gets its old name and art back. Its entries stay in the journal, detached.</p>`,
+      content: `<p>Turn <strong>${escapeHtml(item.name)}</strong> back into a plain item? It gets its old name and art back. Its entries stay in the journal, detached.</p>`,
     });
     if (!confirmed) return;
 
     // removeDataShard is the one door: it strips the flags AND restores the name/art
     // the item had before it was a shard (an archive copy keeps its own).
     const res = await this.dataShardService?.removeDataShard(item, false);
-    if (!res?.success) { ui.notifications.error(`NCM | Unconvert failed: ${res?.error || 'Unknown'}`); return; }
-    ui.notifications.info(`NCM | Unconverted: ${item.name} is now a regular item.`);
+    if (!res?.success) { ncmNotify.error(`NCM | Unconvert failed: ${res?.error || 'Unknown'}`); return; }
+    ncmNotify.info(`NCM | Unconverted: ${item.name} is now a regular item.`);
     ui.items?.render();
     this.render();
   }
@@ -1689,7 +1690,7 @@ export class ShardsTab extends BaseTab {
 
     const confirmed = await adminConfirm({
       title: `${isCleared ? 'Relock' : 'Unlock'} Security Layer`,
-      content: `<p>${isCleared ? 'Relock' : 'Force-clear'} the <strong>${layer}</strong> layer on <strong>${item.name}</strong>?${isCleared ? ' All layers from this point forward will also be relocked.' : ''}</p>`,
+      content: `<p>${isCleared ? 'Relock' : 'Force-clear'} the <strong>${layer}</strong> layer on <strong>${escapeHtml(item.name)}</strong>?${isCleared ? ' All layers from this point forward will also be relocked.' : ''}</p>`,
     });
     if (!confirmed) return;
 
@@ -1732,11 +1733,11 @@ export class ShardsTab extends BaseTab {
       await item.unsetFlag(MODULE_ID, 'state');
       await item.setFlag(MODULE_ID, 'state', newState);
       this.app._animationActive = false;
-      ui.notifications.info(`NCM | ${isCleared ? 'Relocked' : 'Force-cleared'} ${item.name} ${isCleared ? 'from' : 'through'} ${layer} layer.`);
+      ncmNotify.info(`NCM | ${isCleared ? 'Relocked' : 'Force-cleared'} ${item.name} ${isCleared ? 'from' : 'through'} ${layer} layer.`);
     } catch (err) {
       this.app._animationActive = false;
       console.error(`${MODULE_ID} | toggleShardLayer failed:`, err);
-      ui.notifications.error(`NCM | Layer toggle failed: ${err.message}`);
+      ncmNotify.error(`NCM | Layer toggle failed: ${err.message}`);
     }
     this.render();
   }
@@ -1776,11 +1777,11 @@ export class ShardsTab extends BaseTab {
         await item.unsetFlag(MODULE_ID, 'state');
         await item.setFlag(MODULE_ID, 'state', newState);
         this.app._animationActive = false;
-        ui.notifications.info(`NCM | Force-decrypted: ${item.name}`);
+        ncmNotify.info(`NCM | Force-decrypted: ${item.name}`);
       } catch (err) {
         this.app._animationActive = false;
         console.error(`${MODULE_ID} | forceDecryptShardItem decrypt failed:`, err);
-        ui.notifications.error(`NCM | Force-decrypt failed: ${err.message}`);
+        ncmNotify.error(`NCM | Force-decrypt failed: ${err.message}`);
       }
     }
     this.render();
@@ -1799,12 +1800,12 @@ export class ShardsTab extends BaseTab {
       this.app._animationActive = true;
       const result = await this.dataShardService?.setIntegrity(item, value);
       this.app._animationActive = false;
-      if (result?.success) ui.notifications.info(`NCM | ${item.name} integrity set to ${value}%${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries restored)` : ''}`);
-      else ui.notifications.warn(`NCM | Set integrity failed: ${result?.error || 'Unknown'}`);
+      if (result?.success) ncmNotify.info(`NCM | ${item.name} integrity set to ${value}%${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries restored)` : ''}`);
+      else ncmNotify.warn(`NCM | Set integrity failed: ${result?.error || 'Unknown'}`);
     } catch (err) {
       this.app._animationActive = false;
       console.error(`${MODULE_ID} | setShardIntegrity failed:`, err);
-      ui.notifications.error(`NCM | Set integrity failed: ${err.message}`);
+      ncmNotify.error(`NCM | Set integrity failed: ${err.message}`);
     }
     this.render();
   }
@@ -1844,9 +1845,9 @@ export class ShardsTab extends BaseTab {
     try {
       const res = await this.dataShardService?.degradeIntegrity(item, { amount, rollLoss, by: 'GM' });
       const n = res?.damaged?.length || 0;
-      ui.notifications.info(`NCM | ${item.name}: integrity ${res?.newIntegrity ?? '?'}${n ? ` · ${n} entr${n === 1 ? 'y' : 'ies'} damaged` : ''}`);
+      ncmNotify.info(`NCM | ${item.name}: integrity ${res?.newIntegrity ?? '?'}${n ? ` · ${n} entr${n === 1 ? 'y' : 'ies'} damaged` : ''}`);
     } catch (err) {
-      ui.notifications.error(`NCM | Damage failed: ${err.message}`);
+      ncmNotify.error(`NCM | Damage failed: ${err.message}`);
     } finally {
       this.app._animationActive = false;
     }
@@ -1876,7 +1877,7 @@ export class ShardsTab extends BaseTab {
     const item = this.app.constructor._findItem(target.closest('[data-item-id]')?.dataset.itemId);
     if (!item) return;
     const res = await this.dataShardService?.repairAllEntries(item);
-    ui.notifications.info(`NCM | ${item.name}: ${res?.count || 0} entr${res?.count === 1 ? 'y' : 'ies'} repaired.`);
+    ncmNotify.info(`NCM | ${item.name}: ${res?.count || 0} entr${res?.count === 1 ? 'y' : 'ies'} repaired.`);
     this.render();
   }
 
@@ -1899,12 +1900,12 @@ export class ShardsTab extends BaseTab {
       this.app._animationActive = true;
       const result = await this.dataShardService?.setIntegrity(item, 100, { uncorrupt: true });
       this.app._animationActive = false;
-      if (result?.success) ui.notifications.info(`NCM | ${item.name} integrity fully restored${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries un-corrupted)` : ''}`);
-      else ui.notifications.warn(`NCM | Restore failed: ${result?.error || 'Unknown'}`);
+      if (result?.success) ncmNotify.info(`NCM | ${item.name} integrity fully restored${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries un-corrupted)` : ''}`);
+      else ncmNotify.warn(`NCM | Restore failed: ${result?.error || 'Unknown'}`);
     } catch (err) {
       this.app._animationActive = false;
       console.error(`${MODULE_ID} | restoreShardIntegrity failed:`, err);
-      ui.notifications.error(`NCM | Restore failed: ${err.message}`);
+      ncmNotify.error(`NCM | Restore failed: ${err.message}`);
     }
     this.render();
   }

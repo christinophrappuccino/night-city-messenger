@@ -215,6 +215,23 @@ export function sideOf(call, userId) {
   return null;
 }
 
+/**
+ * May `senderId` have written this line (audit DATA-22)? A caller line comes from the caller; a callee line from
+ * whoever answered — so when two people pick up a booth at once, the one who lost can't talk into the call.
+ * Before this client has seen who answered, any of the callee's users may. A GM is always allowed (the GM speaks
+ * for NPCs); pass `senderIsGM`.
+ */
+export function lineFromRightSide(call, line, senderId, senderIsGM = false) {
+  if (!call || !line) return false;
+  if (senderIsGM) return true;
+  if (line.side === 'caller') return !!senderId && call.from?.userId === senderId;
+  if (line.side === 'callee') {
+    if (call.answeredBy) return call.answeredBy === senderId;
+    return (call.to?.userIds || []).includes(senderId);
+  }
+  return false;
+}
+
 /** The transcript as the log keeps it: who said what, oldest first — names from the call's two ends. */
 export function transcriptOf(call) {
   return (call?.lines || []).map((l) => ({ side: l.side, name: (l.side === 'caller' ? call.from?.name : call.to?.name) || '', text: l.text, at: l.at }));

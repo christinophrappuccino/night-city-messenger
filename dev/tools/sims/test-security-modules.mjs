@@ -277,6 +277,7 @@ for (const p of ['C:/Program Files/Foundry Virtual Tabletop/resources/app/packag
 if (!H) { fail++; console.error('FAIL: could not load Handlebars from a Foundry install — render checks did not run'); }
 else {
   H.registerHelper('eq', (a, b) => String(a) === String(b));
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('gt', (a, b) => Number(a) > Number(b));
   H.registerHelper('letter', (i) => String.fromCharCode(65 + Number(i)));
   H.registerHelper('ncm-hue', (t) => (t ? 'var(--ncm-hue-1)' : 'var(--ncm-text-label)'));

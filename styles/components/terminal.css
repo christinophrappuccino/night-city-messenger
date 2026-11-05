@@ -1360,7 +1360,9 @@
   .ncm-app .ncm-lodds__dist { width: 90px; }
 }
 /* Items-directory terminal badge — recolor the shared shard badge red. */
-.ncm-terminal-img-tag { background: #ff0033 !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; }
+/* Terminal = a WHITE terminal glyph on its red badge — fixed, not the player theme (dev 2026-11-05): with the theme
+   colour the glyph went red-on-red on Blackwall and the badge read as a plain red block. */
+.ncm-terminal-img-tag { background: #ff0033 !important; color: #fff !important; border-color: rgba(255, 255, 255, .55) !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; filter: none !important; }
 
 /* (The burn-to-shard target picker is the shared name picker now — styles/components/name-picker.css.) */
 
@@ -2073,8 +2075,8 @@
 }
 
 /* scan-sweep — a light bar sweeps down while content reveals top→bottom */
-[data-boot-animation="scan-sweep"] { position: relative; }
-[data-boot-animation="scan-sweep"]::before {
+:where(.ncm-term__boot, .ncm-cfg-bootprev-splash)[data-boot-animation="scan-sweep"] { position: relative; }
+:where(.ncm-term__boot, .ncm-cfg-bootprev-splash)[data-boot-animation="scan-sweep"]::before {
   content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 5; pointer-events: none;
   background: linear-gradient(90deg, transparent, var(--ncm-secondary, #19f3f7), transparent);
   box-shadow: 0 0 14px var(--ncm-secondary, #19f3f7);
@@ -2121,7 +2123,7 @@
 }
 
 /* crt-power-on — the whole splash stretches open like an old tube */
-[data-boot-animation="crt-power-on"] {
+:where(.ncm-term__boot, .ncm-cfg-bootprev-splash)[data-boot-animation="crt-power-on"] {
   animation: ncm-boot-crton .8s cubic-bezier(.2, .8, .3, 1) both;
 }
 @keyframes ncm-boot-crton {
@@ -2131,7 +2133,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-boot-animation] , [data-boot-animation]::before,
+  :where(.ncm-term__boot, .ncm-cfg-bootprev-splash)[data-boot-animation], :where(.ncm-term__boot, .ncm-cfg-bootprev-splash)[data-boot-animation]::before,
   [data-boot-animation] .ncm-term__boot-icon, [data-boot-animation] .ncm-term__boot-title, [data-boot-animation] .ncm-term__boot-sub,
   [data-boot-animation] .ncm-cfg-bootprev-icon, [data-boot-animation] .ncm-cfg-bootprev-title, [data-boot-animation] .ncm-cfg-bootprev-sub {
     animation: none !important; clip-path: none !important; opacity: 1 !important; transform: none !important;

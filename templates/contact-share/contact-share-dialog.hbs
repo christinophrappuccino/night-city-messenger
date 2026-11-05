@@ -91,7 +91,7 @@
 
     {{#if sendChoices}}
     <div class="ncm-share__send" role="radiogroup" aria-label="What to send">
-      {{#each sendChoices}}<button type="button" role="radio" aria-checked="{{#if on}}true{{else}}false{{/if}}" class="{{#if on}}is-on{{/if}}" data-action="setSend" data-send="{{k}}" data-tooltip="{{help}}"><i class="fas {{icon}}"></i> {{label}}</button>{{/each}}
+      {{#each sendChoices}}<button type="button" role="radio" aria-checked="{{#if on}}true{{else}}false{{/if}}" class="{{#if on}}is-on{{/if}}" data-action="setSend" data-send="{{k}}" data-tooltip="{{ncm-tip help}}"><i class="fas {{icon}}"></i> {{label}}</button>{{/each}}
     </div>
     {{/if}}
 

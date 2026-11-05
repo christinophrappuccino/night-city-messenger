@@ -37,14 +37,14 @@
 .ncm-rollp__klbl small { font-weight: 500; text-transform: none; letter-spacing: 0; }
 .ncm-rollp__step { display: inline-flex; align-items: center; gap: 2px; }
 .ncm-rollp__step b { min-width: 26px; text-align: center; font-family: var(--ncm-font-mono, monospace); font-weight: 400; font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary, #e0e0e8); }
-button[data-rollp-step] {
+:where(.ncm-rollp__step) > button[data-rollp-step] {
   appearance: none; width: calc(22px * var(--ncm-text-scale, 1)) !important; height: calc(22px * var(--ncm-text-scale, 1)) !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; flex: none !important;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--ncm-bg-surface, #1a1a2e) !important; color: var(--ncm-text-primary, #e0e0e8) !important;
   border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 2px !important; box-shadow: none !important; cursor: pointer;
 }
-button[data-rollp-step]:hover { border-color: var(--ncm-secondary, #19f3f7) !important; }
-button[data-rollp-step] i { margin: 0 !important; font-size: calc(9px * var(--ncm-text-scale, 1)); line-height: 1; }
+:where(.ncm-rollp__step) > button[data-rollp-step]:hover { border-color: var(--ncm-secondary, #19f3f7) !important; }
+:where(.ncm-rollp__step) > button[data-rollp-step] i { margin: 0 !important; font-size: calc(9px * var(--ncm-text-scale, 1)); line-height: 1; }
 
 /* inside the action console, above ATTEMPT */
 .ncm-seccon__roll { padding: 8px 10px; margin: 0 0 4px; border: 1px solid var(--ncm-border, #2a2a45); border-radius: 2px; background: color-mix(in srgb, var(--ncm-text-primary, #e0e0e8) 4%, transparent); }

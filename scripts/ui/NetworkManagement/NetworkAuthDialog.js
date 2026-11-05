@@ -20,6 +20,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, EVENTS, TEMPLATES, SKILL_MAP } from '../../utils/constants.js';
 import { log, resolveOperator, guardSecretInputs } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -126,7 +127,7 @@ export class NetworkAuthDialog extends BaseApplication {
     const networkService = game.nightcity?.networkService;
     const network = networkService?.getNetwork(networkId);
     if (!network) {
-      ui.notifications.error('NCM | Unknown network.');
+      ncmNotify.error('NCM | Unknown network.');
       return { success: false };
     }
 
@@ -157,7 +158,7 @@ export class NetworkAuthDialog extends BaseApplication {
     const adapter = new TerminalAuthAdapter(item, accountId);
     const source = adapter.refresh();
     if (!source) {
-      ui.notifications.error('NCM | Unknown account.');
+      ncmNotify.error('NCM | Unknown account.');
       return { success: false };
     }
 
@@ -600,7 +601,7 @@ export class NetworkAuthDialog extends BaseApplication {
 
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.');
+      ncmNotify.warn('NCM | No character assigned. Set your character in User Configuration.');
       return;
     }
 
@@ -690,7 +691,7 @@ export class NetworkAuthDialog extends BaseApplication {
         });
         if (damageResult.damage > 0) {
           const iceName = damageResult.iceInfo?.name || 'BLACK ICE';
-          ui.notifications.error(`NCM | ${iceName} deals ${damageResult.damage} HP damage to ${actor.name}!`);
+          ncmNotify.error(`NCM | ${iceName} deals ${damageResult.damage} HP damage to ${actor.name}!`);
         }
       }
 
@@ -790,7 +791,7 @@ export class NetworkAuthDialog extends BaseApplication {
     const actor = resolveOperator();
     const view = this._cmv;
     if (!skillName || !view?.canScan) return;
-    if (!actor) { ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.'); return; }
+    if (!actor) { ncmNotify.warn('NCM | No character assigned. Set your character in User Configuration.'); return; }
     const svc = this.skillService;
     if (!svc?.performCheck) return;
     const name = this.network?.name || 'this lock';
@@ -829,13 +830,13 @@ export class NetworkAuthDialog extends BaseApplication {
   static async _onBrowseKeyItem(event, target) {
     const actor = resolveOperator();
     if (!actor) {
-      ui.notifications.warn('NCM | No character assigned.');
+      ncmNotify.warn('NCM | No character assigned.');
       return;
     }
     const keyItemName = this.network?.security?.keyItemName || 'access credential';
     const items = (actor.items?.contents ?? []).filter(isCarrier);
     if (!items.length) {
-      ui.notifications.warn('NCM | No items in inventory.');
+      ncmNotify.warn('NCM | No items in inventory.');
       return;
     }
     const pick = await showNamePicker({

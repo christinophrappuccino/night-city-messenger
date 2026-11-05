@@ -16,8 +16,11 @@
  *   locked.
  */
 
+import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
-import { log, isGM, netVerbFor, whisperCardHtml } from '../utils/helpers.js';
+import { log, isGM, isPrimaryGM, netVerbFor, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
+import { userCanReachItem } from '../utils/shardAccess.js';
+import { serialize } from '../utils/serialize.js';
 
 const LOG_SETTING = 'traceLog';
 const HEAT_SETTING = 'traceHeat';
@@ -128,9 +131,12 @@ export class TraceService {
     try {
       const isFail = p.outcome !== 'success';
       const heatDelta = isFail ? (HEAT_BY_SEVERITY[p.severity] ?? 20) : 0;
-      const rows = [...this.getLog(), { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta }];
-      while (rows.length > LOG_CAP) rows.shift();
-      await game.settings.set(MODULE_ID, LOG_SETTING, rows);
+      // One log write at a time: two traces at once both appended to the same copy and one row was lost (INT-03).
+      await serialize('trace:log', async () => {
+        const rows = [...this.getLog(), { id: `tr-${foundry.utils.randomID(8)}`, ...p, heatDelta }];
+        while (rows.length > LOG_CAP) rows.shift();
+        await game.settings.set(MODULE_ID, LOG_SETTING, rows);
+      });
 
       // Successes are logged with NO heat gained (design: heat is only for tripped
       // defenses). Only failures heat + alert the GM.
@@ -165,8 +171,12 @@ export class TraceService {
   async _fireResidentTriggers(p, heat) {
     if (p.targetKind !== 'terminal' || !p.objectId) return;
     const svc = game.nightcity?.terminalService;
-    const item = game.items?.get(p.objectId);
-    if (!svc || !item) return;
+    if (!svc) return;
+    // A carried terminal is not in game.items (audit DATA-10): resolve by uuid, then by id across every terminal.
+    let item = null;
+    try { item = p.targetUuid ? fromUuidSync(p.targetUuid) : null; } catch { item = null; }
+    if (!item || !svc.isTerminal?.(item)) item = game.items?.get(p.objectId) || svc.collectTerminals?.().find((i) => i.id === p.objectId) || null;
+    if (!item) return;
     try {
       // 'exfil' is deliberately NOT handled here: it has its own EVENTS.TERMINAL_EXFIL
       // listener (registerTerminalSystem, ready/68) which also catches UNGATED
@@ -179,12 +189,52 @@ export class TraceService {
     } catch (err) { log.warn(`Resident trigger check failed: ${err.message}`); }
   }
 
-  /** GM-side socket handler body for TRACE_REQUEST (player relay). */
-  async handleTraceRequest(data) { if (isGM()) await this.recordTrace(data); }
+  /**
+   * GM-side socket handler body for TRACE_REQUEST (player relay). The row is rebuilt here
+   * (audit SEC-22): only for the sender's own character, only on a shard or terminal they can
+   * reach (a trace fires resident triggers on its host), with names read on the GM side,
+   * known severity / outcome, and the GM's own clock.
+   * @param {object} data
+   * @param {string|null} [senderId] the server-verified sender; omitted = the GM's own call
+   */
+  async handleTraceRequest(data, senderId = undefined) {
+    if (!isGM()) return;
+    if (senderId === undefined) { await this.recordTrace(data); return; }
+    const p = this.checkTraceRequest(data, senderId);
+    if (!p.ok) { log.warn(`Trace request refused: ${p.why}`); return; }
+    await this.recordTrace(p.row);
+  }
+
+  /** @returns {{ok:true, row:object}|{ok:false, why:string}} */
+  checkTraceRequest(data = {}, senderId = null) {
+    const user = senderId ? game.users?.get(senderId) : null;
+    if (!user) return { ok: false, why: 'unknown sender' };
+    if (user.isGM) return { ok: true, row: data };
+    const actor = data.actorId ? game.actors?.get(data.actorId) : null;
+    if (!actor || !userOwnsActor(senderId, actor)) return { ok: false, why: 'a trace for a character the sender does not own' };
+    let item = null;
+    if (data.targetUuid && /^(Item|Actor)\./.test(String(data.targetUuid))) {
+      try { item = fromUuidSync(data.targetUuid); } catch { item = null; }
+      const kind = item?.getFlag?.(MODULE_ID, 'isTerminal') ? 'terminal' : item?.getFlag?.(MODULE_ID, 'isDataShard') ? 'shard' : null;
+      if (kind && !userCanReachItem(senderId, item, kind)) return { ok: false, why: 'the sender has no way into that object' };
+      if (!kind) item = null;
+    }
+    const s = (v, n) => String(v ?? '').slice(0, n);
+    const row = this._payload({
+      actor, hostItem: item, action: /^[\w-]{1,40}$/.test(data.action || '') ? data.action : 'intrusion',
+      source: s(data.source, 120), objectId: item ? null : s(data.objectId, 80) || null, objectName: s(data.objectName, 120),
+      targetKind: item ? null : (['network', 'message', 'contact', 'account'].includes(data.targetKind) ? data.targetKind : null),
+      targetNetworkId: s(data.targetNetworkId, 64) || null,
+      targetMessageId: s(data.targetMessageId, 80) || null, targetContactId: s(data.targetContactId, 80) || null,
+      dv: data.dv, margin: Number.isFinite(Number(data.margin)) ? Number(data.margin) : undefined,
+      severity: data.severity, outcome: data.outcome, netVerb: /^[\w -]{1,30}$/.test(data.netVerb || '') ? data.netVerb : undefined,
+    });
+    return { ok: true, row };
+  }
 
   // ─── Log ───
   getLog() { try { return game.settings.get(MODULE_ID, LOG_SETTING) ?? []; } catch { return []; } }
-  async clearLog() { if (isGM()) await game.settings.set(MODULE_ID, LOG_SETTING, []); }
+  async clearLog() { if (isGM()) await serialize('trace:log', () => game.settings.set(MODULE_ID, LOG_SETTING, [])); }
 
   // ─── Heat (per object × actor, decayed over game time) ───
   getHeatMap() { try { return game.settings.get(MODULE_ID, HEAT_SETTING) ?? {}; } catch { return {}; } }
@@ -201,16 +251,31 @@ export class TraceService {
   /** Decayed heat for one (object, actor). */
   getHeat(objectId, actorId) { return this._decay(this.getHeatMap()?.[objectId]?.[actorId]); }
 
+  /**
+   * @private Drop every entry that has cooled to 0, and objects left with none (audit PERF-09: they were kept
+   * forever, so the setting only grew). Applied to the map just before each save.
+   */
+  _pruneHeat(map) {
+    for (const [objectId, byActor] of Object.entries(map || {})) {
+      for (const [actorId, entry] of Object.entries(byActor || {})) if (this._decay(entry) <= 0) delete byActor[actorId];
+      if (!Object.keys(byActor || {}).length) delete map[objectId];
+    }
+    return map;
+  }
+
   /** Bump heat (GM-side). Decays first, adds, clamps, stamps. Returns the new value. */
   async bumpHeat(objectId, actorId, amount) {
     if (!isGM()) return 0;
-    const map = foundry.utils.deepClone(this.getHeatMap());
-    const obj = map[objectId] || (map[objectId] = {});
-    const cur = this._decay(obj[actorId]);
-    const next = Math.min(HEAT_MAX, cur + (Number(amount) || 0));
-    obj[actorId] = { value: next, ts: this._nowIso() };
-    await game.settings.set(MODULE_ID, HEAT_SETTING, map);
-    return next;
+    // One heat write at a time (INT-03): two bumps at once lost one.
+    return serialize('trace:heat', async () => {
+      const map = foundry.utils.deepClone(this.getHeatMap());
+      const obj = map[objectId] || (map[objectId] = {});
+      const cur = this._decay(obj[actorId]);
+      const next = Math.min(HEAT_MAX, cur + (Number(amount) || 0));
+      obj[actorId] = { value: next, ts: this._nowIso() };
+      await game.settings.set(MODULE_ID, HEAT_SETTING, this._pruneHeat(map));
+      return next;
+    });
   }
 
   /**
@@ -221,11 +286,13 @@ export class TraceService {
    */
   async setHeat(objectId, actorId, value, { reason = '', tellPlayer = false, objectName = '' } = {}) {
     if (!isGM()) return 0;
-    const map = foundry.utils.deepClone(this.getHeatMap());
-    const obj = map[objectId] || (map[objectId] = {});
     const v = Math.max(0, Math.min(HEAT_MAX, Math.round(Number(value) || 0)));
-    obj[actorId] = { value: v, ts: this._nowIso() };
-    await game.settings.set(MODULE_ID, HEAT_SETTING, map);
+    await serialize('trace:heat', async () => {
+      const map = foundry.utils.deepClone(this.getHeatMap());
+      const obj = map[objectId] || (map[objectId] = {});
+      obj[actorId] = { value: v, ts: this._nowIso() };
+      await game.settings.set(MODULE_ID, HEAT_SETTING, this._pruneHeat(map));
+    });
     this._heatChat(actorId, objectName || objectId, v, reason, tellPlayer);
     return v;
   }
@@ -280,13 +347,13 @@ export class TraceService {
     const a = actorId ? game.actors?.get(actorId) : null;
     const expiresAt = this._nowMs() + Math.max(1, Number(minutes) || 30) * 60000;
     const src = (source || '').trim() || 'A trace';
-    const list = [...this.getCountdowns(), {
+    const row = {
       id: `cd-${foundry.utils.randomID(8)}`, objectId, actorId, objectName: objectName || objectId,
       actorName: a?.name || 'operator', expiresAt, source: src, reason, playerWarning, tellPlayer: !!tellPlayer,
       // startedAt + minutes let Admin → Security draw the clock ring as a fraction of the whole run.
       startedAt: this._nowMs(), minutes: Math.max(1, Number(minutes) || 30),
-    }];
-    await game.settings.set(MODULE_ID, 'traceCountdowns', list);
+    };
+    await serialize('trace:cd', () => game.settings.set(MODULE_ID, 'traceCountdowns', [...this.getCountdowns(), row]));
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
     if (gmIds.length) ChatMessage.create({
@@ -311,11 +378,11 @@ export class TraceService {
     }
   }
 
-  async cancelCountdown(id) { if (isGM()) await game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => c.id !== id)); }
+  async cancelCountdown(id) { if (isGM()) await serialize('trace:cd', () => game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => c.id !== id))); }
 
   /** GM reaper — fire expired countdowns (game time). Registered on an interval. */
   async reapCountdowns() {
-    if (!isGM()) return;
+    if (!isPrimaryGM()) return;   // one GM expires countdowns (two GMs added +35 heat twice — INT-01)
     const now = this._nowMs();
     const due = this.getCountdowns().filter(c => c.expiresAt <= now);
     if (!due.length) return;
@@ -355,7 +422,9 @@ export class TraceService {
         }));
       } catch (err) { log.warn(`Trace-complete log failed: ${err.message}`); }
     }
-    await game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => c.expiresAt > now));
+    // Drop only the ones fired here, re-read inside the queue: a countdown started meanwhile survives.
+    const fired = new Set(due.map((c) => c.id));
+    await serialize('trace:cd', () => game.settings.set(MODULE_ID, 'traceCountdowns', this.getCountdowns().filter(c => !fired.has(c.id))));
   }
 
   /** GM-side toast + whisper. (The durable record IS the log; this is the ping.)
@@ -368,7 +437,7 @@ export class TraceService {
     const tier = TraceService.tierOf(heat);
     const on = p.objectName && p.objectName !== 'unknown' ? ` on ${p.objectName}` : '';
     const msg = `${p.actorName} tripped a trace — ${p.action}${on} (heat ${Math.round(heat)} · ${tier.toUpperCase()}).`;
-    try { ui.notifications.warn(`NCM | ${msg}`); } catch { /* no ui */ }
+    try { ncmNotify.warn(`NCM | ${msg}`); } catch { /* no ui */ }
     try {
       const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
       if (gmIds.length) {

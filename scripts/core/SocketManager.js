@@ -30,12 +30,19 @@ export class SocketManager {
 
   /**
    * Initialize the socket listener. Called during ready hook.
+   *
+   * WHO SENT IT comes from the Foundry server, never from the payload. The
+   * server forwards a module socket event as `emit(event, data, this.user.id)`
+   * (dist/server/sockets.mjs, handleCustomSocket), so the AUTHENTICATED user id
+   * is the listener's second argument. The payload's own `sender` field is
+   * written by the sending client and can name anyone, so it is never trusted
+   * (audit SEC-01).
    */
   initialize() {
     if (this._initialized) return;
 
-    game.socket.on(`module.${MODULE_ID}`, (data) => {
-      this._onMessage(data);
+    game.socket.on(`module.${MODULE_ID}`, (message, userId) => {
+      this._onMessage(message, userId);
     });
 
     this._initialized = true;
@@ -45,7 +52,9 @@ export class SocketManager {
   /**
    * Register a handler for a socket operation
    * @param {string} operation - Operation name (from SOCKET_OPS)
-   * @param {Function} handler - Handler function receiving (data)
+   * @param {Function} handler - Handler function receiving (data, senderUserId).
+   *   senderUserId is the server-verified id of the user who emitted it, or null
+   *   when the transport did not supply one.
    */
   register(operation, handler) {
     this._handlers.set(operation, handler);
@@ -60,6 +69,7 @@ export class SocketManager {
     game.socket.emit(`module.${MODULE_ID}`, {
       operation,
       data,
+      // Informational only. Receivers use the server-supplied id instead.
       sender: game.user.id,
       timestamp: Date.now(),
     });
@@ -67,19 +77,29 @@ export class SocketManager {
 
   /**
    * Internal message router
-   * @param {object} message
+   * @param {object} message - The emitted payload
+   * @param {string} [userId] - The server-verified id of the emitting user
    * @private
    */
-  _onMessage(message) {
-    const { operation, data, sender } = message;
+  _onMessage(message, userId) {
+    if (!message || typeof message !== 'object') return;
+    const { operation, data } = message;
+    if (typeof operation !== 'string') return;
 
-    // Don't process own messages
-    if (sender === game.user.id) return;
+    // The server's id, never message.sender (which the emitting client wrote).
+    const sender = (typeof userId === 'string' && userId) ? userId : null;
+
+    // Foundry's server never echoes an emit to its own sender; this only guards
+    // against a loopback in tests or a future transport.
+    if (sender && sender === game.user?.id) return;
 
     const handler = this._handlers.get(operation);
     if (handler) {
       try {
-        handler(data, sender);
+        // Async handlers return a promise; catch its rejection too (ARCH-01) —
+        // it used to become an unhandled rejection with no log line.
+        const r = handler(data, sender);
+        if (r && typeof r.then === 'function') r.catch((error) => log.error(`Socket handler error for '${operation}':`, error));
       } catch (error) {
         log.error(`Socket handler error for '${operation}':`, error);
       }

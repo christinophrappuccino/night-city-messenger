@@ -85,11 +85,14 @@ ok(r.success && saved.length === nSaved && emits.at(-1)?.[1]?.action === 'add', 
 isGMNow = true; userId = 'G';
 const gm = new SchedulingService();
 gm._registerSocketHandlers();
+// the GM checks the sender since A3d (test-mail-relays covers the checks); here the entry is honest
+game.users.get = (id) => ({ id, name: id, isGM: id === 'G' });
+gm.checkScheduledAdd = async (entry) => ({ ok: true, entry });
 const before = saved.length;
-socketHandler({ action: 'add', entry: emits.at(-1)[1].entry });
+socketHandler({ action: 'add', entry: emits.at(-1)[1].entry }, 'P');
 await new Promise((res) => setTimeout(res, 0));
 ok(saved.length === before + 1 && saved.at(-1)[1].some((e) => e.messageData.subject === 'later'), 'the GM saves a player’s scheduled message (it used to live only in memory and die on a reload)');
-socketHandler({ action: 'cancel', scheduleId: emits.at(-1)[1].entry.scheduleId });
+socketHandler({ action: 'cancel', scheduleId: emits.at(-1)[1].entry.scheduleId }, 'P');
 await new Promise((res) => setTimeout(res, 0));
 ok(!saved.at(-1)[1].some((e) => e.messageData.subject === 'later'), 'and saves a cancel');
 

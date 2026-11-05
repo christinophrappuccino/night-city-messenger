@@ -536,6 +536,7 @@ else {
   const H = Handlebars.create();
   H.registerPartial('modules/night-city-messenger/templates/admin-panel/partials/contacts-map.hbs', readFileSync(`${ROOT}/templates/admin-panel/partials/contacts-map.hbs`, 'utf8'));   // Who knows whom → Map
   { const { registerTagHueHelper } = await import(new URL('../../../scripts/utils/tagHue.js', import.meta.url)); registerTagHueHelper(H); }
+  { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H); }
   H.registerHelper('eq', (a, b) => a === b);
   const render = H.compile(tpl);
   const html = [];
@@ -797,6 +798,7 @@ else {
     const H2 = Handlebars.create();
     H2.registerPartial('modules/night-city-messenger/templates/admin-panel/partials/contacts-map.hbs', '');
     { const { registerTagHueHelper } = await import(new URL('../../../scripts/utils/tagHue.js', import.meta.url)); registerTagHueHelper(H2); }
+    { const { registerTipHelper } = await import(new URL('../../../scripts/utils/notify.js', import.meta.url).href); registerTipHelper(H2); }
     H2.registerHelper('eq', (a, b) => a === b);
     const r2 = H2.compile(tpl);
     tab._cancelEdit(); tab._selId = 'c-queen'; tab._dTab = 'main';

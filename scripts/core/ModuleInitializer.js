@@ -7,6 +7,7 @@
  */
 
 import { log } from '../utils/helpers.js';
+import { ncmNotify } from '../utils/notify.js';
 
 export class ModuleInitializer {
   constructor() {
@@ -16,6 +17,27 @@ export class ModuleInitializer {
     this._phases.set('init', []);
     this._phases.set('ready', []);
     this._phases.set('postReady', []);
+    /** Startup steps that threw — `{ phase, name, message }` (audit ARCH-02). @type {object[]} */
+    this.failures = [];
+  }
+
+  /** @private Log a failed step and remember it, so the GM can be told once startup is over. */
+  _failed(phase, task, error) {
+    log.error(`  FAILED: ${task.name}`, error);
+    this.failures.push({ phase, name: task.name, message: error?.message || String(error) });
+  }
+
+  /**
+   * Tell the GM which startup steps failed (audit ARCH-02). They were only in the console, so the module could run
+   * half-started with nothing on screen to say so. Once, after postReady; players are not told (they can't fix it).
+   * @returns {number} how many failed
+   */
+  reportFailures() {
+    const n = this.failures.length;
+    if (!n || !game.user?.isGM) return n;
+    const names = this.failures.slice(0, 4).map((f) => f.name).join(', ') + (n > 4 ? `, and ${n - 4} more` : '');
+    ncmNotify.error(`NCM | ${n} startup step${n === 1 ? '' : 's'} failed: ${names}. Some features may not work. Press F12 and look for "FAILED" in the console for details.`, { permanent: true });
+    return n;
   }
 
   /**
@@ -29,6 +51,32 @@ export class ModuleInitializer {
     const tasks = this._phases.get(phase);
     if (!tasks) throw new Error(`Unknown phase: ${phase}`);
     tasks.push({ priority, name, fn });
+  }
+
+  /**
+   * Run a phase's tasks NOW, in priority order, each to its first await (audit COMPAT-01 / FBL-07). Used for
+   * preInit + init inside Foundry's `init` hook, which does not wait for async callbacks: everything a task does
+   * synchronously (settings, helpers, the canvas layer, keybindings, hooks, the enricher) is registered before
+   * the hook returns. A task that returns a promise is not waited for here; its promise joins the result.
+   * @param {string} phase
+   * @returns {Promise<void>} settles when every task's promise has (failures are logged, never thrown)
+   */
+  runPhaseNow(phase) {
+    const tasks = this._phases.get(phase);
+    if (!tasks || tasks.length === 0) return Promise.resolve();
+    tasks.sort((a, b) => a.priority - b.priority);
+    log.info(`Running phase: ${phase} (${tasks.length} tasks)`);
+    const pending = [];
+    for (const task of tasks) {
+      try {
+        log.debug(`  [${task.priority}] ${task.name}`);
+        const r = task.fn();
+        if (r && typeof r.then === 'function') pending.push(Promise.resolve(r).catch((error) => this._failed(phase, task, error)));
+      } catch (error) {
+        this._failed(phase, task, error);
+      }
+    }
+    return Promise.all(pending).then(() => {});
   }
 
   /**
@@ -47,7 +95,7 @@ export class ModuleInitializer {
         log.debug(`  [${task.priority}] ${task.name}`);
         await task.fn();
       } catch (error) {
-        log.error(`  FAILED: ${task.name}`, error);
+        this._failed(phase, task, error);
       }
     }
   }

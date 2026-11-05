@@ -13,6 +13,7 @@
  *   Extends BaseApplication for consistent lifecycle, theming, and cleanup.
  */
 
+import { ncmNotify } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
@@ -207,7 +208,7 @@ export class ContactShareDialog extends BaseApplication {
   static async _onSendDataDrop(event, target) {
     if (this._sending) return;
     if (this.selectedRecipients.size === 0) {
-      ui.notifications.warn('Select at least one recipient.');
+      ncmNotify.warn('Select at least one recipient.');
       return;
     }
 
@@ -253,13 +254,13 @@ export class ContactShareDialog extends BaseApplication {
         }
         this.close();
       } else {
-        ui.notifications.error(result.errors?.[0] || 'Data Drop failed.');
+        ncmNotify.error(result.errors?.[0] || 'Data Drop failed.');
         this._sending = false;
         this.render();
       }
     } catch (error) {
       log.error('ContactShareDialog._onSendDataDrop:', error);
-      ui.notifications.error('Data Drop failed unexpectedly.');
+      ncmNotify.error('Data Drop failed unexpectedly.');
       this._sending = false;
       this.render();
     }
