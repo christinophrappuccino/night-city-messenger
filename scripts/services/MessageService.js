@@ -451,7 +451,9 @@ export class MessageService {
       const signalStrength = viaNetwork
         ? (viaNetwork.signalStrength ?? 100)
         : (networkService?.signalStrength ?? 100);
-      if (signalStrength < 50) {
+      // Only a PLAYER's send garbles (dev's call, 2026-11-05, when E1 made this field actually stick): the GM's own
+      // sends — NPCs, broadcasts, scheduled deliveries — never do, whatever the GM's connection reads.
+      if (signalStrength < 50 && !game.user?.isGM) {
         data.signalDegradation = {
           originalSignal: signalStrength,
           corruptionLevel: signalStrength < 20 ? 'heavy' : 'moderate',
@@ -591,6 +593,7 @@ export class MessageService {
       status: { sent: true, read: true, eddiesClaimed: true },
     };
     delete sentCopy._recipientInboxId; // Don't persist internal field
+    delete sentCopy.signalDegradation; // the sender wrote it: their own copy is never garbled (E1)
     delete sentCopy._fanout;
     // Anonymous reply — mask the recipient on the replier's own sent copy so
     // their outbox can't reveal the anonymous party they answered.

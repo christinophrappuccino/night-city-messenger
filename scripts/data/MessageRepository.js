@@ -539,6 +539,11 @@ export class MessageRepository {
           // SENDER's sent copy only: the recipient's page must never reveal the
           // real typist of an impersonated message.
           sentVia: (messageData.status?.sent && messageData.sentVia) ? messageData.sentVia : null,
+          // A GM broadcast (Admin → Messages → Mass Broadcast): drives the broadcast icon in the admin feed (DATA-19).
+          isBroadcast: !!messageData.isBroadcast,
+          // Low-signal garble + the Reconstruct roll (MessageService sets it at send) — it was never stored, so
+          // neither ever happened (DATA-13).
+          signalDegradation: messageData.signalDegradation || null,
 
           from: messageData.from || '',
           fromActorId: messageData.fromActorId || '',
@@ -608,6 +613,8 @@ export class MessageRepository {
             spamSource: messageData.metadata?.spamSource || null,
             spamCategory: messageData.metadata?.spamCategory || null,
             spamTemplateId: messageData.metadata?.spamTemplateId || null,
+            // A tapped conversation's running log (ConversationService) — dropped here, so the log restarted (INT-04).
+            ...(Array.isArray(messageData.metadata?.tapLog) ? { tapLog: messageData.metadata.tapLog } : {}),
           },
 
           attachments: messageData.attachments || [],
@@ -1206,6 +1213,7 @@ export class MessageRepository {
       inReplyTo: flags.inReplyTo,
       references: Array.isArray(flags.references) ? flags.references : [],
       participants: Array.isArray(flags.participants) ? flags.participants : [],
+      isBroadcast: !!flags.isBroadcast,
       sentVia: flags.sentVia || null,
       from: flags.from,
       fromActorId: flags.fromActorId,
