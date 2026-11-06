@@ -1,0 +1,497 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stolen Agents — mock</title>
+<!--
+  Looted / stolen Agents (dev, 2026-11-05): any item can become an NPC's phone. A player who holds it gets the
+  phone's lock screen, then a BORROWED view of the owner's life — deliberately not their own Agent: a portrait
+  phone that wears its brand, an AI that knows you are not the owner, read-only apps, a "held by" strip.
+  Rows: 1 the locks (passcode · biometric with a key item · bypass + lockout) · 2 unlocked (home · a message · calls
+  and contacts) · 3 the GM side (Configure the device · Admin → Agents).
+  Prefix ncm-dev-* (free). Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/stolen-agent-mock.html
+  ?t=clean-light|high-contrast for the admin frames.
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 24px 28px 70px; background: #17171d; font-family: sans-serif; overflow-y: auto !important; height: auto !important; }
+  .mk-top { color: #eee; font: 700 20px sans-serif; margin: 0 0 4px; }
+  .mk-sub { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 6px; max-width: 1060px; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 34px 0 4px; border-top: 1px solid #333; padding-top: 18px; letter-spacing: .03em; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 14px; max-width: 1060px; }
+  .mk-p b { color: #ddd; }
+  .mk-row { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
+  .mk-cap { color: #9ad; font: 600 11px sans-serif; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 7px; }
+  .mk-cap em { color: #888; font-style: normal; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .mk-win, .mk-win.ncm-app { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; z-index: auto !important; }
+
+  /* ═══════════════ THE PHONE (proposed ncm-dev-*) ═══════════════
+     The device wears its BRAND: --dv-a (accent), --dv-bg (glass), --dv-ink (text), --dv-dim. Never the player's theme. */
+  .ncm-dev { --dv-a: #4fb7ff; --dv-a2: #b8e2ff; --dv-bg: #0b1420; --dv-bg2: #122033; --dv-ink: #e6f1fb; --dv-dim: #8aa3bd; --dv-bad: #ff5d6c; --dv-ok: #52e3a0; --dv-r: 30px;
+    position: relative; width: 320px; height: 650px; flex: none; padding: 11px; box-sizing: border-box; border-radius: 42px;
+    background: linear-gradient(160deg, #3a3f48, #16181d 40%, #2b2f36); box-shadow: 0 18px 50px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.08); }
+  .ncm-dev[data-brand="kangtao"] { --dv-a: #ff4d3d; --dv-a2: #ffc46b; --dv-bg: #170a09; --dv-bg2: #2a1210; --dv-ink: #fbeee4; --dv-dim: #c2988a; }
+  .ncm-dev[data-brand="street"] { --dv-a: #9bff5e; --dv-a2: #e1ff9c; --dv-bg: #070907; --dv-bg2: #111611; --dv-ink: #dfe9d8; --dv-dim: #83947b; --dv-r: 22px; border-radius: 30px; background: linear-gradient(160deg, #2d2a22, #12110d 45%, #24211a); }
+  .ncm-dev__glass { position: relative; height: 100%; border-radius: var(--dv-r); overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, var(--dv-bg2), var(--dv-bg) 60%); color: var(--dv-ink);
+    display: flex; flex-direction: column; font-family: var(--ncm-font-body, sans-serif); }
+  .ncm-dev__status { flex: none; display: flex; align-items: center; gap: 6px; padding: 9px 18px 4px; font: 600 10.5px var(--ncm-font-mono, monospace); color: var(--dv-dim); }
+  .ncm-dev__status .sp { flex: 1; } .ncm-dev__status i { font-size: 9px; }
+  .ncm-dev__brand { flex: none; text-align: center; font: 700 9.5px var(--ncm-font-display, sans-serif); letter-spacing: .3em; text-transform: uppercase; color: var(--dv-a); opacity: .85; padding-bottom: 2px; }
+  .ncm-dev__held { flex: none; display: flex; align-items: center; gap: 7px; padding: 7px 14px 9px; border-top: 1px solid rgba(255,255,255,.07);
+    font: 600 10px var(--ncm-font-mono, monospace); color: var(--dv-dim); background: rgba(0,0,0,.25); }
+  .ncm-dev__held b { color: var(--dv-ink); font-weight: 700; } .ncm-dev__held .sp { flex: 1; } .ncm-dev__held i { color: var(--dv-a); }
+  .ncm-dev__held .ro { padding: 1px 6px; border: 1px solid rgba(255,255,255,.15); border-radius: 9px; font-size: 9px; letter-spacing: .08em; }
+
+  /* the AI speaking: the phone knows you are not its owner */
+  .ncm-dev__ai { display: flex; gap: 9px; align-items: flex-start; margin: 0 16px; padding: 9px 11px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); font-size: 12px; line-height: 1.35; }
+  .ncm-dev__ai .orb { flex: none; width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--dv-a2), var(--dv-a) 55%, transparent 72%); box-shadow: 0 0 12px var(--dv-a); }
+  .ncm-dev__ai b { display: block; font: 700 9.5px var(--ncm-font-display, sans-serif); letter-spacing: .2em; color: var(--dv-a); margin-bottom: 2px; }
+
+  /* ── lock screen ── */
+  .ncm-dev__lock { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 18px; gap: 12px; }
+  .ncm-dev__clock { font: 300 44px/1 var(--ncm-font-display, sans-serif); letter-spacing: .02em; }
+  .ncm-dev__date { font: 600 11px var(--ncm-font-mono, monospace); color: var(--dv-dim); letter-spacing: .1em; margin-top: -6px; }
+  .ncm-dev__owner { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 4px; }
+  .ncm-dev__owner .face { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font: 700 18px var(--ncm-font-display, sans-serif); color: var(--dv-ink);
+    background: linear-gradient(140deg, var(--dv-bg2), rgba(255,255,255,.08)); box-shadow: 0 0 0 2px var(--dv-a), 0 0 18px color-mix(in srgb, var(--dv-a) 45%, transparent); }
+  .ncm-dev__owner .nm { font: 700 13px var(--ncm-font-display, sans-serif); letter-spacing: .06em; }
+  .ncm-dev__dots { display: flex; gap: 11px; margin: 4px 0 2px; }
+  .ncm-dev__dots i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--dv-dim); } .ncm-dev__dots i.on { background: var(--dv-a); border-color: var(--dv-a); box-shadow: 0 0 8px var(--dv-a); }
+  .ncm-dev__tries { font: 600 10px var(--ncm-font-mono, monospace); color: var(--dv-dim); letter-spacing: .06em; } .ncm-dev__tries b { color: var(--dv-bad); }
+  .ncm-dev__pad { display: grid; grid-template-columns: repeat(3, 50px); gap: 6px 18px; margin-top: 0; }
+  .ncm-dev__pad span { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
+    font: 400 22px var(--ncm-font-display, sans-serif); color: var(--dv-ink); cursor: pointer; }
+  .ncm-dev__pad span small { display: block; font: 600 7px var(--ncm-font-mono, monospace); letter-spacing: .15em; color: var(--dv-dim); margin-top: -10px; }
+  .ncm-dev__pad span.blank { background: none; border: 0; }
+  .ncm-dev__other { display: flex; gap: 8px; margin-top: auto; padding-bottom: 12px; }
+  .ncm-dev__chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 16px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04);
+    font: 600 10.5px var(--ncm-font-display, sans-serif); letter-spacing: .04em; color: var(--dv-ink); cursor: pointer; }
+  .ncm-dev__chip i { color: var(--dv-a); font-size: 11px; }
+  .ncm-dev__chip.go { background: var(--dv-a); color: #050505; border-color: var(--dv-a); } .ncm-dev__chip.go i { color: #050505; }
+  .ncm-dev__chip.dim { opacity: .45; cursor: not-allowed; }
+
+  /* biometric */
+  .ncm-dev__scan { position: relative; width: 120px; height: 140px; margin-top: 4px; display: grid; place-items: center; }
+  .ncm-dev__scan .fp { font-size: 86px; color: color-mix(in srgb, var(--dv-a) 35%, transparent); }
+  .ncm-dev__scan .ring { position: absolute; inset: 0; border-radius: 60px; border: 1.5px solid color-mix(in srgb, var(--dv-a) 50%, transparent); }
+  .ncm-dev__scan .beam { position: absolute; left: 10px; right: 10px; top: 46%; height: 2px; background: var(--dv-a); box-shadow: 0 0 14px 3px var(--dv-a); animation: ncm-dev-beam 2.2s ease-in-out infinite; }
+  @keyframes ncm-dev-beam { 0%, 100% { top: 12%; } 50% { top: 84%; } }
+  @media (prefers-reduced-motion: reduce) { .ncm-dev__scan .beam { animation: none; } }
+  .ncm-dev__keys { width: calc(100% - 32px); display: flex; flex-direction: column; gap: 6px; }
+  .ncm-dev__keys .k { font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .2em; color: var(--dv-dim); text-transform: uppercase; margin: 2px 2px 0; }
+  .ncm-dev__key { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); cursor: pointer; }
+  .ncm-dev__key .ico { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: rgba(0,0,0,.35); color: var(--dv-a2); font-size: 13px; }
+  .ncm-dev__key .tx { flex: 1; min-width: 0; } .ncm-dev__key b { display: block; font: 700 12px var(--ncm-font-display, sans-serif); } .ncm-dev__key small { font-size: 10.5px; color: var(--dv-dim); }
+  .ncm-dev__key .st { font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .08em; color: var(--dv-ok); }
+  .ncm-dev__key.no { opacity: .55; cursor: not-allowed; } .ncm-dev__key.no .st { color: var(--dv-bad); }
+  .ncm-dev__key.pick { border-color: var(--dv-a); box-shadow: 0 0 0 1px var(--dv-a) inset; }
+
+  /* bypass / lockout (street phone: cracked) */
+  .ncm-dev__crack { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background: linear-gradient(118deg, transparent 47%, rgba(255,255,255,.35) 47.3%, transparent 47.8%) 0 0 / 100% 100%,
+                linear-gradient(64deg, transparent 58%, rgba(255,255,255,.25) 58.2%, transparent 58.6%) 0 0 / 100% 100%,
+                linear-gradient(160deg, transparent 30%, rgba(255,255,255,.2) 30.2%, transparent 30.5%) 0 0 / 100% 100%; }
+  .ncm-dev__roll { width: calc(100% - 32px); padding: 11px 12px; border-radius: 14px; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.1); display: flex; flex-direction: column; gap: 7px; }
+  .ncm-dev__roll .r { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+  .ncm-dev__roll .dv { font: 700 18px var(--ncm-font-mono, monospace); color: var(--dv-a); }
+  .ncm-dev__roll .bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; } .ncm-dev__roll .bar i { display: block; height: 100%; width: 62%; background: var(--dv-a); }
+  .ncm-dev__wipe { width: calc(100% - 32px); padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--dv-bad) 60%, transparent); background: color-mix(in srgb, var(--dv-bad) 12%, transparent);
+    font-size: 11.5px; line-height: 1.35; color: var(--dv-ink); display: flex; gap: 9px; }
+  .ncm-dev__wipe i { color: var(--dv-bad); margin-top: 2px; } .ncm-dev__wipe b { color: var(--dv-bad); }
+
+  /* ── unlocked: home ── */
+  .ncm-dev__home { flex: 1; display: flex; flex-direction: column; gap: 14px; padding-top: 12px; overflow: hidden; }
+  .ncm-dev__whois { margin: 0 16px; display: flex; align-items: center; gap: 11px; }
+  .ncm-dev__whois .face { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font: 700 15px var(--ncm-font-display, sans-serif); background: rgba(255,255,255,.07); border: 1px solid var(--dv-a); }
+  .ncm-dev__whois b { display: block; font: 700 15px var(--ncm-font-display, sans-serif); } .ncm-dev__whois small { font: 11px var(--ncm-font-mono, monospace); color: var(--dv-dim); }
+  .ncm-dev__apps { margin: 0 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 10px; }
+  .ncm-dev__app { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; font: 600 10.5px var(--ncm-font-display, sans-serif); letter-spacing: .03em; }
+  .ncm-dev__app .ic { position: relative; width: 56px; height: 56px; border-radius: 17px; display: grid; place-items: center; font-size: 22px; color: var(--dv-ink);
+    background: linear-gradient(150deg, color-mix(in srgb, var(--dv-a) 40%, var(--dv-bg2)), var(--dv-bg2)); border: 1px solid rgba(255,255,255,.1); }
+  .ncm-dev__app .ic em { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--dv-bad); color: #fff; font: 700 10px/18px var(--ncm-font-mono, monospace); font-style: normal; text-align: center; box-sizing: border-box; }
+  .ncm-dev__app.off { opacity: .35; }
+  .ncm-dev__recent { margin: 0 16px; display: flex; flex-direction: column; gap: 6px; }
+  .ncm-dev__recent .k { font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .2em; color: var(--dv-dim); text-transform: uppercase; }
+  .ncm-dev__note { padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.05); font-size: 11.5px; line-height: 1.35; }
+  .ncm-dev__note small { display: block; font: 10px var(--ncm-font-mono, monospace); color: var(--dv-dim); margin-bottom: 2px; }
+
+  /* ── unlocked: an app (single column, mobile) ── */
+  .ncm-dev__bar { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px 9px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .ncm-dev__bar i.back { color: var(--dv-a); } .ncm-dev__bar b { flex: 1; font: 700 14px var(--ncm-font-display, sans-serif); letter-spacing: .04em; }
+  .ncm-dev__bar .seg { display: flex; border: 1px solid rgba(255,255,255,.14); border-radius: 9px; overflow: hidden; font: 600 10px var(--ncm-font-display, sans-serif); }
+  .ncm-dev__bar .seg span { padding: 3px 8px; color: var(--dv-dim); } .ncm-dev__bar .seg span.on { background: var(--dv-a); color: #050505; }
+  .ncm-dev__list { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .ncm-dev__m { display: grid; grid-template-columns: 34px 1fr auto; gap: 9px; align-items: start; padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .ncm-dev__m .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 12px var(--ncm-font-display, sans-serif); background: rgba(255,255,255,.08); }
+  .ncm-dev__m b { display: block; font: 700 12.5px var(--ncm-font-display, sans-serif); } .ncm-dev__m .sj { font-size: 12px; } .ncm-dev__m .pv { font-size: 11px; color: var(--dv-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+  .ncm-dev__m .t { font: 10px var(--ncm-font-mono, monospace); color: var(--dv-dim); }
+  .ncm-dev__m.new b::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--dv-a); vertical-align: 1px; }
+  .ncm-dev__m.lock .pv { color: var(--dv-a2); }
+  .ncm-dev__read { flex: 1; overflow: hidden; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .ncm-dev__read .from { display: flex; gap: 10px; align-items: center; } .ncm-dev__read .from .av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.08); font: 700 13px var(--ncm-font-display, sans-serif); }
+  .ncm-dev__read .from b { display: block; font: 700 13.5px var(--ncm-font-display, sans-serif); } .ncm-dev__read .from small { font: 10.5px var(--ncm-font-mono, monospace); color: var(--dv-dim); }
+  .ncm-dev__read h4 { margin: 0; border: 0; font: 700 15px var(--ncm-font-display, sans-serif); color: var(--dv-ink); }
+  .ncm-dev__read p { margin: 0; font-size: 12.5px; line-height: 1.5; }
+  .ncm-dev__att { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--dv-a) 55%, transparent); font-size: 11.5px; }
+  .ncm-dev__att i { color: var(--dv-a); }
+  .ncm-dev__acts { margin-top: auto; display: flex; gap: 7px; flex-wrap: wrap; }
+  .ncm-dev__k { padding: 6px 14px 2px; font: 700 9px var(--ncm-font-display, sans-serif); letter-spacing: .2em; color: var(--dv-dim); text-transform: uppercase; }
+  .ncm-dev__c { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 12px; }
+  .ncm-dev__c .dir { width: 18px; text-align: center; } .ncm-dev__c .dir.miss { color: var(--dv-bad); } .ncm-dev__c .dir.out { color: var(--dv-ok); } .ncm-dev__c .dir.in { color: var(--dv-a); }
+  .ncm-dev__c .tx { flex: 1; min-width: 0; } .ncm-dev__c b { display: block; font: 700 12px var(--ncm-font-display, sans-serif); } .ncm-dev__c small { font: 10px var(--ncm-font-mono, monospace); color: var(--dv-dim); }
+  .ncm-dev__c .sv { font: 600 9.5px var(--ncm-font-display, sans-serif); letter-spacing: .05em; padding: 3px 8px; border-radius: 10px; border: 1px solid var(--dv-a); color: var(--dv-a); white-space: nowrap; }
+
+  /* ═══════════════ GM side (admin theme, real vocabulary where it exists) ═══════════════ */
+  .mk-adm { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; width: 820px; overflow: hidden; border: 1px solid #555; display: flex; flex-direction: column; }
+  .ncm-app .mk-cfg { width: 520px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); color: var(--ncm-text-primary); }
+  .ncm-app .mk-cfg__hd { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-card)); }
+  .ncm-app .mk-cfg__hd b { font: 700 13px var(--ncm-font-display); letter-spacing: .04em; } .ncm-app .mk-cfg__hd small { display: block; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-cfg__sec { padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); display: flex; flex-direction: column; gap: 8px; }
+  .ncm-app .mk-cfg__k { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); display: flex; align-items: center; gap: 6px; }
+  .ncm-app .mk-cfg__k i { color: var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .mk-cfg__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .ncm-app .mk-f { display: flex; flex-direction: column; gap: 3px; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-f span.v { height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); color: var(--ncm-text-primary); font: 12px var(--ncm-font-body); }
+  .ncm-app .mk-f span.v .h { color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .ncm-app .mk-f.full { grid-column: 1 / -1; }
+  .ncm-app .mk-brands { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ncm-app .mk-brand { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; font: 600 11px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .mk-brand i { width: 10px; height: 10px; border-radius: 50%; } .ncm-app .mk-brand.on { border-color: var(--ncm-act, var(--ncm-secondary)); box-shadow: inset 0 0 0 1px var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .mk-locks { display: flex; flex-direction: column; gap: 5px; }
+  .ncm-app .mk-lock { display: grid; grid-template-columns: 18px 130px 1fr; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--ncm-border) 80%, transparent); border-radius: 2px; font: 12px var(--ncm-font-body); }
+  .ncm-app .mk-lock .ck { color: var(--ncm-act, var(--ncm-secondary)); } .ncm-app .mk-lock.off .ck { color: var(--ncm-text-hint, var(--ncm-text-muted)); } .ncm-app .mk-lock.off { opacity: .6; }
+  .ncm-app .mk-lock b { font: 700 11.5px var(--ncm-font-display); } .ncm-app .mk-lock small { color: var(--ncm-text-secondary); font-size: 11px; }
+  .ncm-app .mk-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+  .ncm-app .mk-pill { padding: 3px 9px; border: 1px solid var(--ncm-border); border-radius: 2px; font: 600 11px var(--ncm-font-display); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-pill.on { color: var(--ncm-text-primary); border-color: var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent); }
+  .ncm-app .mk-cfg__ft { display: flex; justify-content: flex-end; gap: 6px; padding: 10px 14px; }
+
+  .ncm-app .mk-ag { flex: 1; display: flex; flex-direction: column; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); min-height: 0; }
+  .ncm-app .mk-ag__bar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-card)); }
+  .ncm-app .mk-ag__find { flex: 1; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-card, var(--ncm-bg-surface)); font: 12px var(--ncm-font-body); color: var(--ncm-text-hint, var(--ncm-text-muted)); }
+  .ncm-app .mk-ag__row { display: grid; grid-template-columns: 34px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) 128px; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+  .ncm-app .mk-ag__row.is-hot { box-shadow: inset 3px 0 var(--ncm-bad, var(--ncm-danger)); } .ncm-app .mk-ag__row.is-warn { box-shadow: inset 3px 0 var(--ncm-attn, var(--ncm-accent)); }
+  .ncm-app .mk-ag__ph { width: 30px; height: 44px; border-radius: 7px; display: grid; place-items: center; background: var(--b, #333); color: #050505; font-size: 13px; }
+  .ncm-app .mk-ag__row b { display: block; font: 700 12.5px var(--ncm-font-display); color: var(--ncm-text-heading, var(--ncm-text-primary)); }
+  .ncm-app .mk-ag__row small { display: block; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-app .mk-ag__row .lbl { font: 700 9px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-muted)); }
+  .ncm-app .mk-st { display: inline-flex; align-items: center; gap: 5px; font: 700 10.5px var(--ncm-font-display); }
+  .ncm-app .mk-st.lock { color: var(--ncm-secret, var(--ncm-purple)); } .ncm-app .mk-st.open { color: var(--ncm-attn, var(--ncm-accent)); } .ncm-app .mk-st.wiped { color: var(--ncm-bad, var(--ncm-danger)); } .ncm-app .mk-st.home { color: var(--ncm-good, var(--ncm-success)); }
+  .ncm-app .mk-ag__acts { display: flex; gap: 4px; justify-content: flex-end; }
+  .ncm-app .mk-feed { border-top: 1px solid var(--ncm-border); padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-feed b { color: var(--ncm-text-primary); } .ncm-app .mk-feed .t { font: 10px var(--ncm-font-mono); color: var(--ncm-text-time, var(--ncm-text-muted)); margin-right: 6px; }
+</style>
+</head>
+<body>
+<div class="mk-top">Stolen Agents — every screen</div>
+<p class="mk-sub">Any item can be an NPC's phone. Whoever holds it gets the phone's own lock screen, then a <b>borrowed view</b> of the owner's life —
+deliberately unlike their own Agent: a portrait phone that wears its <b>brand</b>, an AI that knows you are not the owner, read-only apps, and a
+strip saying whose phone you are holding. Three brands are shown so you can see the look follow the device.</p>
+
+<!-- ═══════════════ ROW 1 — the locks ═══════════════ -->
+<div class="mk-h">1 · Getting in</div>
+<p class="mk-p">Each phone has one or more ways in, chosen by the GM: a <b>passcode</b> (the code can be hidden anywhere — a sticky note, a message, a shard),
+<b>biometric</b> (the owner standing next to you, alive or not, <b>or a key item</b> in your inventory: a cloned print film, a severed thumb, a corp ID chip),
+and a <b>skill bypass</b> against a DV. Wrong tries count down; at zero the phone locks out for a while — or, if the GM set it, wipes itself.</p>
+<div class="mk-row">
+  <div><div class="mk-cap">Passcode <em>· Zetatech, AI "MIRA"</em></div>
+    <div class="ncm-dev" data-brand="zetatech"><div class="ncm-dev__glass">
+      <div class="ncm-dev__status"><span>CitiNet</span><i class="fas fa-signal"></i><span class="sp"></span><i class="fas fa-lock"></i><span>71%</span></div>
+      <div class="ncm-dev__brand">Zetatech · Hush 9</div>
+      <div class="ncm-dev__lock">
+        <div class="ncm-dev__clock">21:47</div><div class="ncm-dev__date">FRI 14 AUG 2045</div>
+        <div class="ncm-dev__owner"><div class="face">YV</div><div class="nm">YURI VANCE</div></div>
+        <div class="ncm-dev__ai"><span class="orb"></span><div><b>MIRA</b>You're not Yuri. Code, please.</div></div>
+        <div class="ncm-dev__dots"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+        <div class="ncm-dev__tries"><b>2</b> tries left before lockout</div>
+        <div class="ncm-dev__pad"><span>1</span><span>2<small>ABC</small></span><span>3<small>DEF</small></span><span>4<small>GHI</small></span><span>5<small>JKL</small></span><span>6<small>MNO</small></span><span>7<small>PQRS</small></span><span>8<small>TUV</small></span><span>9<small>WXYZ</small></span><span class="blank"></span><span>0</span><span class="blank"><i class="fas fa-delete-left" style="font-size:16px;color:var(--dv-dim)"></i></span></div>
+        <div class="ncm-dev__other"><span class="ncm-dev__chip"><i class="fas fa-fingerprint"></i> Biometric</span><span class="ncm-dev__chip"><i class="fas fa-microchip"></i> Bypass</span></div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Held by <b>Rache</b><span class="sp"></span><span class="ro">LOCKED</span></div>
+    </div></div></div>
+
+  <div><div class="mk-cap">Biometric · with a key item <em>· Kang Tao, AI "LÓNG"</em></div>
+    <div class="ncm-dev" data-brand="kangtao"><div class="ncm-dev__glass">
+      <div class="ncm-dev__status"><span>KTNet</span><i class="fas fa-signal"></i><span class="sp"></span><i class="fas fa-lock"></i><span>34%</span></div>
+      <div class="ncm-dev__brand">Kang Tao · Lóng 4</div>
+      <div class="ncm-dev__lock">
+        <div class="ncm-dev__owner" style="margin-top:6px"><div class="face">MK</div><div class="nm">MEI KOSAKA</div></div>
+        <div class="ncm-dev__scan"><i class="fas fa-fingerprint fp"></i><div class="ring"></div><div class="beam"></div></div>
+        <div class="ncm-dev__ai"><span class="orb"></span><div><b>LÓNG</b>Present the owner's hand.</div></div>
+        <div class="ncm-dev__keys">
+          <div class="k">What you can use</div>
+          <div class="ncm-dev__key pick"><span class="ico"><i class="fas fa-hand-dots"></i></span><span class="tx"><b>Cloned print film</b><small>In your inventory · made from her glass</small></span><span class="st">MATCH</span></div>
+          <div class="ncm-dev__key no"><span class="ico"><i class="fas fa-user"></i></span><span class="tx"><b>Mei Kosaka</b><small>Her body is 9 squares away</small></span><span class="st">TOO FAR</span></div>
+        </div>
+        <div class="ncm-dev__other"><span class="ncm-dev__chip go"><i class="fas fa-fingerprint"></i> Scan the film</span><span class="ncm-dev__chip"><i class="fas fa-keyboard"></i> Code</span></div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Held by <b>Hana Ito</b><span class="sp"></span><span class="ro">LOCKED</span></div>
+    </div></div></div>
+
+  <div><div class="mk-cap">Bypass · last try, then it wipes <em>· street burner, AI "BUDDY"</em></div>
+    <div class="ncm-dev" data-brand="street"><div class="ncm-dev__glass">
+      <div class="ncm-dev__crack"></div>
+      <div class="ncm-dev__status"><span>no net</span><i class="fas fa-signal" style="opacity:.3"></i><span class="sp"></span><i class="fas fa-lock"></i><span>9%</span></div>
+      <div class="ncm-dev__brand">Rocklin · Burner</div>
+      <div class="ncm-dev__lock">
+        <div class="ncm-dev__owner" style="margin-top:6px"><div class="face">??</div><div class="nm">UNKNOWN OWNER</div></div>
+        <div class="ncm-dev__ai"><span class="orb"></span><div><b>BUDDY</b>heh. nice try, choom.</div></div>
+        <div class="ncm-dev__roll">
+          <div class="r"><span>Electronics/Security Tech</span><span class="dv">DV 13</span></div>
+          <div class="r" style="font-size:11px;color:var(--dv-dim)"><span>Your chance</span><span>62%</span></div>
+          <div class="bar"><i></i></div>
+        </div>
+        <div class="ncm-dev__wipe"><i class="fas fa-triangle-exclamation"></i><div><b>Last try.</b> This phone erases itself if you fail. Everything on it is gone, for everyone.</div></div>
+        <div class="ncm-dev__other"><span class="ncm-dev__chip go"><i class="fas fa-dice-d20"></i> Roll</span><span class="ncm-dev__chip dim"><i class="fas fa-keyboard"></i> Code (locked out 10 min)</span></div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Held by <b>V</b><span class="sp"></span><span class="ro">1 TRY</span></div>
+    </div></div></div>
+</div>
+
+<!-- ═══════════════ ROW 2 — inside ═══════════════ -->
+<div class="mk-h">2 · Inside — a borrowed phone, not your Agent</div>
+<p class="mk-p">One column, phone-sized, the owner's name and brand everywhere, read-only. Apps the GM did not open are greyed out. The AI keeps
+reminding you whose phone it is. What it can do in the first build: read mail (received and sent), open attachments and chips, see the call log and
+voicemail, browse contacts and <b>save</b> a number or address into your own contacts. Replying as the owner is a later step (shown, disabled).</p>
+<div class="mk-row">
+  <div><div class="mk-cap">Home</div>
+    <div class="ncm-dev" data-brand="zetatech"><div class="ncm-dev__glass">
+      <div class="ncm-dev__status"><span>CitiNet</span><i class="fas fa-signal"></i><span class="sp"></span><i class="fas fa-lock-open"></i><span>71%</span></div>
+      <div class="ncm-dev__brand">Zetatech · Hush 9</div>
+      <div class="ncm-dev__home">
+        <div class="ncm-dev__whois"><div class="face">YV</div><div><b>Yuri Vance</b><small>yuri@vancecapital.nc · WAT-2210</small></div></div>
+        <div class="ncm-dev__ai"><span class="orb"></span><div><b>MIRA</b>Welcome back, Yuri. <span style="color:var(--dv-dim)">(You are not Yuri.)</span></div></div>
+        <div class="ncm-dev__apps">
+          <div class="ncm-dev__app"><span class="ic"><i class="fas fa-envelope"></i><em>3</em></span>Mail</div>
+          <div class="ncm-dev__app"><span class="ic"><i class="fas fa-phone"></i><em>2</em></span>Calls</div>
+          <div class="ncm-dev__app"><span class="ic"><i class="fas fa-address-book"></i></span>Contacts</div>
+          <div class="ncm-dev__app"><span class="ic"><i class="fas fa-microchip"></i></span>Chips</div>
+          <div class="ncm-dev__app"><span class="ic"><i class="fas fa-comments"></i></span>Chats</div>
+          <div class="ncm-dev__app off"><span class="ic"><i class="fas fa-note-sticky"></i></span>Notes</div>
+        </div>
+        <div class="ncm-dev__recent"><div class="k">Last thing on screen</div>
+          <div class="ncm-dev__note"><small>Mail · Mr. Hands · 20:12</small>The Kabuki drop moves to Saturday. Bring the chip.</div></div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Yuri's phone · held by <b>Rache</b><span class="sp"></span><span class="ro">READ ONLY</span></div>
+    </div></div></div>
+
+  <div><div class="mk-cap">Mail · a message open</div>
+    <div class="ncm-dev" data-brand="zetatech"><div class="ncm-dev__glass">
+      <div class="ncm-dev__status"><span>CitiNet</span><i class="fas fa-signal"></i><span class="sp"></span><i class="fas fa-lock-open"></i><span>71%</span></div>
+      <div class="ncm-dev__bar"><i class="fas fa-chevron-left back"></i><b>Mail</b><div class="seg"><span class="on">In</span><span>Sent</span></div></div>
+      <div class="ncm-dev__read">
+        <div class="from"><span class="av">MH</span><div><b>Mr. Hands</b><small>to Yuri Vance · Fri 20:12</small></div></div>
+        <h4>Saturday, not Friday</h4>
+        <p>The Kabuki drop moves to Saturday. Same stall, same time. Bring the chip and come alone — I know you've been talking to Militech.</p>
+        <div class="ncm-dev__att"><i class="fas fa-microchip"></i><span><b>Kabuki ledger</b> · chip, ICE</span></div>
+        <div class="ncm-dev__acts">
+          <span class="ncm-dev__chip"><i class="fas fa-address-book"></i> Save Mr. Hands</span>
+          <span class="ncm-dev__chip"><i class="fas fa-share"></i> Copy to my Agent</span>
+          <span class="ncm-dev__chip dim" title="Later: sending as the owner"><i class="fas fa-reply"></i> Reply as Yuri</span>
+        </div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Yuri's phone · held by <b>Rache</b><span class="sp"></span><span class="ro">READ ONLY</span></div>
+    </div></div></div>
+
+  <div><div class="mk-cap">Calls + contacts</div>
+    <div class="ncm-dev" data-brand="zetatech"><div class="ncm-dev__glass">
+      <div class="ncm-dev__status"><span>CitiNet</span><i class="fas fa-signal"></i><span class="sp"></span><i class="fas fa-lock-open"></i><span>71%</span></div>
+      <div class="ncm-dev__bar"><i class="fas fa-chevron-left back"></i><b>Calls</b><div class="seg"><span class="on">Log</span><span>Voicemail</span><span>People</span></div></div>
+      <div class="ncm-dev__list">
+        <div class="ncm-dev__k">Today</div>
+        <div class="ncm-dev__c"><span class="dir miss"><i class="fas fa-phone-slash"></i></span><span class="tx"><b>Unknown · +14 DAL CEN-3345</b><small>missed · 21:30</small></span><span class="sv">Save</span></div>
+        <div class="ncm-dev__c"><span class="dir in"><i class="fas fa-arrow-down"></i></span><span class="tx"><b>Mr. Hands</b><small>in · 20:02 · 3m</small></span></div>
+        <div class="ncm-dev__c"><span class="dir out"><i class="fas fa-arrow-up"></i></span><span class="tx"><b>Militech Recruitment</b><small>out · 18:40 · 11m</small></span></div>
+        <div class="ncm-dev__k">Contacts · 24</div>
+        <div class="ncm-dev__c"><span class="dir"><i class="fas fa-user"></i></span><span class="tx"><b>Dr. Ana Reyes</b><small>WAT-7781 · ripperdoc</small></span><span class="sv">Save</span></div>
+        <div class="ncm-dev__c"><span class="dir"><i class="fas fa-user"></i></span><span class="tx"><b>Lieutenant Cho</b><small>NCPD · private line</small></span><span class="sv">Save</span></div>
+        <div class="ncm-dev__c"><span class="dir"><i class="fas fa-user-secret"></i></span><span class="tx"><b>"Sister"</b><small>no number · address only</small></span><span class="sv">Save</span></div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Yuri's phone · held by <b>Rache</b><span class="sp"></span><span class="ro">READ ONLY</span></div>
+    </div></div></div>
+</div>
+
+<!-- ═══════════════ ROW 3 — the GM side ═══════════════ -->
+<div class="mk-h">3 · The GM side</div>
+<p class="mk-p"><b>Configure</b> opens from the item's right-click (Convert to Agent / Configure), like shards and terminals. <b>Admin → Agents</b> lists
+every phone: whose it is, who holds it now, whether it is cracked, and the buttons to answer it in the fiction — lock it again, wipe it, report it
+stolen, give it back. Plain language here; the flavor lives on the phone.</p>
+<div class="mk-row">
+  <div><div class="mk-cap">Configure the device</div>
+    <div class="ncm-app ncm-admin-panel mk-adm" data-adm style="width:auto;border:0"><div class="mk-cfg">
+      <div class="mk-cfg__hd"><i class="fas fa-mobile-screen" style="color:var(--ncm-act)"></i><div><b>Yuri Vance's Agent</b><small>Item "Agent" on Yuri Vance · converted to a phone</small></div></div>
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-user"></i>Whose phone</div>
+        <div class="mk-cfg__grid"><div class="mk-f full">Owner (their mail, calls and contacts)<span class="v"><i class="fas fa-user-tie"></i>Yuri Vance <span class="h">· yuri@vancecapital.nc</span></span></div></div></div>
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-palette"></i>What it is</div>
+        <div class="mk-brands"><span class="mk-brand on"><i style="background:#4fb7ff"></i>Zetatech</span><span class="mk-brand"><i style="background:#ff4d3d"></i>Kang Tao</span><span class="mk-brand"><i style="background:#c9a7ff"></i>Arasaka</span><span class="mk-brand"><i style="background:#ffd34d"></i>Militech</span><span class="mk-brand"><i style="background:#9bff5e"></i>Street burner</span><span class="mk-brand"><i style="background:linear-gradient(90deg,#f0f,#0ff)"></i>Custom…</span></div>
+        <div class="mk-cfg__grid"><div class="mk-f">Brand line<span class="v">Zetatech</span></div><div class="mk-f">Model<span class="v">Hush 9</span></div>
+          <div class="mk-f">Its AI's name<span class="v">MIRA</span></div><div class="mk-f">Wallpaper<span class="v"><i class="fas fa-image"></i><span class="h">owner's portrait</span></span></div>
+          <div class="mk-f full">What the AI says to a stranger<span class="v">You're not Yuri. Code, please.</span></div></div></div>
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-lock"></i>Ways in <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ncm-text-secondary)">· any one opens it</span></div>
+        <div class="mk-locks">
+          <div class="mk-lock"><i class="fas fa-square-check ck"></i><b>Passcode</b><small>2210 · 3 tries, then locked out 10 min</small></div>
+          <div class="mk-lock"><i class="fas fa-square-check ck"></i><b>Biometric</b><small>Yuri in reach (2 squares), or an item: <u>Cloned print film</u></small></div>
+          <div class="mk-lock"><i class="fas fa-square-check ck"></i><b>Skill bypass</b><small>Electronics/Security Tech · DV 15 · a fail adds heat</small></div>
+          <div class="mk-lock off"><i class="far fa-square ck"></i><b>Wipe when out of tries</b><small>off: it only locks out</small></div>
+        </div></div>
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-eye"></i>What a thief can see</div>
+        <div class="mk-pills"><span class="mk-pill on">Mail</span><span class="mk-pill on">Sent mail</span><span class="mk-pill on">Calls</span><span class="mk-pill on">Voicemail</span><span class="mk-pill on">Contacts</span><span class="mk-pill on">Chips</span><span class="mk-pill">Chats</span><span class="mk-pill">Mail after it was taken</span></div></div>
+      <div class="mk-cfg__ft"><button type="button" class="ncm-msg2-btn"><i class="fas fa-eye"></i> Preview as a thief</button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary"><i class="fas fa-check"></i> Save</button></div>
+    </div></div></div>
+
+  <div style="flex:1;min-width:560px"><div class="mk-cap">Admin → World → Agents</div>
+    <div class="ncm-app ncm-admin-panel mk-adm" data-adm style="width:100%;height:560px"><div class="ncm-admin-panel" style="flex:1;min-height:0;display:flex;flex-direction:column"><div class="ncm-admin-content" style="display:flex;flex-direction:column;gap:8px;padding:10px 12px">
+      <header class="ncm-tabhd"><i class="fas fa-mobile-screen"></i><div><h2>Agents</h2><p>Every NPC phone in the world: who holds it, whether it's been cracked, and what to do about it.</p></div></header>
+      <div class="mk-ag">
+        <div class="mk-ag__bar"><button type="button" class="ncm-msg2-btn"><i class="fas fa-filter"></i> All 4</button><span class="mk-ag__find"><i class="fas fa-magnifying-glass"></i> Search owner, holder, brand</span><button type="button" class="ncm-msg2-btn ncm-msg2-btn--primary"><i class="fas fa-plus"></i> Make a phone…</button></div>
+        <div class="mk-ag__row is-hot"><span class="mk-ag__ph" style="--b:#4fb7ff"><i class="fas fa-mobile-screen"></i></span>
+          <div><b>Yuri Vance</b><small>Zetatech Hush 9 · "MIRA"</small></div>
+          <div><span class="lbl">Held by</span><small>Rache (player)</small></div>
+          <div><span class="mk-st open"><i class="fas fa-lock-open"></i>Cracked by Rache</span><small>code · 12 min ago</small></div>
+          <div class="mk-ag__acts"><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Lock it again"><i class="fas fa-lock"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Wipe it"><i class="fas fa-eraser"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="Open as the GM"><i class="fas fa-eye"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon" title="More"><i class="fas fa-ellipsis"></i></button></div></div>
+        <div class="mk-ag__row is-warn"><span class="mk-ag__ph" style="--b:#ff4d3d"><i class="fas fa-mobile-screen"></i></span>
+          <div><b>Mei Kosaka</b><small>Kang Tao Lóng 4 · "LÓNG"</small></div>
+          <div><span class="lbl">Held by</span><small>Hana Ito (player)</small></div>
+          <div><span class="mk-st lock"><i class="fas fa-lock"></i>Locked</span><small>2 wrong codes</small></div>
+          <div class="mk-ag__acts"><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-lock-open"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-eraser"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-eye"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-ellipsis"></i></button></div></div>
+        <div class="mk-ag__row"><span class="mk-ag__ph" style="--b:#9bff5e"><i class="fas fa-mobile-screen"></i></span>
+          <div><b>Unknown owner</b><small>Rocklin burner · "BUDDY"</small></div>
+          <div><span class="lbl">Held by</span><small>V (player)</small></div>
+          <div><span class="mk-st wiped"><i class="fas fa-eraser"></i>Wiped itself</span><small>a failed bypass · 1h ago</small></div>
+          <div class="mk-ag__acts"><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-rotate-left"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-ellipsis"></i></button></div></div>
+        <div class="mk-ag__row"><span class="mk-ag__ph" style="--b:#ffd34d"><i class="fas fa-mobile-screen"></i></span>
+          <div><b>Sgt. Dorn</b><small>Militech Field · "SENTRY"</small></div>
+          <div><span class="lbl">Held by</span><small>Sgt. Dorn (still his)</small></div>
+          <div><span class="mk-st home"><i class="fas fa-house"></i>With its owner</span><small>never opened</small></div>
+          <div class="mk-ag__acts"><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-gear"></i></button><button type="button" class="ncm-msg2-btn ncm-msg2-btn--icon"><i class="fas fa-ellipsis"></i></button></div></div>
+        <div class="mk-feed"><div><span class="t">21:47</span><b>Rache</b> cracked Yuri Vance's phone with the code.</div><div><span class="t">21:40</span><b>Hana Ito</b> tried a wrong code on Mei Kosaka's phone (2 of 3).</div><div><span class="t">20:55</span><b>V</b> failed the bypass on a burner; it wiped itself.</div></div>
+      </div>
+    </div></div></div></div>
+</div>
+
+<!-- ═══════════════ ROW 4 — your own Agent (setting) ═══════════════ -->
+<div class="mk-h">4 · Your own Agent is an item too (a switch, off by default)</div>
+<p class="mk-p">With <b>Players need their Agent</b> on, each character's inbox opens only while they carry their own Agent item. Its brand and model
+are flavor on the item; its AI name is the <b>Agent name</b> players already set in the Theme Customizer (one value, editable in either place, and
+still the window title). Lose it, and the Agent window shows the screen below; mail keeps arriving and waits. And because it is the same kind of
+device, <b>another player can pick it up and try to crack it</b> — or an NPC can take it.</p>
+<div class="mk-row">
+  <div><div class="mk-cap">The Agent window, no phone on you <em>· the player's own theme</em></div>
+    <div class="ncm-app mk-win" style="position:relative;width:560px;height:330px;border:1px solid var(--ncm-border);background:var(--ncm-bg-base);color:var(--ncm-text-primary);display:flex;flex-direction:column">
+      <div style="padding:8px 14px;border-bottom:1px solid var(--ncm-border);font:700 10px var(--ncm-font-title);letter-spacing:.15em;color:var(--ncm-text-secondary)">RACHE // MIRA</div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px">
+        <i class="fas fa-mobile-screen-button" style="font-size:40px;color:var(--ncm-text-muted);position:relative"><i class="fas fa-slash" style="position:absolute;left:-6px;top:4px;font-size:34px;color:var(--ncm-danger)"></i></i>
+        <div style="font:700 15px var(--ncm-font-display);letter-spacing:.12em">NO AGENT ON YOU</div>
+        <div style="font:13px/1.45 var(--ncm-font-body);color:var(--ncm-text-secondary);max-width:380px">Your Agent isn't in your inventory. Mail and calls keep arriving and wait for you.<br><b style="color:var(--ncm-accent)">3 messages</b> and <b style="color:var(--ncm-accent)">1 missed call</b> since you lost it.</div>
+        <div style="display:flex;gap:8px"><button type="button" class="ncm-btn ncm-btn--secondary ncm-btn--sm" style="width:auto"><i class="fas fa-location-crosshairs"></i> Where is it?</button><button type="button" class="ncm-btn ncm-btn--ghost ncm-btn--sm" style="width:auto"><i class="fas fa-phone"></i> Use a payphone</button></div>
+        <div style="font:10.5px var(--ncm-font-mono);color:var(--ncm-text-muted)">Last seen: held by Hana Ito · "Where is it?" is a Track roll (GM's DV)</div>
+      </div>
+    </div></div>
+</div>
+
+<!-- ═══════════════ ROW 5 — each phone's own look ═══════════════ -->
+<style>
+  /* the device's own theme: a full NCM theme (the same object the Theme Customizer saves), applied to this phone only */
+  .ncm-dev[data-look="arasaka"] { --dv-a: #e8e8e8; --dv-a2: #ffffff; --dv-bg: #050505; --dv-bg2: #111; --dv-ink: #f2f2f2; --dv-dim: #8d8d8d; --dv-r: 18px; border-radius: 26px;
+    background: linear-gradient(160deg, #1d1d1d, #050505 45%, #151515); }
+  .ncm-dev[data-look="arasaka"] .ncm-dev__glass { font-family: 'Share Tech Mono', monospace; }
+  .ncm-dev[data-look="friend"] { --dv-a: #ffb37a; --dv-a2: #ffe1c8; --dv-bg: #1d1410; --dv-bg2: #3a2a20; --dv-ink: #fff7f0; --dv-dim: #e6cdb9; --dv-r: 34px; border-radius: 46px;
+    background: linear-gradient(160deg, #f1d9c8, #b8977f 45%, #e8cdb8); }
+  .ncm-dev__wall { position: absolute; inset: 0; z-index: 0; }
+  .ncm-dev__glass > :not(.ncm-dev__wall) { position: relative; z-index: 1; }
+  .ncm-dev__wall--corp { background: radial-gradient(60% 40% at 50% 38%, #1a0000 0%, transparent 70%), repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 2px, transparent 2px 4px), #050505; }
+  .ncm-dev__wall--corp::after { content: ''; position: absolute; left: 50%; top: 19%; width: 84px; height: 84px; transform: translate(-50%, -50%); border-radius: 50%;
+    border: 2px solid #c00; box-shadow: 0 0 0 9px #050505, 0 0 0 11px #c00; background: radial-gradient(circle, #c00 0 18%, transparent 19%); }
+  .ncm-dev__wall--photo { background:
+      radial-gradient(28% 22% at 50% 34%, #e9b48f 0 60%, transparent 62%),
+      radial-gradient(40% 30% at 50% 78%, #7a3f2c 0 70%, transparent 72%),
+      radial-gradient(70% 55% at 50% 40%, #ffcf9e 0%, transparent 70%),
+      linear-gradient(180deg, #ff9a6b 0%, #c4566b 45%, #3b1f35 100%); }
+  .ncm-dev__wall--photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.25), transparent 30%, transparent 55%, rgba(0,0,0,.55)); }
+  .ncm-dev__corp { margin-top: auto; margin-bottom: 8px; width: calc(100% - 32px); padding: 10px 12px; border-top: 1px solid #c00; font: 10.5px/1.45 'Share Tech Mono', monospace; color: #bbb; letter-spacing: .04em; }
+  .ncm-dev__corp b { color: #ff3b3b; letter-spacing: .14em; display: block; margin-bottom: 3px; }
+  .ncm-dev__line { width: calc(100% - 48px); display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid #333; font: 13px 'Share Tech Mono', monospace; color: #ddd; letter-spacing: .3em; }
+  .ncm-dev__line i { color: #c00; }
+  .ncm-dev__bubble { margin: auto 18px 10px; padding: 9px 12px; border-radius: 18px; background: rgba(255,255,255,.18); backdrop-filter: blur(6px); font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .ncm-dev__bubble small { display: block; font-size: 10px; opacity: .8; }
+  .ncm-app .mk-look { width: 520px; }
+  .ncm-app .mk-thumbs { display: flex; gap: 8px; }
+  .ncm-app .mk-thumb { width: 64px; height: 100px; border-radius: 8px; border: 1px solid var(--ncm-border); position: relative; overflow: hidden; flex: none; }
+  .ncm-app .mk-thumb.on { box-shadow: 0 0 0 2px var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .mk-thumb span { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 4px; font: 600 9px var(--ncm-font-display); color: #fff; background: rgba(0,0,0,.55); text-align: center; }
+</style>
+<div class="mk-h">5 · Every phone has its own look</div>
+<p class="mk-p">A phone carries a <b>whole NCM theme</b> (colours, fonts, contrast — the same thing the Theme Customizer saves) and a
+<b>lock-screen picture</b> with a <b>lock style</b>. An Arasaka phone is a black corporate brick with a logo and a legal warning; your friend's phone
+is a photo of his wife and a warm everyday theme. The theme applies to that phone only, the way a terminal's theme does today. For a
+<b>player's own Agent</b> it is simply their Theme Customizer theme, saved onto the item — so whoever steals it sees their phone, wallpaper and all.</p>
+<div class="mk-row">
+  <div><div class="mk-cap">Corporate lock style <em>· Arasaka, a corp theme, logo wallpaper</em></div>
+    <div class="ncm-dev" data-look="arasaka"><div class="ncm-dev__glass">
+      <div class="ncm-dev__wall ncm-dev__wall--corp"></div>
+      <div class="ncm-dev__status"><span>ARASAKA SECURE</span><span class="sp"></span><i class="fas fa-lock"></i></div>
+      <div class="ncm-dev__lock" style="padding-top:186px">
+        <div style="font:700 13px 'Share Tech Mono',monospace;letter-spacing:.5em;color:#fff">ARASAKA</div>
+        <div style="font:11px 'Share Tech Mono',monospace;letter-spacing:.2em;color:#888;margin-top:-6px">ISSUED · K. TANAKA · SEC-4</div>
+        <div class="ncm-dev__line"><i class="fas fa-key"></i>• • • • • •</div>
+        <div class="ncm-dev__other" style="margin-top:4px"><span class="ncm-dev__chip"><i class="fas fa-fingerprint"></i> Biometric</span><span class="ncm-dev__chip"><i class="fas fa-microchip"></i> Bypass</span></div>
+        <div class="ncm-dev__corp"><b>PROPERTY OF ARASAKA</b>Unauthorized access is logged and reported to Arasaka Counterintelligence.</div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Held by <b>Rache</b><span class="sp"></span><span class="ro">LOCKED</span></div>
+    </div></div></div>
+
+  <div><div class="mk-cap">Personal lock style <em>· a photo of his wife, a warm everyday theme</em></div>
+    <div class="ncm-dev" data-look="friend"><div class="ncm-dev__glass">
+      <div class="ncm-dev__wall ncm-dev__wall--photo"></div>
+      <div class="ncm-dev__status" style="color:#fff"><span>CitiNet</span><i class="fas fa-signal"></i><span class="sp"></span><i class="fas fa-lock"></i><span>58%</span></div>
+      <div class="ncm-dev__lock" style="padding-top:26px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.45)">
+        <div class="ncm-dev__date" style="color:#fff">SATURDAY, 15 AUGUST</div>
+        <div class="ncm-dev__clock" style="font-size:64px;font-weight:200">8:12</div>
+        <div class="ncm-dev__bubble"><small>Ana · now</small>Don't forget the milk 💕</div>
+        <div class="ncm-dev__other" style="margin-top:0"><span class="ncm-dev__chip" style="background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3)"><i class="fas fa-keyboard"></i> Code</span><span class="ncm-dev__chip" style="background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3)"><i class="fas fa-face-smile"></i> Face</span></div>
+      </div>
+      <div class="ncm-dev__held"><i class="fas fa-hand"></i>Held by <b>Hana Ito</b><span class="sp"></span><span class="ro">LOCKED</span></div>
+    </div></div></div>
+
+  <div><div class="mk-cap">Configure → Look <em>· GM, per phone</em></div>
+    <div class="ncm-app ncm-admin-panel mk-adm" data-adm style="width:auto;border:0"><div class="mk-cfg mk-look">
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-palette"></i>Theme on this phone</div>
+        <div class="mk-pills"><span class="mk-pill">Brand default</span><span class="mk-pill on">A theme preset ▾ <b style="margin-left:4px">Corpo Black</b></span><span class="mk-pill">Copy a player's theme ▾</span><span class="mk-pill">Customize…</span></div>
+        <div class="mk-f" style="font-size:11px">The same colours, fonts and contrast as the Theme Customizer. "Customize…" opens it on this phone.</div></div>
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-image"></i>Lock screen</div>
+        <div class="mk-thumbs">
+          <div class="mk-thumb on" style="background:#050505"><div class="ncm-dev__wall ncm-dev__wall--corp" style="transform:scale(.45);transform-origin:top left;width:222%;height:222%"></div><span>Corporate</span></div>
+          <div class="mk-thumb"><div class="ncm-dev__wall ncm-dev__wall--photo"></div><span>Personal</span></div>
+          <div class="mk-thumb" style="background:#070907"><div class="ncm-dev__crack"></div><span>Street</span></div>
+          <div class="mk-thumb" style="background:linear-gradient(#0b1420,#122033)"><span>Clean</span></div>
+        </div>
+        <div class="mk-cfg__grid"><div class="mk-f">Picture<span class="v"><i class="fas fa-folder-open"></i>worlds/…/arasaka-logo.webp</span></div><div class="mk-f">Owner line<span class="v">ISSUED · K. TANAKA · SEC-4</span></div>
+          <div class="mk-f full">Notice (corporate style)<span class="v">Unauthorized access is logged and reported to Arasaka Counterintelligence.</span></div></div></div>
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-bookmark"></i>Saved looks</div>
+        <div class="mk-pills"><span class="mk-pill">Arasaka issue</span><span class="mk-pill">Militech field</span><span class="mk-pill">Ana's photo</span><span class="mk-pill">+ Save this look</span></div></div>
+    </div></div>
+    <div class="mk-cap" style="margin-top:16px">Theme Customizer → a player's own Agent <em>· with "Players need their Agent" on</em></div>
+    <div class="ncm-app ncm-admin-panel mk-adm" data-adm style="width:auto;border:0"><div class="mk-cfg mk-look">
+      <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-mobile-screen"></i>Your Agent</div>
+        <div class="mk-cfg__grid"><div class="mk-f">Agent name (the AI)<span class="v">MIRA</span></div><div class="mk-f">Brand · model<span class="v">Zetatech · Hush 9</span></div>
+          <div class="mk-f">Lock screen picture<span class="v"><i class="fas fa-folder-open"></i>my-crew.webp</span></div><div class="mk-f">Lock style<span class="v">Personal ▾</span></div></div>
+        <div class="mk-f" style="font-size:11px">Your theme and this picture live on your Agent item. If someone takes it, this is what they'll see.</div></div>
+    </div></div></div>
+</div>
+
+<script>
+  const t = new URLSearchParams(location.search).get('t') || 'clean-dark';
+  document.querySelectorAll('[data-adm]').forEach((e) => { e.dataset.ncmAdminTheme = t; });
+</script>
+</body>
+</html>

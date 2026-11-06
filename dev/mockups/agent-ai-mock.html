@@ -1,0 +1,508 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Agent AI — mock</title>
+<!--
+  The Agent's AI as a living hologram (dev, 2026-11-05; design dev/design/AGENTS.md §4). A real-time 3D wireframe head on
+  a <canvas>: built from a parametric head (crown, cheekbones, jaw, chin, brow, nose, lips, eye sockets) that differs by
+  build — woman / man / gender-neutral — with hair (long strands / short cap / none + circuit seams), neck and shoulders.
+  It turns toward the cursor (the eyes lead the head), blinks, breathes, glances around when you stop moving, lip-syncs
+  while it talks, and has moods (calm / happy / suspicious / alarm) that change brows, eyelids, mouth and colour. Data
+  motes, an orbiting data ring, a scan band and a rare glitch sell the projection. Reduced motion = no idle motion, no glitch.
+  Debug: ?look=0.6,-0.2 points the head (yaw, pitch in -1..1) for headless shots; ?jaw=0.8 holds the mouth open; ?b=woman|man|neutral ?m=calm|happy|suspicious|alarm.
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/agent-ai-mock.html
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  body { margin: 0; padding: 22px 26px 60px; background: radial-gradient(120% 70% at 50% 0%, #1d2430, #0c0e13 65%); color: #ddd; font-family: sans-serif; overflow-y: auto !important; height: auto !important; }
+  .mk-top { font: 700 20px sans-serif; margin: 0 0 4px; color: #eee; }
+  .mk-sub { color: #9aa; font: 13px/1.5 sans-serif; margin: 0 0 16px; max-width: 1100px; } .mk-sub b { color: #ddd; }
+  .mk-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
+  .mk-ctl { display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid #2c3442; background: rgba(10,14,20,.7); }
+  .mk-ctl h4 { margin: 0 0 6px; border: 0; font: 700 10px sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8ab; }
+  .mk-seg { display: flex; flex-wrap: wrap; gap: 5px; }
+  .mk-seg button { appearance: none; width: auto; height: auto; margin: 0; padding: 5px 10px; line-height: 1.2; border: 1px solid #3a4658; background: #121a24; color: #cde; font: 600 11.5px sans-serif; cursor: pointer; border-radius: 2px; box-shadow: none; }
+  .mk-seg button.on { background: var(--acc, #5ef2b0); color: #04110c; border-color: var(--acc, #5ef2b0); }
+  .mk-sw { display: flex; gap: 6px; } .mk-sw i { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; } .mk-sw i.on { border-color: #fff; }
+  .mk-say { display: flex; flex-direction: column; gap: 4px; } .mk-say button { text-align: left; }
+  .mk-note { font: 11.5px/1.45 sans-serif; color: #899; }
+
+  .mk-stage { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .mk-holo { position: relative; width: 560px; height: 600px; }
+  .mk-holo canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mk-pad { position: absolute; left: 50%; bottom: 8px; width: 300px; height: 46px; transform: translateX(-50%); border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 55%, transparent), transparent); filter: blur(2px); opacity: .7; }
+  .mk-beam { position: absolute; left: 50%; bottom: 30px; width: 420px; height: 520px; transform: translateX(-50%); clip-path: polygon(44% 100%, 56% 100%, 100% 0, 0 0);
+    background: linear-gradient(0deg, color-mix(in srgb, var(--acc) 32%, transparent), transparent 85%); opacity: .45; pointer-events: none; }
+  .mk-speech { min-height: 52px; max-width: 520px; margin-top: 6px; padding: 9px 14px; border-left: 2px solid var(--acc); background: rgba(255,255,255,.03);
+    font: 600 15px/1.4 var(--ncm-font-display, sans-serif); color: #eef; }
+  .mk-speech b { display: block; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .3em; color: var(--acc); margin-bottom: 3px; }
+  .mk-speech .caret { display: inline-block; width: 7px; height: 14px; margin-left: 2px; background: var(--acc); vertical-align: -2px; animation: mk-caret 1s steps(2) infinite; }
+  @keyframes mk-caret { 50% { opacity: 0; } }
+
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 34px 0 4px; border-top: 1px solid #2a2f3a; padding-top: 18px; }
+  .mk-p { color: #9aa; font: 13px/1.5 sans-serif; margin: 0 0 14px; max-width: 1100px; }
+  .mk-trio { display: flex; gap: 22px; flex-wrap: wrap; }
+  .mk-mini { width: 250px; text-align: center; }
+  .mk-mini .box { position: relative; height: 270px; border: 1px solid #263040; background: radial-gradient(80% 60% at 50% 40%, rgba(255,255,255,.04), transparent); }
+  .mk-mini canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mk-mini .cap { margin-top: 6px; font: 700 10.5px sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #8ab; }
+  .mk-mini .cap em { display: block; font: 400 11.5px sans-serif; letter-spacing: 0; text-transform: none; color: #889; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="mk-top">The Agent's AI — a living hologram</div>
+<p class="mk-sub">Move the mouse anywhere on the page: the head turns to it, the eyes get there first. Leave the mouse still and it glances
+around on its own. It blinks, breathes, lip-syncs to what it says, and its mood changes its brows, eyelids, mouth and colour. Three builds —
+<b>woman, man, gender-neutral</b> — are one head with different bone structure (sockets, cheekbones and the hollow under them, the jaw corner, chin, brow, nose, lips, neck); hair and implant plates are options. The jaw really opens when it talks.
+In the build each Agent stores its AI's build, mood defaults, colour (from its theme) and name.</p>
+
+<div class="mk-wrap">
+  <div class="mk-ctl">
+    <div><h4>Build</h4><div class="mk-seg" data-ctl="build"><button data-v="woman">Woman</button><button data-v="man">Man</button><button data-v="neutral">Neutral</button></div></div>
+    <div><h4>Mood</h4><div class="mk-seg" data-ctl="mood"><button data-v="calm">Calm</button><button data-v="happy">Happy</button><button data-v="suspicious">Suspicious</button><button data-v="alarm">Alarm</button></div></div>
+    <div><h4>Colour (the device theme)</h4><div class="mk-sw" data-ctl="acc"><i data-v="#5ef2b0" style="background:#5ef2b0"></i><i data-v="#19f3f7" style="background:#19f3f7"></i><i data-v="#ff5b4a" style="background:#ff5b4a"></i><i data-v="#ffb37a" style="background:#ffb37a"></i><i data-v="#c9a7ff" style="background:#c9a7ff"></i><i data-v="#f2f2f2" style="background:#f2f2f2"></i></div></div>
+    <div><h4>Jaw</h4><div class="mk-seg" data-ctl="jaw"><button data-v="soft">Soft</button><button data-v="defined">Defined</button><button data-v="strong">Strong</button></div></div>
+    <div><h4>Hair</h4><div class="mk-seg" data-ctl="hair"><button data-v="none">None</button><button data-v="short">Short</button><button data-v="long">Long</button></div></div>
+    <div><h4>Implants</h4><div class="mk-seg" data-ctl="implants"><button data-v="on">Plates</button><button data-v="off">Clean</button></div></div>
+    <div><h4>Mesh</h4><div class="mk-seg" data-ctl="mesh"><button data-v="fine">Fine</button><button data-v="open">Open</button><button data-v="scan">Scanned</button></div></div>
+    <div class="mk-say"><h4>Personality (its line library)</h4><div class="mk-seg" data-ctl="persona"><button data-v="assistant">Assistant</button><button data-v="choom">Street choom</button><button data-v="corp">Corp security</button><button data-v="sweet">Sweetheart</button></div>
+      <h4 style="margin-top:10px">Something happens</h4><div class="mk-seg" id="triggers"></div>
+      <div class="mk-note" style="margin-top:6px">Each press picks a line for that moment from the personality's library — weighted, never the same twice in a row — and fills in the {tokens}.</div></div>
+    <div class="mk-say"><h4>Make it talk</h4><div class="mk-seg" style="flex-direction:column">
+      <button data-say="Three new on ZPost, Rache. Hands moved Saturday's drop." data-mood="calm">“Three new on ZPost…”</button>
+      <button data-say="You're not Yuri. Code, please." data-mood="suspicious">“You're not Yuri.”</button>
+      <button data-say="Ana called! Want me to call her back? She sounded happy." data-mood="happy">“Ana called!”</button>
+      <button data-say="Intrusion detected. Notifying the owner. Smile for the camera." data-mood="alarm">“Intrusion detected.”</button></div></div>
+    <div><h4>Motion</h4><div class="mk-seg" data-ctl="motion"><button data-v="full">Full</button><button data-v="reduced">Reduced</button></div></div>
+    <div class="mk-note">Everything is drawn live on a canvas from one parametric head — no images. Cost: one small canvas per open Agent,
+    paused when the Agent is hidden; Reduced motion keeps cursor-follow (you cause it) and drops the idle motion and glitches.</div>
+  </div>
+  <div class="mk-stage">
+    <div class="mk-holo"><div class="mk-beam"></div><div class="mk-pad"></div><canvas id="main"></canvas></div>
+    <div class="mk-speech"><b id="ainame">MIRA</b><span id="text">Move the mouse. I'm watching.</span><span class="caret"></span></div>
+  </div>
+</div>
+
+<div class="mk-h">The three builds, side by side</div>
+<p class="mk-p">Same head, different proportions and hair. Each still follows the cursor and keeps its own blink and breath, so a room of Agents never moves in lockstep.</p>
+<div class="mk-trio">
+  <div class="mk-mini"><div class="box"><canvas data-mini="woman" data-mood="happy" data-acc="#ffb37a"></canvas></div><div class="cap">Woman<em>JUNE · Chen's Agent · warm theme</em></div></div>
+  <div class="mk-mini"><div class="box"><canvas data-mini="man" data-mood="calm" data-acc="#19f3f7"></canvas></div><div class="cap">Man<em>MIRA's male template · player theme</em></div></div>
+  <div class="mk-mini"><div class="box"><canvas data-mini="neutral" data-mood="suspicious" data-acc="#ff5b4a"></canvas></div><div class="cap">Gender-neutral<em>LÓNG · Mei's Agent · Kang Tao</em></div></div>
+  <div class="mk-mini"><div class="box"><canvas data-mini="neutral" data-mood="alarm" data-acc="#f2f2f2" data-mesh="scan"></canvas></div><div class="cap">Neutral, scanned mesh<em>SENTINEL · Arasaka issue</em></div></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════
+   AgentFace — a parametric wireframe head. Pure drawing + a little state.
+   In the build this is scripts/ui/Agent/agentFace.js: new AgentFace(canvas, { build, mood, accent, mesh, reduced })
+   with .say(text), .setMood(m), .look(yaw, pitch), .destroy().
+   ═══════════════════════════════════════════════════════════════════════════════ */
+const BUILDS = {
+  // hw: cheek / jaw / gonial (the jaw corner) / chin widths · z: brow, socket, cheekbone, hollow, nose, lips, chin
+  woman:   { cheek: .70, jaw: .52, gonial: .0,  chin: .26, brow: .012, socket: .045, cheekbone: .065, hollow: .012, nose: .12, noseW: .05, bridge: .035,
+             lipU: .055, lipL: .07, bow: .011, chinF: .028, cleft: 0, eyeW: .112, eyeH: .03, lash: true, browArch: .03, browY: .398, browW: 1, browTail: .03,
+             neck: .22, sh: 1.16, adam: 0, forehead: .02 },
+  man:     { cheek: .74, jaw: .66, gonial: .05, chin: .44, brow: .09, socket: .075, cheekbone: .055, hollow: .045, nose: .2, noseW: .068, bridge: .06,
+             lipU: .03, lipL: .042, bow: .004, chinF: .07, cleft: .014, eyeW: .104, eyeH: .024, lash: false, browArch: .01, browY: .418, browW: 2, browTail: 0,
+             neck: .34, sh: 1.6, adam: .035, forehead: -.02 },
+  neutral: { cheek: .72, jaw: .59, gonial: .02, chin: .35, brow: .045, socket: .06, cheekbone: .06, hollow: .028, nose: .16, noseW: .058, bridge: .048,
+             lipU: .042, lipL: .055, bow: .007, chinF: .045, cleft: 0, eyeW: .11, eyeH: .03, lash: false, browArch: .02, browY: .41, browW: 1, browTail: .015,
+             neck: .28, sh: 1.36, adam: .012, forehead: 0 },
+};
+const MOODS = {
+  calm:       { open: 1, brow: 0, browIn: 0, smile: .25, hue: 0 },
+  happy:      { open: .8, brow: -.01, browIn: -.004, smile: 1, hue: 0 },
+  suspicious: { open: .5, brow: .012, browIn: .024, smile: -.35, hue: 0 },
+  alarm:      { open: 1.25, brow: -.03, browIn: -.014, smile: -.6, hue: 1 },
+};
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+function curve(pts, t) {
+  if (t <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (t <= pts[i][0]) { const [t0, v0] = pts[i - 1], [t1, v1] = pts[i]; const u = (t - t0) / (t1 - t0); const s = u * u * (3 - 2 * u); return v0 + (v1 - v0) * s; }
+  }
+  return pts[pts.length - 1][1];
+}
+const gauss = (ty, x, t0, x0, st, sx) => Math.exp(-(((ty - t0) / st) ** 2) - (((x - x0) / sx) ** 2));
+const gx2 = (ty, x, t0, x0, st, sx) => gauss(ty, x, t0, x0, st, sx) + gauss(ty, x, t0, -x0, st, sx);
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+
+class AgentFace {
+  constructor(canvas, o = {}) {
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.buf = document.createElement('canvas'); this.bx = this.buf.getContext('2d');
+    this.build = o.build || 'woman'; this.mood = o.mood || 'calm'; this.accent = o.accent || '#5ef2b0'; this.mesh = o.mesh || 'fine'; this.reduced = !!o.reduced;
+    this.jawK = o.jawK ?? 1;   // 0.6 soft · 1 defined · 1.6 strong
+    this.hair = o.hair || 'none'; this.implants = o.implants ?? (this.build === 'man');
+    this.yaw = 0; this.pitch = 0; this.tYaw = 0; this.tPitch = 0; this.gx = 0; this.gy = 0; this.tgx = 0; this.tgy = 0;
+    this.m = { ...MOODS[this.mood] }; this.mouth = 0; this.jaw = 0; this.blink = 0; this.nextBlink = 1 + Math.random() * 3; this.idle = 0; this.seed = Math.random() * 100;
+    this.speech = null; this.glitch = 0; this.nextGlitch = 4 + Math.random() * 6; this.fixed = null; this.bob = 0;
+    this.motes = Array.from({ length: 70 }, () => ({ a: Math.random() * Math.PI * 2, r: 1.05 + Math.random() * .55, y: -1.3 + Math.random() * 2.9, v: .08 + Math.random() * .2, s: 1 + Math.random() * 2, p: Math.random() * 6 }));
+    this.t = 0; this.last = performance.now();
+    this._resize(); this._loop = this._loop.bind(this); requestAnimationFrame(this._loop);
+  }
+  _resize() { const r = this.c.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); this.c.width = this.buf.width = Math.round(r.width * d); this.c.height = this.buf.height = Math.round(r.height * d); this.dpr = d; }
+  look(yaw, pitch) { this.fixed = [yaw, pitch]; }
+  pointer(px, py) {
+    if (this.fixed) return;
+    const r = this.c.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height * .42;
+    const dx = px - cx, dy = py - cy;
+    this.tYaw = clamp(dx / 650, -1, 1) * .8; this.tPitch = clamp(dy / 480, -1, 1) * .4;
+    this.tgx = clamp(dx / 380, -1, 1); this.tgy = clamp(dy / 380, -1, 1);
+    this.idle = 0;
+  }
+  say(text, mood) { if (mood) this.setMood(mood); this.speech = { text, i: 0, t: 0 }; }
+  setMood(m) { this.mood = m; }
+
+  // ── the head surface: ty 0 (crown) → 1 (chin); phi 0 = front ──
+  _shape(ty) {
+    const B0 = BUILDS[this.build], k = this.jawK;
+    const B = { ...B0, jaw: B0.jaw + (k - 1) * .05, gonial: B0.gonial * k + .025 * (k - .6), chin: B0.chin + (k - 1) * .04 };
+    const hw = curve([[0, 0], [.035, .34], [.1, .58], [.2, .72], [.33, .78], [.45, .77], [.55, B.cheek], [.67, (B.cheek + B.jaw) / 2 + B.gonial * .3],
+      [.79, B.jaw + B.gonial], [.86, (B.jaw + B.chin) / 2 + B.gonial * .4], [.94, B.chin], [1, B.chin * .35]], ty);
+    // the jaw corner (gonial angle): a sharp, local step — applied in P() to the sides and front only
+    const corner = (B0.gonial * k * .6 + .012 * (k - .6)) * Math.exp(-(((ty - .8) / .04) ** 2));
+    const hd = curve([[0, 0], [.035, .42], [.1, .72], [.28, .92], [.5, .88], [.7, .8], [.85, .64], [.95, .42], [1, .25]], ty);
+    const zc = curve([[0, 0], [.2, -.03 + B.forehead], [.3, -.05], [.6, 0], [.85, .12], [1, .16]], ty);
+    const back = curve([[0, 1], [.25, 1.14], [.55, 1.1], [.75, .95], [1, .8]], ty);
+    return { hw, hd, zc, back, corner };
+  }
+  _feat(ty, x, front) {
+    const B = BUILDS[this.build]; if (front <= 0) return 0;
+    let o = 0;
+    o += B.brow * gauss(ty, x, .405, 0, .03, .33) + B.brow * .4 * gauss(ty, x, .43, 0, .02, .06);         // brow ridge + glabella
+    o -= B.socket * gx2(ty, x, .468, .27, .04, .11);                                                    // eye sockets
+    o += .03 * gx2(ty, x, .47, .27, .02, .07);                                                          // the eyeball in it
+    o += B.cheekbone * gx2(ty, x, .545, .44, .045, .13);                                               // cheekbones
+    o -= B.hollow * gx2(ty, x, .665, .41, .05, .1);                                                     // the hollow under them
+    o += B.bridge * gauss(ty, x, .5, 0, .06, .045) + B.nose * gauss(ty, x, .612, 0, .052, .05);        // bridge + tip
+    o += .045 * gx2(ty, x, .627, B.noseW, .02, .03);                                                    // nostril wings
+    o += .012 * gauss(ty, x, .69, 0, .02, .03);                                                          // philtrum
+    o += B.lipU * gauss(ty, x, .722, 0, .014, .14) + B.lipL * gauss(ty, x, .752, 0, .016, .13);         // lips
+    o -= .02 * gauss(ty, x, .785, 0, .014, .12);                                                         // the groove under the lip
+    o += B.chinF * gauss(ty, x, .9, 0, .045, .17) - B.cleft * gauss(ty, x, .9, 0, .03, .015);           // chin (+ cleft)
+    return o * front * front;
+  }
+  P(ty, phi, lift = 0) {
+    const s = this._shape(ty), sp = Math.sin(phi), cp = Math.cos(phi);
+    const x = (s.hw * sp + Math.sign(sp) * s.corner * Math.abs(sp) * sstep(-.5, .3, cp)) * (1 + lift);
+    let z = s.zc + s.hd * cp * (cp < 0 ? s.back : 1) * (1 + lift);
+    z += this._feat(ty, x, Math.max(0, cp)) + lift * .02 * Math.max(0, cp);
+    let y = (ty - .5) * 2.3;
+    // the jaw drops while it talks: everything under the upper lip, at the front and sides, moves down and back a little
+    const jw = this.jaw * sstep(.726, .748, ty) * sstep(1.75, 1.15, Math.abs(phi));
+    y += jw * .1; z -= jw * .02;
+    const face = Math.pow(Math.max(0, cp), 2) * curve([[.3, 0], [.4, 1], [.85, 1], [.95, 0]], ty);
+    return [x, y, z, 1 - .72 * face];
+  }
+  F(ty, x, lift = .012) {
+    const s = this._shape(ty); const phi = Math.asin(clamp(x / Math.max(.01, s.hw), -1, 1));
+    const p = this.P(ty, phi); p[2] += lift; p[3] = 1; return p;
+  }
+  _proj(p, k = 1) {
+    let [x, y, z] = p; const a = this.yaw * k, b = this.pitch * k;
+    y += this.bob;
+    const x1 = x * Math.cos(a) + z * Math.sin(a), z1 = -x * Math.sin(a) + z * Math.cos(a);
+    const y2 = y * Math.cos(b) - z1 * Math.sin(b), z2 = y * Math.sin(b) + z1 * Math.cos(b);
+    const s = 5 / (5 - z2); return [this.cx + x1 * s * this.R, this.cy + y2 * s * this.R, z2];
+  }
+  _alpha(z) { return clamp(.1 + .9 * ((z + .55) / 1.15), .06, 1); }
+  _lines(polys, width, bright = 1, k = 1) {
+    const g = this.bx, buckets = Array.from({ length: 6 }, () => new Path2D());
+    for (const poly of polys) {
+      let prev = null;
+      for (const p of poly) { const q = this._proj(p, k); q[3] = p[3] ?? 1; if (prev) { const b = clamp(Math.floor(this._alpha((q[2] + prev[2]) / 2) * Math.min(q[3], prev[3]) * 5.99), 0, 5); buckets[b].moveTo(prev[0], prev[1]); buckets[b].lineTo(q[0], q[1]); } prev = q; }
+    }
+    g.lineWidth = width * this.dpr;
+    buckets.forEach((path, i) => { g.strokeStyle = `rgba(${this.rgb.join(',')},${((i + .5) / 6) * bright})`; g.stroke(path); });
+  }
+  _fill(poly, style, k = 1) { const g = this.bx; g.beginPath(); poly.forEach((p, i) => { const q = this._proj(p, k); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.closePath(); g.fillStyle = style; g.fill(); }
+  // a loop on the face around (ty0, x0): rx in x, rt in ty
+  _loopF(ty0, x0, rx, rt, n = 28, lift = .012, from = 0, to = Math.PI * 2) { return Array.from({ length: n + 1 }, (_, i) => { const a = from + (i / n) * (to - from); return this.F(ty0 + Math.sin(a) * rt, x0 + Math.cos(a) * rx, lift); }); }
+
+  _loop(now) {
+    const dt = Math.min(.05, (now - this.last) / 1000); this.last = now; this.t += dt;
+    if (!this.c.isConnected) return;
+    const red = this.reduced;
+    const tm = MOODS[this.mood]; for (const k in tm) this.m[k] = lerp(this.m[k], tm[k], 1 - Math.pow(.002, dt));
+    this.idle += dt;
+    if (this.fixed) { this.tYaw = this.fixed[0] * .8; this.tPitch = this.fixed[1] * .4; this.tgx = this.fixed[0]; this.tgy = this.fixed[1]; }
+    else if (this.idle > 2.5 && !red) {
+      if (!this._wander || this.t > this._wander.until) this._wander = { y: (Math.random() - .5) * .6, p: (Math.random() - .5) * .3, until: this.t + .8 + Math.random() * 2 };
+      this.tYaw = this._wander.y; this.tPitch = this._wander.p; this.tgx = this._wander.y * 1.5; this.tgy = this._wander.p * 2;
+    }
+    const he = 1 - Math.pow(.02, dt), ee = 1 - Math.pow(.0005, dt);
+    this.yaw = lerp(this.yaw, this.tYaw, he); this.pitch = lerp(this.pitch, this.tPitch, he);
+    this.gx = lerp(this.gx, this.tgx, ee); this.gy = lerp(this.gy, this.tgy, ee);
+    this.nextBlink -= dt; if (this.nextBlink <= 0) { this.blink = 1; this.nextBlink = 2 + Math.random() * 4 + (Math.random() < .2 ? -1.8 : 0); }
+    this.blink = Math.max(0, this.blink - dt * 7);
+    const lid = this.blink > 0 ? Math.abs(Math.cos(this.blink * Math.PI)) : 1;
+    let mouthT = 0, nod = 0;
+    if (this.speech) {
+      const s = this.speech; s.t += dt;
+      while (s.t > .05 && s.i < s.text.length) { s.t -= .05; s.i++; }
+      const ch = s.text[s.i - 1] || ' ';
+      mouthT = /[aAoO]/.test(ch) ? 1 : /[eiuEIU]/.test(ch) ? .7 : /[ .,!?']/.test(ch) ? 0 : /[mbpMBP]/.test(ch) ? 0 : /[fvFV]/.test(ch) ? .15 : .4;
+      nod = Math.sin(this.t * 7) * .012;
+      if (s.i >= s.text.length && s.t > .45) this.speech = null;
+      this.onText?.(s.text.slice(0, s.i));
+    }
+    this.mouth = lerp(this.mouth, mouthT, 1 - Math.pow(.00005, dt));
+    this.jaw = this.holdJaw ?? this.mouth;
+    this.bob = (red ? 0 : Math.sin(this.t * 1.3 + this.seed) * .018) + nod;
+    this.nextGlitch -= dt; if (!red && this.nextGlitch <= 0) { this.glitch = .12 + Math.random() * .12; this.nextGlitch = (this.mood === 'alarm' ? 1.2 : 5) + Math.random() * 6; }
+    this.glitch = Math.max(0, this.glitch - dt);
+    this._draw(lid);
+    requestAnimationFrame(this._loop);
+  }
+
+  _draw(lid) {
+    const W = this.buf.width, H = this.buf.height, g = this.bx, B = BUILDS[this.build], M = this.m;
+    this.cx = W / 2; this.cy = H * .42; this.R = H * .26;
+    const base = hexRgb(this.accent); const alarm = clamp(M.hue, 0, 1);
+    this.rgb = base.map((v, i) => Math.round(lerp(v, [255, 70, 80][i], alarm * .85)));
+    g.clearRect(0, 0, W, H); g.lineCap = 'round'; g.lineJoin = 'round';
+
+    // ── the mesh: rings + meridians (faded over the face), and edge loops that follow the face like the reference ──
+    const rings = this.mesh === 'open' ? 10 : 16, mers = this.mesh === 'open' ? 14 : 22;
+    const polys = [];
+    if (this.mesh === 'scan') { for (let i = 1; i < 34; i++) { const ty = i / 34; polys.push(Array.from({ length: 73 }, (_, j) => this.P(ty, -Math.PI + (j / 72) * Math.PI * 2))); } }
+    else {
+      for (let i = 1; i < rings; i++) { const ty = Math.pow(i / rings, 1.05); polys.push(Array.from({ length: 65 }, (_, j) => this.P(ty, -Math.PI + (j / 64) * Math.PI * 2))); }
+      for (let j = 0; j < mers; j++) { const phi = -Math.PI + (j / mers) * Math.PI * 2; polys.push(Array.from({ length: 41 }, (_, i) => this.P(i / 40, phi))); }
+    }
+    this._lines(polys, .8, .7);
+    const loops = [];
+    for (const s of [-1, 1]) {
+      loops.push(this._loopF(.468, s * .27, B.eyeW * 1.35, B.eyeH * 1.9, 24, .006, Math.PI * .15, Math.PI * .85));       // under the eye
+      loops.push(this._loopF(.468, s * .27, B.eyeW * 1.45, B.eyeH * 2.6, 24, .006, Math.PI * 1.1, Math.PI * 1.9));        // the socket rim above
+      loops.push(this._loopF(.548, s * .44, .14, .04, 24, .008, Math.PI * .9, Math.PI * 2.1));                             // over the cheekbones
+      loops.push([.628, .672, .71, .745].map((ty, i) => this.F(ty, s * (B.noseW + .03 + i * .045), .008)));                 // nose wing → mouth corner
+      loops.push(Array.from({ length: 12 }, (_, i) => { const v = i / 11; return this.P(.5 + v * .25, s * (1.2 - v * .25), .006); }));  // temple → jaw
+    }
+    loops.push(this._loopF(.74, 0, .2, .045, 28, .006, Math.PI * .1, Math.PI * .9));                                         // under the lower lip
+    loops.push(Array.from({ length: 21 }, (_, i) => { const u = i / 20 - .5; return this.F(.33 + u * u * .05, u * .7, .005); }));       // forehead line
+    this._lines(loops, .8, .5);
+
+    // ── neck (with the muscle from behind the ear to the collarbone) + shoulders: they turn less than the head ──
+    const neck = [];
+    for (let k = 0; k < 9; k++) { const a = -Math.PI * .85 + (k / 8) * Math.PI * 1.7; neck.push([[Math.sin(a) * B.neck, .88, .1 + Math.cos(a) * B.neck * .85], [Math.sin(a) * B.neck * 1.06, 1.5, .08 + Math.cos(a) * B.neck * .9]]); }
+    for (const s of [-1, 1]) neck.push([[s * B.neck * 1.15, .9, -.02], [s * B.neck * .7, 1.2, .14], [s * .06, 1.52, .2]]);
+    if (B.adam) neck.push(Array.from({ length: 9 }, (_, i) => { const a = Math.PI * (i / 8); return [Math.cos(a) * .05, 1.12 - Math.sin(a) * B.adam, .1 + B.neck * .85 + .02]; }));
+    const sh = [];
+    for (const s of [-1, 1]) sh.push([[s * B.neck, 1.45, .1], [s * (B.neck + .25), 1.58, .05], [s * B.sh * .75, 1.7, -.02], [s * B.sh, 1.92, -.05]]);
+    for (const s of [-1, 1]) sh.push([[s * .08, 1.6, .26], [s * B.sh * .45, 1.66, .2], [s * B.sh * .8, 1.72, .08]]);       // collarbones
+    this._lines(neck, .85, .6, .45); this._lines(sh, 1, .55, .25);
+
+    // ── hair (optional: none by default) ──
+    const hair = [];
+    if (this.hair === 'long') {
+      const n = 40;
+      for (let k = 0; k < n; k++) {
+        const side = k < n / 2 ? -1 : 1, u = (k % (n / 2)) / (n / 2 - 1), phi0 = side * (.12 + u * 2.95);
+        const sway = this.reduced ? 0 : Math.sin(this.t * 1.1 + k * .7) * .02; const strand = [];
+        for (let i = 0; i <= 22; i++) { const v = i / 22, ty = .03 + v * (u < .35 ? .52 : .6); const phi = phi0 + side * (u < .35 ? Math.max(0, v - .25) * (1.45 - Math.abs(phi0)) : 0); strand.push(this.P(ty, phi, .075 + v * .03)); }
+        const end = strand[strand.length - 1]; const len = Math.hypot(end[0], end[2]) || 1; const ox = end[0] / len, oz = end[2] / len - .35;
+        for (let i = 1; i <= 11; i++) strand.push([end[0] + ox * i * .02 + sway * i, end[1] + i * .085, end[2] + oz * i * .025]);
+        hair.push(strand);
+      }
+    } else if (this.hair === 'short') {
+      for (let i = 0; i < 11; i++) { const ty = .03 + i * .022; let poly = []; for (let j = 0; j <= 56; j++) { const phi = -Math.PI + (j / 56) * Math.PI * 2; if (ty > .2 && Math.abs(phi) < .95 - (ty - .2) * 3) { if (poly.length) hair.push(poly), poly = []; continue; } poly.push(this.P(ty, phi, .045)); } if (poly.length) hair.push(poly); }
+    }
+    if (hair.length) this._lines(hair, 1, .8);
+
+    // ── implants: dark plates with lit edges on the temple and cheek (the reference's cyberware) ──
+    if (this.implants) {
+      const plates = [[[.36, .78], [.36, 1.08], [.5, 1.12], [.52, .86]], [[.58, .62], [.6, .82], [.68, .78], [.66, .6]]];
+      for (const s of [1]) for (const pl of plates) {
+        const poly = pl.map(([ty, ph]) => this.P(ty, s * ph, .02)); this._fill(poly, 'rgba(4,8,10,.75)'); this._lines([[...poly, poly[0]]], 1.2, 1);
+        const mid = this._proj(this.P((pl[0][0] + pl[2][0]) / 2, s * (pl[0][1] + pl[2][1]) / 2, .025)); g.fillStyle = `rgba(${this.rgb.join(',')},.9)`; g.fillRect(mid[0] - 1.5 * this.dpr, mid[1] - 1.5 * this.dpr, 3 * this.dpr, 3 * this.dpr);
+      }
+      this._lines([Array.from({ length: 9 }, (_, i) => this.P(.3 + i * .03, 1.0 + Math.sin(i) * .03, .02))], .8, .8);
+    }
+
+    // ── the face itself: brows, eyes, nose, mouth, ears — brighter, glowing ──
+    g.save(); g.shadowColor = `rgba(${this.rgb.join(',')},.7)`; g.shadowBlur = 6 * this.dpr;
+    const feat = []; const open = clamp(M.open * lid, 0, 1.3);
+    for (const s of [-1, 1]) {
+      const cx = s * .27, ew = B.eyeW, eh = B.eyeH;
+      // brows: arch, tail, mood moves the inner end most; a heavier brow is two strokes
+      for (let w = 0; w < B.browW; w++) feat.push(Array.from({ length: 13 }, (_, i) => {
+        const u = i / 12, x = cx - s * (ew + .01) + s * u * (ew * 2 + .04 + B.browTail);
+        const arch = Math.sin(Math.min(1, u * 1.25) * Math.PI) * B.browArch + (u > .8 ? (u - .8) * B.browTail : 0);
+        return this.F(B.browY - arch + M.brow + (1 - u) * M.browIn + w * .009, x, .03);
+      }));
+      // eyelids: the upper arches (almond), the lower is flatter; a crease above the upper lid
+      const up = Array.from({ length: 17 }, (_, i) => { const u = i / 16, a = Math.PI * u; const x = cx - s * ew + s * u * ew * 2; const tilt = (u - .5) * .006 * (B.lash ? -1 : 0); return this.F(.468 - Math.sin(a) * eh * open + tilt, x, .022); });
+      const lo = Array.from({ length: 17 }, (_, i) => { const u = i / 16, a = Math.PI * u; const x = cx - s * ew + s * u * ew * 2; return this.F(.468 + Math.sin(a) * eh * .55, x, .02); });
+      const crease = Array.from({ length: 13 }, (_, i) => { const u = .1 + (i / 12) * .8, a = Math.PI * u; const x = cx - s * ew + s * u * ew * 2; return this.F(.468 - Math.sin(a) * (eh + .016) - (1 - open) * .004, x, .018); });
+      feat.push(up, lo, crease);
+      if (B.lash && open > .3) for (let i = 0; i < 4; i++) { const u = .66 + i * .09, a = Math.PI * u, x = cx - s * ew + s * u * ew * 2; const p0 = this.F(.468 - Math.sin(a) * eh * open, x, .024); feat.push([p0, [p0[0] + s * (.008 + i * .004), p0[1] - .018, p0[2] + .008]]); }
+    }
+    // nose: bridge, tip, wings
+    feat.push([this.F(.47, 0, .02), this.F(.55, .014, .03), this.F(.605, .018, .035), this.F(.63, 0, .03)]);
+    for (const s of [-1, 1]) feat.push(Array.from({ length: 9 }, (_, i) => { const a = Math.PI * (i / 8) * 1.2 - .2; return this.F(.628 - Math.sin(a) * .016, s * (B.noseW * .55 + Math.cos(a) * B.noseW * .6), .02); }));
+    // mouth: a cupid's bow on the upper lip, a fuller lower lip, corners that lift with a smile; the jaw opens it
+    const sm = M.smile, op = this.jaw;
+    const mw = this.build === 'woman' ? .29 : .33;
+    const upperOut = Array.from({ length: 21 }, (_, i) => { const u = i / 20 - .5, x = u * mw; const bow = B.bow * (Math.abs(u) < .16 ? -Math.cos(u / .16 * Math.PI) : 0) + B.bow * .6 * Math.exp(-(((Math.abs(u) - .14) / .06) ** 2)); return this.F(.722 - bow - sm * .02 * (4 * u * u) + .008 * (4 * u * u), x, .03); });
+    const upperIn = Array.from({ length: 21 }, (_, i) => { const u = i / 20 - .5; return this.F(.735 - sm * .02 * (4 * u * u), u * mw * .96, .028); });
+    const lowerIn = Array.from({ length: 21 }, (_, i) => { const u = i / 20 - .5; return this.F(.737 + op * .05 * (1 - 4 * u * u) - sm * .02 * (4 * u * u), u * mw * .96, .028); });
+    const lowerOut = Array.from({ length: 21 }, (_, i) => { const u = i / 20 - .5; return this.F(.755 + (B.lipL - .03) * .3 * (1 - 4 * u * u) + op * .05 * (1 - 4 * u * u) - sm * .02 * (4 * u * u), u * mw * .92, .03); });
+    if (op > .04) {
+      g.save(); g.shadowBlur = 0; this._fill([...upperIn, ...lowerIn.slice().reverse()], 'rgba(3,6,9,.9)'); g.restore();
+      feat.push(upperIn, lowerIn, Array.from({ length: 13 }, (_, i) => { const u = i / 12 - .5; return this.F(.739 + op * .006, u * mw * .55, .02); }));
+    } else feat.push(Array.from({ length: 21 }, (_, i) => { const u = i / 20 - .5; return this.F(.736 - sm * .02 * (4 * u * u), u * mw, .03); }));
+    feat.push(upperOut, lowerOut);
+    // the jawline: down the ramus from under the ear to the corner, then along the jaw to the chin
+    const jawLine = [];
+    for (const s of [-1, 1]) {
+      jawLine.push([...Array.from({ length: 8 }, (_, i) => { const v = i / 7; return this.P(.56 + v * .24, s * (1.5 - v * .27), .012); }),
+        ...Array.from({ length: 14 }, (_, i) => { const v = (i + 1) / 14; return this.P(.8 + v * .165, s * 1.23 * Math.pow(1 - v, 1.25), .012); })]);
+    }
+    this._lines(jawLine, 1 + this.jawK * .5, .45 + this.jawK * .3);
+    // ears: the rim (helix) and the inner fold
+    for (const s of [-1, 1]) {
+      feat.push(Array.from({ length: 15 }, (_, i) => { const a = -.4 + (i / 14) * Math.PI * 1.45; return this.P(.47 + Math.sin(a) * .085, s * (1.5 + Math.cos(a) * .13), .08 + Math.sin(a) * .01); }));
+      feat.push(Array.from({ length: 9 }, (_, i) => { const a = .2 + (i / 8) * Math.PI; return this.P(.49 + Math.sin(a) * .045, s * (1.52 + Math.cos(a) * .06), .07); }));
+    }
+    this._lines(feat, 1.25, .9);
+    // irises (a ring inside a ring) + pupils, clipped by the lids
+    for (const s of [-1, 1]) {
+      if (open < .15) continue;
+      const cx = s * .27 + this.gx * .045, ty = .468 + this.gy * .014, r = B.eyeH * .95;
+      const lidCut = Math.min(1, open);
+      for (const k of [1, .55]) this._lines([Array.from({ length: 21 }, (_, i) => { const a = (i / 20) * Math.PI * 2; return this.F(ty + Math.sin(a) * r * k * lidCut, cx + Math.cos(a) * r * 1.35 * k, .03); })], k === 1 ? 1.3 : .9, 1);
+      const p = this._proj(this.F(ty, cx, .034)); g.fillStyle = `rgba(${this.rgb.join(',')},1)`; g.beginPath(); g.arc(p[0], p[1], 2.2 * this.dpr, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(p[0] + 1.1 * this.dpr, p[1] - 1.1 * this.dpr, .9 * this.dpr, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+
+    // ── nodes, motes, the orbit ring, the scan band ──
+    g.fillStyle = `rgba(${this.rgb.join(',')},.95)`;
+    for (const [ty, phi] of [[.12, .9], [.3, -1.3], [.55, 1.25], [.62, -.95], [.2, 2.4], [.8, .8], [.545, .5], [.545, -.5], [.9, 0]]) { const q = this._proj(this.P(ty, phi, .02)); g.globalAlpha = this._alpha(q[2]); g.fillRect(q[0] - 1.4 * this.dpr, q[1] - 1.4 * this.dpr, 2.8 * this.dpr, 2.8 * this.dpr); }
+    g.globalAlpha = 1;
+    for (const m of this.motes) {
+      if (!this.reduced) { m.y -= m.v * .016; m.a += .003; if (m.y < -1.5) m.y = 1.6; }
+      const q = this._proj([Math.cos(m.a) * m.r, m.y, Math.sin(m.a) * m.r], .3); const tw = .35 + .65 * Math.abs(Math.sin(this.t * 2 + m.p));
+      g.globalAlpha = this._alpha(q[2]) * tw * .7; g.fillRect(q[0], q[1], m.s * this.dpr, m.s * this.dpr);
+    }
+    g.globalAlpha = 1;
+    const ring = []; const segs = [];
+    for (let j = 0; j <= 90; j++) { const a = (j / 90) * Math.PI * 2 + this.t * .4; if (j % 9 > 5) { if (ring.length) segs.push(ring.splice(0)); continue; } ring.push([Math.cos(a) * 1.35, -.15 + Math.sin(a) * .08, Math.sin(a) * 1.35]); }
+    if (ring.length) segs.push(ring); this._lines(segs, 1, .6, .4);
+    if (!this.reduced) {
+      const yy = ((this.t * .35) % 1.4 - .2) * H; const gr = g.createLinearGradient(0, yy - 30 * this.dpr, 0, yy + 30 * this.dpr);
+      gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, `rgba(${this.rgb.join(',')},.10)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(0, yy - 30 * this.dpr, W, 60 * this.dpr); g.globalCompositeOperation = 'source-over';
+    }
+    const c = this.ctx; c.clearRect(0, 0, W, H);
+    if (this.glitch > 0) {
+      c.globalCompositeOperation = 'lighter';
+      c.globalAlpha = .55; c.filter = 'hue-rotate(140deg)'; c.drawImage(this.buf, -4 * this.dpr, 0);
+      c.filter = 'hue-rotate(-90deg)'; c.drawImage(this.buf, 4 * this.dpr, 0); c.filter = 'none'; c.globalAlpha = 1;
+      for (let i = 0; i < 7; i++) { const sy = Math.random() * H, sh = (4 + Math.random() * 18) * this.dpr, dx = (Math.random() - .5) * 26 * this.dpr; c.drawImage(this.buf, 0, sy, W, sh, dx, sy, W, sh); }
+      c.globalCompositeOperation = 'source-over';
+    } else c.drawImage(this.buf, 0, 0);
+  }
+}
+
+// ═══ the page ═══
+const Q = new URLSearchParams(location.search);
+const JAWK = { soft: .6, defined: 1, strong: 1.6 };
+const state = { jaw: 'defined', hair: 'none', implants: (Q.get('b') || 'woman') === 'man' ? 'on' : 'off', build: Q.get('b') || 'woman', mood: Q.get('m') || 'calm', acc: '#5ef2b0', mesh: 'fine', motion: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full' };
+const NAMES = { woman: 'JUNE', man: 'MIRA', neutral: 'LÓNG' };
+const main = new AgentFace(document.getElementById('main'), { hair: state.hair, implants: state.implants === 'on', build: state.build, mood: state.mood, accent: state.acc, mesh: state.mesh, reduced: state.motion === 'reduced' });
+main.onText = (t) => { document.getElementById('text').textContent = t; };
+const minis = [...document.querySelectorAll('[data-mini]')].map((cv) => new AgentFace(cv, { build: cv.dataset.mini, mood: cv.dataset.mood, accent: cv.dataset.acc, mesh: cv.dataset.mesh || 'fine' }));
+const all = [main, ...minis];
+if (Q.get('look')) { const [y, p] = Q.get('look').split(',').map(Number); all.forEach((f) => f.look(y, p)); }
+document.addEventListener('pointermove', (e) => all.forEach((f) => f.pointer(e.clientX, e.clientY)));
+addEventListener('resize', () => all.forEach((f) => f._resize()));
+
+function paint() {
+  document.documentElement.style.setProperty('--acc', state.acc);
+  document.querySelectorAll('[data-ctl]').forEach((g) => g.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === state[g.dataset.ctl])));
+  document.getElementById('ainame').textContent = NAMES[state.build];
+}
+document.querySelectorAll('[data-ctl]').forEach((g) => g.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-v]'); if (!b) return; const k = g.dataset.ctl; state[k] = b.dataset.v;
+  if (k === 'build') { main.build = state.build; state.implants = state.build === 'man' ? 'on' : 'off'; main.implants = state.implants === 'on'; } if (k === 'hair') main.hair = state.hair; if (k === 'jaw') main.jawK = JAWK[state.jaw]; if (k === 'implants') main.implants = state.implants === 'on'; if (k === 'mood') main.setMood(state.mood); if (k === 'acc') main.accent = state.acc;
+  if (k === 'mesh') main.mesh = state.mesh; if (k === 'motion') main.reduced = state.motion === 'reduced';
+  paint();
+}));
+document.querySelectorAll('[data-say]').forEach((b) => b.addEventListener('click', () => { state.mood = b.dataset.mood; main.say(b.dataset.say, b.dataset.mood); paint(); }));
+paint();
+if (Q.get('say')) main.say(Q.get('say'), state.mood);
+
+// ═══ the AI line library (a sample of what ships; in the build: editable, importable / exportable) ═══
+const LINES = [
+  // trigger · personality ('*' = any) · mood · weight · text
+  ['lock.stranger', 'assistant', 'suspicious', 2, "You're not {owner}. Code, please."],
+  ['lock.stranger', 'assistant', 'suspicious', 1, "I don't recognise your face. {owner} wouldn't like this."],
+  ['lock.stranger', 'choom', 'suspicious', 2, "heh. nice try, choom. this ain't your deck."],
+  ['lock.stranger', 'corp', 'alarm', 2, 'Unauthorized user. This device is property of {brand}. Access is logged.'],
+  ['lock.stranger', 'sweet', 'happy', 2, "Oh! Hi! You're not {owner}… are you a friend of theirs?"],
+  ['lock.wrong', 'assistant', 'suspicious', 2, "That's not it. {tries} tries left."],
+  ['lock.wrong', 'choom', 'happy', 2, 'wrong. {tries} more and i lock up, genius.'],
+  ['lock.wrong', 'corp', 'alarm', 2, 'Invalid credentials. {tries} attempts remain before lockdown.'],
+  ['lock.wrong', 'sweet', 'suspicious', 1, "Hmm, no… {owner} wouldn't pick that one."],
+  ['lock.cracked', 'assistant', 'calm', 2, "Fine. You're in. I'm telling {owner} about this."],
+  ['lock.cracked', 'choom', 'happy', 2, 'ok ok, you got me. whatcha want?'],
+  ['lock.cracked', 'corp', 'alarm', 2, 'Security bypassed. Counterintelligence has been notified.'],
+  ['lock.cracked', 'sweet', 'happy', 2, "You're in! Be nice to {owner}'s things, okay?"],
+  ['home.summary', 'assistant', 'calm', 3, '{count} new on {mail}, {owner}. {sender} sounds like it matters.'],
+  ['home.summary', 'choom', 'happy', 2, 'yo {owner}. {count} new. {sender} again. popular.'],
+  ['home.summary', 'corp', 'calm', 2, '{count} unread. Priority: {sender}, "{subject}".'],
+  ['home.summary', 'sweet', 'happy', 2, 'Welcome back, {owner}! {count} messages — one from {sender}!'],
+  ['call.missed', 'assistant', 'calm', 2, 'You missed {sender}. Want me to call back?'],
+  ['call.missed', 'choom', 'calm', 2, '{sender} rang. you were busy being cool.'],
+  ['call.missed', 'sweet', 'happy', 2, '{sender} called! They sounded happy.'],
+  ['idle', 'assistant', 'calm', 1, "It's {time}. Nothing urgent. I'm here."],
+  ['idle', 'choom', 'happy', 1, 'bored. play Roach Race with me.'],
+  ['idle', 'corp', 'calm', 1, 'All systems nominal.'],
+  ['idle', 'sweet', 'happy', 1, "You've been working so hard today!"],
+  ['nudge', '*', 'calm', 1, 'Last three times you went to {place}, you called Trauma Team within half an hour. Just saying.'],
+  ['trace', 'assistant', 'alarm', 2, 'Someone is trying to get into me. Rebooting would stop them.'],
+  ['trace', 'choom', 'alarm', 2, 'somebody\'s poking around in me. not cool.'],
+  ['dead-zone', '*', 'suspicious', 1, "No signal. I'll hold everything until we're back."],
+];
+const TOKENS = { owner: 'Yuri', brand: 'Arasaka', tries: '2', count: '3', mail: 'ZPost', sender: 'Mr. Hands', subject: 'Saturday, not Friday', time: '21:47', place: 'the Totentanz' };
+const TRIGGERS = [['lock.stranger', 'A stranger picks it up'], ['lock.wrong', 'Wrong code'], ['lock.cracked', 'Cracked'], ['home.summary', 'Owner opens it'], ['call.missed', 'Missed call'], ['trace', 'Hack attempt'], ['idle', 'Idle chatter'], ['nudge', 'GM nudge']];
+let lastLine = null;
+function pickLine(trigger, persona) {
+  const pool = LINES.filter(([t, p, , , text]) => t === trigger && (p === persona || p === '*') && text !== lastLine);
+  if (!pool.length) return null;
+  let r = Math.random() * pool.reduce((n, l) => n + l[3], 0);
+  for (const l of pool) { r -= l[3]; if (r <= 0) return l; }
+  return pool[pool.length - 1];
+}
+state.persona = 'assistant';
+document.getElementById('triggers').innerHTML = TRIGGERS.map(([k, label]) => `<button data-trigger="${k}">${label}</button>`).join('');
+document.getElementById('triggers').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-trigger]'); if (!b) return;
+  const line = pickLine(b.dataset.trigger, state.persona); if (!line) return;
+  lastLine = line[4];
+  const text = line[4].replace(/\{(\w+)\}/g, (m, k) => TOKENS[k] ?? m);
+  state.mood = line[2]; main.say(text, line[2]); paint();
+});
+paint();
+if (Q.get('jaw')) all.forEach((f) => { f.holdJaw = Number(Q.get('jaw')); });
+if (Q.get('jk') && JAWK[Q.get('jk')]) { state.jaw = Q.get('jk'); main.jawK = JAWK[state.jaw]; }
+</script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Agent AI v2 — mock</title>
+<!--
+  The Agent's AI, v2 (dev, 2026-11-05: "I really don't think it's capturing a face"). v1 (agent-ai-mock.html) drew lines on
+  a stretched globe — lines alone cannot show form. v2 SCULPTS a head out of smooth-blended solids (skull, jaw mass, jaw
+  corners, chin, cheekbones, brow, nose, eye sockets with eyeballs and lids, lips, ears, neck) as a signed-distance field
+  and renders it in a WebGL fragment shader: real shading reveals the anatomy, a fresnel rim gives the hologram edge, an
+  optional object-space wire grid echoes the reference, scanlines + a halo + glitch bands sell the projection.
+  Same life as v1: cursor-follow (eyes lead), idle glances, blinks (the lids move), breathing, a talking jaw (the lower face
+  moves), moods, the line library. Debug: ?look=yaw,pitch ?b=man|woman|neutral ?m=mood ?jaw=0..1 ?jk=soft|defined|strong
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/agent-ai-v2-mock.html
+-->
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  body { margin: 0; padding: 22px 26px 60px; background: radial-gradient(120% 70% at 50% 0%, #1d2430, #0a0c10 65%); color: #ddd; font-family: sans-serif; overflow-y: auto !important; height: auto !important; }
+  .mk-top { font: 700 20px sans-serif; margin: 0 0 4px; color: #eee; }
+  .mk-sub { color: #9aa; font: 13px/1.5 sans-serif; margin: 0 0 16px; max-width: 1100px; } .mk-sub b { color: #ddd; }
+  .mk-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
+  .mk-ctl { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #2c3442; background: rgba(10,14,20,.7); }
+  .mk-ctl h4 { margin: 0 0 6px; border: 0; font: 700 10px sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8ab; }
+  .mk-seg { display: flex; flex-wrap: wrap; gap: 5px; }
+  .mk-seg button { appearance: none; width: auto; height: auto; margin: 0; padding: 5px 10px; line-height: 1.2; border: 1px solid #3a4658; background: #121a24; color: #cde; font: 600 11.5px sans-serif; cursor: pointer; border-radius: 2px; box-shadow: none; }
+  .mk-seg button.on { background: var(--acc, #5ef2b0); color: #04110c; border-color: var(--acc, #5ef2b0); }
+  .mk-sw { display: flex; gap: 6px; } .mk-sw i { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; } .mk-sw i.on { border-color: #fff; }
+  .mk-note { font: 11.5px/1.45 sans-serif; color: #899; }
+  .mk-stage { display: flex; flex-direction: column; align-items: center; }
+  .mk-holo { position: relative; width: 560px; height: 620px; }
+  .mk-holo canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mk-beam { position: absolute; left: 50%; bottom: 26px; width: 440px; height: 560px; transform: translateX(-50%); clip-path: polygon(44% 100%, 56% 100%, 100% 0, 0 0);
+    background: linear-gradient(0deg, color-mix(in srgb, var(--acc) 28%, transparent), transparent 85%); opacity: .4; }
+  .mk-pad { position: absolute; left: 50%; bottom: 6px; width: 300px; height: 44px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 55%, transparent), transparent); filter: blur(2px); opacity: .7; }
+  .mk-speech { min-height: 52px; max-width: 520px; margin-top: 6px; padding: 9px 14px; border-left: 2px solid var(--acc); background: rgba(255,255,255,.03); font: 600 15px/1.4 var(--ncm-font-display, sans-serif); color: #eef; }
+  .mk-speech b { display: block; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .3em; color: var(--acc); margin-bottom: 3px; }
+  .mk-err { color: #ff8080; font: 12px monospace; white-space: pre-wrap; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 30px 0 4px; border-top: 1px solid #2a2f3a; padding-top: 18px; }
+  .mk-trio { display: flex; gap: 18px; flex-wrap: wrap; }
+  .mk-mini { width: 260px; text-align: center; } .mk-mini .box { position: relative; height: 300px; border: 1px solid #263040; }
+  .mk-mini canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mk-mini .cap { margin-top: 6px; font: 700 10.5px sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #8ab; }
+</style>
+</head>
+<body>
+<div class="mk-top">The Agent's AI — v2, a sculpted hologram</div>
+<p class="mk-sub">The head is now a <b>sculpted 3D surface</b> rendered on the GPU, not lines on a globe: light falls across the brow,
+the sockets, the cheekbones and the jaw, so the face reads as a face. The rim glows like a projection; the <b>Grid</b> switch lays the
+reference's wireframe over it. Move the mouse; press a moment to make it talk.</p>
+<div class="mk-wrap">
+  <div class="mk-ctl">
+    <div><h4>Build</h4><div class="mk-seg" data-ctl="build"><button data-v="woman">Woman</button><button data-v="man">Man</button><button data-v="neutral">Neutral</button></div></div>
+    <div><h4>Jaw</h4><div class="mk-seg" data-ctl="jaw"><button data-v="soft">Soft</button><button data-v="defined">Defined</button><button data-v="strong">Strong</button></div></div>
+    <div><h4>Mood</h4><div class="mk-seg" data-ctl="mood"><button data-v="calm">Calm</button><button data-v="happy">Happy</button><button data-v="suspicious">Suspicious</button><button data-v="alarm">Alarm</button></div></div>
+    <div><h4>Look</h4><div class="mk-seg" data-ctl="mesh"><button data-v="grid">Grid</button><button data-v="solid">Solid glow</button><button data-v="scan">Scanlines</button></div></div>
+    <div><h4>Colour (the device theme)</h4><div class="mk-sw" data-ctl="acc"><i data-v="#5ef2b0" style="background:#5ef2b0"></i><i data-v="#19f3f7" style="background:#19f3f7"></i><i data-v="#ff5b4a" style="background:#ff5b4a"></i><i data-v="#ffb37a" style="background:#ffb37a"></i><i data-v="#c9a7ff" style="background:#c9a7ff"></i><i data-v="#f2f2f2" style="background:#f2f2f2"></i></div></div>
+    <div><h4>Personality</h4><div class="mk-seg" data-ctl="persona"><button data-v="assistant">Assistant</button><button data-v="choom">Street choom</button><button data-v="corp">Corp security</button><button data-v="sweet">Sweetheart</button></div></div>
+    <div><h4>Something happens</h4><div class="mk-seg" id="triggers"></div></div>
+    <div class="mk-note">One WebGL canvas per open Agent (a fragment shader, no library). Paused when hidden; Reduced motion keeps cursor-follow and drops idle motion and glitches.</div>
+  </div>
+  <div class="mk-stage">
+    <div class="mk-holo"><div class="mk-beam"></div><div class="mk-pad"></div><canvas id="main"></canvas></div>
+    <div class="mk-speech"><b id="ainame">MIRA</b><span id="text">Move the mouse. I'm watching.</span></div>
+    <div class="mk-err" id="err"></div>
+  </div>
+</div>
+<div class="mk-h">Side by side</div>
+<div class="mk-trio">
+  <div class="mk-mini"><div class="box"><canvas data-mini="woman" data-mood="happy" data-acc="#ffb37a"></canvas></div><div class="cap">Woman</div></div>
+  <div class="mk-mini"><div class="box"><canvas data-mini="man" data-mood="calm" data-acc="#19f3f7"></canvas></div><div class="cap">Man</div></div>
+  <div class="mk-mini"><div class="box"><canvas data-mini="neutral" data-mood="suspicious" data-acc="#ff5b4a"></canvas></div><div class="cap">Gender-neutral</div></div>
+</div>
+
+<script id="fs" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 uRes; uniform float uTime; uniform vec2 uRot; uniform float uJaw, uLid, uBrow, uBrowIn, uSmile, uGlitch, uMesh, uBob;
+uniform vec2 uGaze; uniform vec4 uB1; uniform vec4 uB2; uniform vec4 uB3; uniform vec3 uCol;
+// uB1: jaw width, chin width, brow, nose · uB2: lips, cheekbones, neck radius, eye scale · uB3: jaw corners, cheek hollow, chin forward, femininity
+
+float smin(float a, float b, float k) { float h = clamp(.5 + .5 * (b - a) / k, 0., 1.); return mix(b, a, h) - k * h * (1. - h); }
+float smax(float a, float b, float k) { return -smin(-a, -b, k); }
+float sdE(vec3 p, vec3 r) { float k0 = length(p / r); float k1 = length(p / (r * r)); return k0 * (k0 - 1.) / k1; }
+float sdCap(vec3 p, vec3 a, vec3 b, float r) { vec3 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.); return length(pa - ba * h) - r; }
+
+// returns (distance, material): 1 skin · 2 eyeball · 3 lips · 4 brows
+vec2 map(vec3 p) {
+  p.y -= uBob;
+  vec3 q = vec3(abs(p.x), p.y, p.z);
+  // the jaw: below the mouth, at the front and sides, moves down (and a touch back) as it talks
+  float jw = smoothstep(-.19, -.25, p.y) * smoothstep(-.25, .05, p.z);
+  vec3 pj = p + vec3(0., uJaw * .065 * jw, uJaw * .012 * jw);
+  vec3 qj = vec3(abs(pj.x), pj.y, pj.z);
+
+  float d = sdE(p - vec3(0., .12, -.06), vec3(.34, .385, .415));                                // skull
+  d = smin(d, sdE(pj - vec3(0., -.15, .07), vec3(uB1.x - .035, .28, .27)), .12);                // face mass
+  d = smin(d, sdE(qj - vec3(uB1.x - .075 - (1. - min(uB3.x, 1.)) * .03, -.255, -.07), vec3(.055, .085, .095) * (.55 + .45 * min(uB3.x, 1.4))), .02 + .06 * uB3.x); // jaw corner
+  d = smax(d, -sdE(pj - vec3(0., -.47, -.06), vec3(.2, .085, .19)), .05);                       // under the jaw: the jawline edge
+  d = smin(d, sdE(pj - vec3(0., -.385, .15 + uB3.z), vec3(uB1.y, .07, .075)), .07);            // chin
+  d = smin(d, sdE(q - vec3(.2, .0, .19), vec3(.085, .045, .07)), .02 + .05 * uB2.y);           // cheekbones
+  // brow ridge, and the brows on it (they move with the mood; the inner end most)
+  d = smin(d, sdE(p - vec3(0., .1, .27), vec3(.27, .042, .065)), .02 + .05 * uB1.z);
+  vec3 bq = q - vec3(.125, .108 + uBrow - (.13 - q.x) * uBrowIn * 2.5 + uB3.w * (.012 - (q.x - .125) * (q.x - .125) * 1.6), .3);
+  float brows = sdE(bq, vec3(.08 - .012 * uB3.w, .009 + .008 * (1. - uB3.w), .016));
+  // nose: bridge, tip, wings
+  float n = sdCap(p, vec3(0., .085, .3), vec3(0., -.065, .375), .026 * uB1.w);
+  n = smin(n, length(p - vec3(0., -.078, .372)) - .033 * uB1.w, .035);
+  n = smin(n, length(q - vec3(.042 * uB1.w, -.097, .345)) - .028 * uB1.w, .025);
+  d = smin(d, n, .035);
+  // eye sockets
+  d = smax(d, -sdE(q - vec3(.122, .03, .315), vec3(.08, .05, .065) * uB2.w), .035);
+  // ears
+  d = smin(d, sdE(q - vec3(.355, .0, -.03), vec3(.028, .085, .055)), .03);
+  // neck
+  d = smin(d, sdCap(p, vec3(0., -.32, -.07), vec3(0., -.7, -.1), uB2.z * 1.08), .09);
+  // lips (the corners rise with a smile; the lower lip rides the jaw)
+  float sm = uSmile * .9;
+  float lu = sdE(p - vec3(0., -.2 - p.x * p.x * sm * 3.2 + .004 * uB3.w, .318), vec3(.08, .019 * uB2.x, .036));
+  float ll = sdE(pj - vec3(0., -.24 - p.x * p.x * sm * 2.6, .308), vec3(.074, .024 * uB2.x, .038));
+  float lips = min(lu, ll);
+  d = smin(d, lips, .035);
+  // the mouth opening
+  d = smax(d, -sdE(p - vec3(0., -.221 - uJaw * .028, .345), vec3(.064, .002 + uJaw * .036, .08)), .012);
+  float id = 1.;
+  if (lips < d + .006) id = 3.;
+  d = smin(d, brows, .012); if (brows < d + .002) id = 4.;
+  // eyeballs and lids (hard union): the upper lid comes down to blink and with the mood
+  vec3 ec = q - vec3(.122, .028, .262);
+  float er = .047 * uB2.w;
+  float eye = length(ec) - er;
+  float lidY = .028 + mix(-.055, .02, clamp(uLid, 0., 1.)) * uB2.w;
+  float lidUp = max(length(ec) - er * 1.09, lidY - q.y);
+  float lidLo = max(length(ec) - er * 1.07, q.y - (.028 - er * .62));
+  float lids = min(lidUp, lidLo);
+  if (lids < d) { d = lids; id = 1.; }
+  if (eye < d) { d = eye; id = 2.; }
+  return vec2(d, id);
+}
+vec3 nrm(vec3 p) { const vec2 e = vec2(.0015, -.0015);
+  return normalize(e.xyy * map(p + e.xyy).x + e.yyx * map(p + e.yyx).x + e.yxy * map(p + e.yxy).x + e.xxx * map(p + e.xxx).x); }
+mat3 rotY(float a) { float c = cos(a), s = sin(a); return mat3(c, 0., -s, 0., 1., 0., s, 0., c); }
+mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1., 0., 0., 0., c, s, 0., -s, c); }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy * 2. - uRes) / uRes.y;
+  if (uGlitch > 0.) { float band = floor(uv.y * 18. + uTime * 30.); if (hash(vec2(band, floor(uTime * 20.))) > .7) uv.x += (hash(vec2(band, 3.)) - .5) * .12 * uGlitch * 6.; }
+  vec3 ro = vec3(0., -.12, 2.75);
+  vec3 rd = normalize(vec3(uv * vec2(1., 1.) , -3.3));
+  mat3 R = rotY(-uRot.x) * rotX(uRot.y);          // the head turns = the camera orbits the other way
+  ro = R * ro; rd = R * rd;
+  float t = 1.4, minD = 9.; vec2 h = vec2(1.); bool hit = false;
+  for (int i = 0; i < 96; i++) { vec3 p = ro + rd * t; h = map(p); minD = min(minD, h.x); if (h.x < .0012) { hit = true; break; } t += h.x * .9; if (t > 4.2) break; }
+  vec3 col = vec3(0.);
+  if (hit) {
+    vec3 p = ro + rd * t, n = nrm(p);
+    float fres = pow(1. - max(0., dot(n, -rd)), 2.2);
+    vec3 L = R * normalize(vec3(-.45, .55, .75));
+    float dif = max(0., dot(n, L)), back = max(0., dot(n, R * normalize(vec3(.6, .2, -.4))));
+    float inten = .025 + .3 * dif * dif + .08 * back + .75 * fres;
+    vec3 pp = p; pp.y -= uBob;
+    if (uMesh < .5) {                                   // grid: horizontal slices + meridians in head space
+      float ly = 1. - smoothstep(.0, .045, abs(fract(pp.y * 24.) - .5) * 2. - .9 + .9);
+      float gy = smoothstep(.04, 0., abs(fract(pp.y * 24.) - .5) - .45);
+      float gx = smoothstep(.05, 0., abs(fract(atan(pp.x, pp.z) * 3.2 + .5) - .5) - .44);
+      inten += .35 * max(gy, gx) * (.25 + .5 * dif + .6 * fres);
+    } else if (uMesh > 1.5) {                           // scanlines only
+      inten *= .55 + .45 * smoothstep(.2, .8, abs(sin(pp.y * 110.)));
+    }
+    inten *= .94 + .06 * sin(pp.y * 260. + uTime * 5.);
+    if (h.y == 2.) {                                    // eye: iris + pupil, looking where you are
+      vec3 e = vec3(sign(pp.x) * .122, .03 + uBob * 0., .268);
+      vec3 dir = normalize(pp - vec3(e.x, e.y, e.z));
+      vec2 g = dir.xy - vec2(uGaze.x * .32, -uGaze.y * .22);
+      float r = length(g);
+      inten = .16 + .3 * dif + .25 * fres;
+      inten += .75 * smoothstep(.36, .33, r) * smoothstep(.2, .23, r);   // iris ring
+      inten += .3 * smoothstep(.33, .2, r);                             // iris
+      inten *= 1. - .9 * smoothstep(.15, .12, r);                       // pupil
+      inten += 1. * smoothstep(.06, .0, length(g - vec2(-.08, .1)));    // catchlight
+    }
+    if (h.y == 3.) inten += .1;
+    if (h.y == 4.) inten += .3;
+    float fade = smoothstep(-.64, -.42, pp.y);
+    col = (uCol * inten + vec3(1.) * pow(fres, 5.) * .25) * fade;
+  }
+  col += uCol * exp(-minD * 26.) * .18;                // the projection's halo
+  col += uCol * step(.997, hash(floor(gl_FragCoord.xy / 3.) + floor(uTime * 2.))) * .5;   // stray motes
+  float a = clamp(max(col.r, max(col.g, col.b)), 0., 1.);
+  gl_FragColor = vec4(col, a);
+}
+</script>
+<script>
+const MOODS = {
+  calm: { lid: 1, brow: 0, browIn: 0, smile: .2 },
+  happy: { lid: .8, brow: -.008, browIn: -.01, smile: 1 },
+  suspicious: { lid: .45, brow: .006, browIn: .03, smile: -.4 },
+  alarm: { lid: 1.15, brow: -.02, browIn: -.012, smile: -.7 },
+};
+const BUILDS = {
+  woman:   { b1: [.25, .085, .4, .82], b2: [1.25, 1.35, .108, 1.08], b3: [.15, 0, 0, 1] },
+  man:     { b1: [.305, .118, 1.5, 1.15], b2: [.8, 1, .13, .93], b3: [1.2, 1, .02, 0] },
+  neutral: { b1: [.278, .1, .9, 1], b2: [1.1, 1.15, .112, 1], b3: [.6, .45, .01, .5] },
+};
+const JAWK = { soft: .55, defined: 1, strong: 1.6 };
+const MESH = { grid: 0, solid: 1, scan: 2 };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t;
+const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
+const VS = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0., 1.); }';
+
+class HoloFace {
+  constructor(canvas, o = {}) {
+    this.c = canvas; this.build = o.build || 'man'; this.mood = o.mood || 'calm'; this.accent = o.accent || '#5ef2b0'; this.mesh = o.mesh || 'grid'; this.jawK = o.jawK ?? 1; this.reduced = !!o.reduced;
+    const gl = this.gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+    if (!gl) throw new Error('WebGL is not available');
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const pr = this.pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent)); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr);
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    this.u = {}; for (const k of ['uRes', 'uTime', 'uRot', 'uJaw', 'uLid', 'uBrow', 'uBrowIn', 'uSmile', 'uGlitch', 'uMesh', 'uBob', 'uGaze', 'uB1', 'uB2', 'uB3', 'uCol']) this.u[k] = gl.getUniformLocation(pr, k);
+    this.yaw = 0; this.pitch = 0; this.tYaw = 0; this.tPitch = 0; this.gx = 0; this.gy = 0; this.tgx = 0; this.tgy = 0; this.idle = 0;
+    this.m = { ...MOODS[this.mood] }; this.mouth = 0; this.blink = 0; this.nextBlink = 1 + Math.random() * 3; this.glitch = 0; this.nextGlitch = 5 + Math.random() * 5;
+    this.t = 0; this.last = performance.now(); this.seed = Math.random() * 9; this.speech = null; this.fixed = null; this.holdJaw = null;
+    this._resize(); this._loop = this._loop.bind(this); requestAnimationFrame(this._loop);
+  }
+  _resize() { const r = this.c.getBoundingClientRect(), d = Math.min(1.5, devicePixelRatio || 1); this.c.width = Math.round(r.width * d); this.c.height = Math.round(r.height * d); this.gl.viewport(0, 0, this.c.width, this.c.height); }
+  look(y, p) { this.fixed = [y, p]; this.yaw = y * .75; this.pitch = p * .35; this.gx = y; this.gy = p; }
+  pointer(px, py) { if (this.fixed) return; const r = this.c.getBoundingClientRect(); const dx = px - (r.left + r.width / 2), dy = py - (r.top + r.height * .4);
+    this.tYaw = clamp(dx / 650, -1, 1) * .75; this.tPitch = clamp(dy / 480, -1, 1) * .35; this.tgx = clamp(dx / 380, -1, 1); this.tgy = clamp(dy / 380, -1, 1); this.idle = 0; }
+  say(text, mood) { if (mood) this.mood = mood; this.speech = { text, i: 0, t: 0 }; }
+  _loop(now) {
+    if (!this.c.isConnected) return;
+    const dt = Math.min(.05, (now - this.last) / 1000); this.last = now; this.t += dt;
+    const tm = MOODS[this.mood]; for (const k in tm) this.m[k] = lerp(this.m[k], tm[k], 1 - Math.pow(.002, dt));
+    this.idle += dt;
+    if (this.fixed) { this.tYaw = this.fixed[0] * .75; this.tPitch = this.fixed[1] * .35; this.tgx = this.fixed[0]; this.tgy = this.fixed[1]; }
+    else if (this.idle > 2.5 && !this.reduced) { if (!this._w || this.t > this._w.until) this._w = { y: (Math.random() - .5) * .6, p: (Math.random() - .5) * .25, until: this.t + .8 + Math.random() * 2 }; this.tYaw = this._w.y; this.tPitch = this._w.p; this.tgx = this._w.y * 1.4; this.tgy = this._w.p * 2; }
+    const he = 1 - Math.pow(.02, dt), ee = 1 - Math.pow(.0005, dt);
+    this.yaw = lerp(this.yaw, this.tYaw, he); this.pitch = lerp(this.pitch, this.tPitch, he); this.gx = lerp(this.gx, this.tgx, ee); this.gy = lerp(this.gy, this.tgy, ee);
+    this.nextBlink -= dt; if (this.nextBlink <= 0) { this.blink = 1; this.nextBlink = 2 + Math.random() * 4 + (Math.random() < .2 ? -1.8 : 0); }
+    this.blink = Math.max(0, this.blink - dt * 7); const lid = this.blink > 0 ? Math.abs(Math.cos(this.blink * Math.PI)) : 1;
+    let mt = 0;
+    if (this.speech) { const s = this.speech; s.t += dt; while (s.t > .05 && s.i < s.text.length) { s.t -= .05; s.i++; }
+      const ch = s.text[s.i - 1] || ' '; mt = /[aAoO]/.test(ch) ? 1 : /[eiuEIU]/.test(ch) ? .65 : /[ .,!?'mbpMBP]/.test(ch) ? 0 : /[fvFV]/.test(ch) ? .15 : .4;
+      if (s.i >= s.text.length && s.t > .45) this.speech = null; this.onText?.(s.text.slice(0, s.i)); }
+    this.mouth = lerp(this.mouth, mt, 1 - Math.pow(.00005, dt));
+    this.nextGlitch -= dt; if (!this.reduced && this.nextGlitch <= 0) { this.glitch = .12 + Math.random() * .1; this.nextGlitch = (this.mood === 'alarm' ? 1.5 : 6) + Math.random() * 6; }
+    this.glitch = Math.max(0, this.glitch - dt);
+    const gl = this.gl, u = this.u, B = BUILDS[this.build], k = this.jawK;
+    const alarm = this.mood === 'alarm' ? 1 : 0; const base = hexRgb(this.accent); this._col = (this._col || base).map((v, i) => lerp(v, lerp(base[i], [1, .3, .32][i], alarm * .8), 1 - Math.pow(.01, dt)));
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform2f(u.uRes, this.c.width, this.c.height); gl.uniform1f(u.uTime, this.t); gl.uniform2f(u.uRot, this.yaw, this.pitch);
+    gl.uniform1f(u.uJaw, this.holdJaw ?? this.mouth); gl.uniform1f(u.uLid, this.m.lid * lid); gl.uniform1f(u.uBrow, this.m.brow); gl.uniform1f(u.uBrowIn, this.m.browIn); gl.uniform1f(u.uSmile, this.m.smile);
+    gl.uniform1f(u.uGlitch, this.glitch); gl.uniform1f(u.uMesh, MESH[this.mesh] ?? 0); gl.uniform1f(u.uBob, this.reduced ? 0 : Math.sin(this.t * 1.3 + this.seed) * .008 + (this.speech ? Math.sin(this.t * 7) * .004 : 0));
+    gl.uniform2f(u.uGaze, this.gx, this.gy);
+    gl.uniform4f(u.uB1, B.b1[0] + (k - 1) * .02, B.b1[1] + (k - 1) * .012, B.b1[2], B.b1[3]); gl.uniform4fv(u.uB2, B.b2); gl.uniform4f(u.uB3, B.b3[0] * k + (k - 1) * .3, B.b3[1], B.b3[2] + (k - 1) * .012, B.b3[3]);
+    gl.uniform3fv(u.uCol, this._col);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(this._loop);
+  }
+}
+
+// ═══ the page ═══
+const Q = new URLSearchParams(location.search);
+const state = { build: Q.get('b') || 'man', mood: Q.get('m') || 'calm', jaw: Q.get('jk') || 'defined', mesh: 'grid', acc: '#5ef2b0', persona: 'assistant' };
+const NAMES = { woman: 'JUNE', man: 'MIRA', neutral: 'LÓNG' };
+let main, all = [];
+try {
+  main = new HoloFace(document.getElementById('main'), { build: state.build, mood: state.mood, accent: state.acc, jawK: JAWK[state.jaw] });
+  main.onText = (t) => { document.getElementById('text').textContent = t; };
+  all = [main, ...[...document.querySelectorAll('[data-mini]')].map((cv) => new HoloFace(cv, { build: cv.dataset.mini, mood: cv.dataset.mood, accent: cv.dataset.acc }))];
+} catch (err) { document.getElementById('err').textContent = 'The hologram could not start: ' + err.message; }
+if (Q.get('look')) { const [y, p] = Q.get('look').split(',').map(Number); all.forEach((f) => f.look(y, p)); }
+if (Q.get('jaw')) all.forEach((f) => { f.holdJaw = Number(Q.get('jaw')); });
+document.addEventListener('pointermove', (e) => all.forEach((f) => f.pointer(e.clientX, e.clientY)));
+addEventListener('resize', () => all.forEach((f) => f._resize()));
+function paint() {
+  document.documentElement.style.setProperty('--acc', state.acc);
+  document.querySelectorAll('[data-ctl]').forEach((g) => g.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === state[g.dataset.ctl])));
+  document.getElementById('ainame').textContent = NAMES[state.build];
+}
+document.querySelectorAll('[data-ctl]').forEach((g) => g.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-v]'); if (!b || !main) return; const k = g.dataset.ctl; state[k] = b.dataset.v;
+  if (k === 'build') main.build = state.build; if (k === 'mood') main.mood = state.mood; if (k === 'acc') main.accent = state.acc;
+  if (k === 'jaw') main.jawK = JAWK[state.jaw]; if (k === 'mesh') main.mesh = state.mesh;
+  paint();
+}));
+const LINES = [
+  ['lock.stranger', 'assistant', 'suspicious', 2, "You're not {owner}. Code, please."], ['lock.stranger', 'choom', 'suspicious', 2, "heh. nice try, choom. this ain't your deck."],
+  ['lock.stranger', 'corp', 'alarm', 2, 'Unauthorized user. This device is property of {brand}. Access is logged.'], ['lock.stranger', 'sweet', 'happy', 2, "Oh! Hi! You're not {owner}… are you a friend of theirs?"],
+  ['lock.wrong', 'assistant', 'suspicious', 2, "That's not it. {tries} tries left."], ['lock.wrong', 'choom', 'happy', 2, 'wrong. {tries} more and i lock up, genius.'],
+  ['lock.wrong', 'corp', 'alarm', 2, 'Invalid credentials. {tries} attempts remain before lockdown.'], ['lock.wrong', 'sweet', 'suspicious', 1, "Hmm, no… {owner} wouldn't pick that one."],
+  ['lock.cracked', 'assistant', 'calm', 2, "Fine. You're in. I'm telling {owner} about this."], ['lock.cracked', 'choom', 'happy', 2, 'ok ok, you got me. whatcha want?'],
+  ['lock.cracked', 'corp', 'alarm', 2, 'Security bypassed. Counterintelligence has been notified.'], ['lock.cracked', 'sweet', 'happy', 2, "You're in! Be nice to {owner}'s things, okay?"],
+  ['home.summary', 'assistant', 'calm', 3, '{count} new on {mail}, {owner}. {sender} sounds like it matters.'], ['home.summary', 'choom', 'happy', 2, 'yo {owner}. {count} new. {sender} again. popular.'],
+  ['home.summary', 'corp', 'calm', 2, '{count} unread. Priority: {sender}, "{subject}".'], ['home.summary', 'sweet', 'happy', 2, 'Welcome back, {owner}! {count} messages — one from {sender}!'],
+  ['trace', 'assistant', 'alarm', 2, 'Someone is trying to get into me. Rebooting would stop them.'], ['trace', 'choom', 'alarm', 2, "somebody's poking around in me. not cool."],
+  ['trace', 'corp', 'alarm', 2, 'Intrusion detected. Notifying the owner. Smile for the camera.'], ['trace', 'sweet', 'alarm', 2, "Ow! Someone's in my head! Make them stop!"],
+];
+const TOKENS = { owner: 'Yuri', brand: 'Arasaka', tries: '2', count: '3', mail: 'ZPost', sender: 'Mr. Hands', subject: 'Saturday, not Friday' };
+const TRIGGERS = [['lock.stranger', 'A stranger picks it up'], ['lock.wrong', 'Wrong code'], ['lock.cracked', 'Cracked'], ['home.summary', 'Owner opens it'], ['trace', 'Hack attempt']];
+let lastLine = null;
+document.getElementById('triggers').innerHTML = TRIGGERS.map(([k, l]) => `<button data-trigger="${k}">${l}</button>`).join('');
+document.getElementById('triggers').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-trigger]'); if (!b || !main) return;
+  const pool = LINES.filter(([t, p, , , text]) => t === b.dataset.trigger && p === state.persona && text !== lastLine); if (!pool.length) return;
+  const line = pool[Math.floor(Math.random() * pool.length)]; lastLine = line[4];
+  state.mood = line[2]; main.say(line[4].replace(/\{(\w+)\}/g, (m, k) => TOKENS[k] ?? m), line[2]); paint();
+});
+paint();
+</script>
+</body>
+</html>

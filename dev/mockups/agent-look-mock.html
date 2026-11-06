@@ -1,0 +1,341 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Agent look — mock</title>
+<!--
+  The Agent look (dev, 2026-11-05; design dev/design/AGENTS.md). Not a stereotypical phone: the AI's projection is the
+  centre, content is glass slips, you navigate by asking the AI (command chips), and the FORM FACTOR sets the layout —
+  slab, holo slab, clamshell (wrist and internal later). Players and NPCs share it: own = full, someone else's =
+  read-only with a "held by" strip. App names come from one editable table (ZPost, BabelChat by default).
+  Reference: dev/mockups/AllAboutAgentsReference.png. Prefix ncm-ag-* (free).
+  Serve: node dev/tools/serve-mockups.cjs → http://127.0.0.1:8123/dev/mockups/agent-look-mock.html   ?t=clean-light (admin frames)
+-->
+<script>
+  (function () {
+    const onDisk = location.protocol === 'file:';
+    const vendor = onDisk
+      ? ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css', 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css']
+      : ['/_vendor/foundry2.css', '/_vendor/cpr.css', '/_vendor/fa/css/all.min.css'];
+    for (const href of vendor) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
+  }());
+</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style>
+  body { margin: 0; padding: 24px 28px 80px; background: radial-gradient(120% 60% at 30% 0%, #2a2f3a, #15161b 60%); font-family: sans-serif; overflow-y: auto !important; height: auto !important; }
+  .mk-top { color: #eee; font: 700 20px sans-serif; margin: 0 0 4px; }
+  .mk-sub { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 6px; max-width: 1080px; } .mk-sub b { color: #ddd; }
+  .mk-h { color: #eee; font: 700 15px sans-serif; margin: 34px 0 4px; border-top: 1px solid #333; padding-top: 18px; letter-spacing: .03em; }
+  .mk-p { color: #aaa; font: 13px/1.5 sans-serif; margin: 0 0 16px; max-width: 1080px; } .mk-p b { color: #ddd; }
+  .mk-row { display: flex; gap: 34px; flex-wrap: wrap; align-items: flex-end; }
+  .mk-cap { color: #9ad; font: 600 11px sans-serif; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 8px; }
+  .mk-cap em { color: #888; font-style: normal; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .mk-adm { position: relative !important; inset: auto !important; transform: none !important; max-height: none !important; z-index: auto !important; }
+
+  /* ═══════════════ THE AGENT (proposed ncm-ag-*) ═══════════════
+     --a accent · --a2 light accent · --edge the bezel's glow · --bg/--bg2 glass · --ink/--dim text. A device's theme
+     (the Theme Customizer object) supplies these; the form factor (data-form) supplies the layout. */
+  .ncm-ag { --a: #5ef2b0; --a2: #c8ffe6; --edge: #ff3fa4; --bg: #0b1514; --bg2: #13221f; --ink: #e9fbf4; --dim: #8fb3a8; --bad: #ff5d6c; --ok: #5ef2b0; --cut: 20px;
+    position: relative; width: 300px; flex: none; font-family: var(--ncm-font-body, sans-serif); color: var(--ink); }
+  .ncm-ag[data-look="kangtao"] { --a: #ff5b4a; --a2: #ffd3a3; --edge: #ffb03b; --bg: #160908; --bg2: #2a1210; --ink: #fff1e8; --dim: #cc9d8f; }
+  .ncm-ag[data-look="street"] { --a: #b5ff4d; --a2: #eaffc2; --edge: #b5ff4d; --bg: #060806; --bg2: #101510; --ink: #dfe9d8; --dim: #85977d; --cut: 10px; }
+  .ncm-ag[data-look="corp"] { --a: #f2f2f2; --a2: #ffffff; --edge: #d10a1e; --bg: #050505; --bg2: #121212; --ink: #f2f2f2; --dim: #8a8a8a; --cut: 6px; }
+  .ncm-ag[data-look="warm"] { --a: #ffb37a; --a2: #ffe3cc; --edge: #ffcf9e; --bg: #1c1310; --bg2: #3a2a20; --ink: #fff7f0; --dim: #e0c6b2; --cut: 26px; }
+  .ncm-ag[data-look="player"] { --a: #19f3f7; --a2: #b9feff; --edge: #f65261; --bg: #0a0f17; --bg2: #121a2a; --ink: #e8f6ff; --dim: #8ea3b8; }
+
+  /* the shell: chamfered glass in a dark bezel with an edge glow (the reference's magenta rim) */
+  .ncm-ag__shell { position: relative; filter: drop-shadow(0 0 1px var(--edge)) drop-shadow(0 0 10px color-mix(in srgb, var(--edge) 35%, transparent)) drop-shadow(0 16px 28px rgba(0,0,0,.55)); }
+  .ncm-ag__bezel { padding: 8px; background: linear-gradient(150deg, #24252b, #0b0b0e 40%, #1b1c22);
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+  .ncm-ag__glass { position: relative; overflow: hidden; display: flex; flex-direction: column;
+    background: linear-gradient(170deg, color-mix(in srgb, var(--bg2) 92%, transparent), var(--bg) 70%);
+    clip-path: polygon(calc(var(--cut) - 4px) 0, 100% 0, 100% calc(100% - var(--cut) + 4px), calc(100% - var(--cut) + 4px) 100%, 0 100%, 0 calc(var(--cut) - 4px)); }
+  .ncm-ag__glass::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+    background: linear-gradient(115deg, rgba(255,255,255,.07) 0 18%, transparent 18% 60%, rgba(255,255,255,.035) 60% 64%, transparent 64%); }
+  .ncm-ag__glass > * { position: relative; z-index: 1; }
+  .ncm-ag__model { position: absolute; right: -16px; top: 40px; transform: rotate(90deg); transform-origin: right top; font: 600 9px var(--ncm-font-mono, monospace); letter-spacing: .25em; color: #777; text-transform: uppercase; white-space: nowrap; }
+
+  .ncm-ag__status { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 14px 4px; font: 600 10px var(--ncm-font-mono, monospace); color: var(--dim); letter-spacing: .06em; }
+  .ncm-ag__status .sp { flex: 1; } .ncm-ag__status i { font-size: 9px; }
+
+  /* the AI: a line-drawn face, glowing in the accent */
+  .ncm-ag__face { display: block; filter: drop-shadow(0 0 4px var(--a)) drop-shadow(0 0 14px color-mix(in srgb, var(--a) 45%, transparent)); }
+  .ncm-ag__face .m { fill: none; stroke: var(--a); stroke-width: .7; opacity: .55; }
+  .ncm-ag__face .o { fill: color-mix(in srgb, var(--a) 10%, transparent); stroke: var(--a); stroke-width: 1.1; }
+  .ncm-ag__face .f { fill: none; stroke: var(--a2); stroke-width: 1.3; }
+  .ncm-ag__face .n { fill: var(--a2); }
+  .ncm-ag__face .px { fill: var(--a); opacity: .7; }
+  .ncm-ag__inface { display: flex; justify-content: center; padding-top: 4px; }
+
+  /* holo: the face floats ABOVE the glass on a projection beam */
+  .ncm-ag[data-form="holo"] .ncm-ag__holo { position: relative; height: 170px; display: flex; justify-content: center; align-items: flex-end; }
+  .ncm-ag__beam { position: absolute; left: 50%; bottom: -8px; width: 230px; height: 150px; transform: translateX(-50%);
+    clip-path: polygon(42% 100%, 58% 100%, 100% 0, 0 0); background: linear-gradient(0deg, color-mix(in srgb, var(--a) 40%, transparent), transparent 90%); opacity: .55; }
+  .ncm-ag[data-form="holo"] .ncm-ag__face { position: relative; margin-bottom: 18px; animation: ncm-ag-float 4s ease-in-out infinite; }
+  @keyframes ncm-ag-float { 50% { transform: translateY(-5px); } }
+  @media (prefers-reduced-motion: reduce) { .ncm-ag[data-form="holo"] .ncm-ag__face { animation: none; } }
+
+  /* clamshell: a display-only lid where the AI talks, a hinge, the touch panel */
+  .ncm-ag[data-form="clamshell"] .ncm-ag__lid .ncm-ag__glass { min-height: 186px; justify-content: center; align-items: center; gap: 4px;
+    background: linear-gradient(170deg, var(--bg2), var(--bg)); }
+  .ncm-ag__hinge { height: 14px; margin: 0 26px; display: flex; justify-content: space-between; }
+  .ncm-ag__hinge i { width: 54px; height: 14px; border-radius: 3px; background: linear-gradient(180deg, #2c2d33, #0e0e11); box-shadow: inset 0 1px 0 rgba(255,255,255,.1); }
+  .ncm-ag__lidsay { font: 600 11.5px/1.35 var(--ncm-font-display, sans-serif); text-align: center; padding: 0 22px 6px; color: var(--ink); }
+  .ncm-ag__lidsay b { display: block; font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .3em; color: var(--a); margin-bottom: 2px; }
+
+  /* what the AI says */
+  .ncm-ag__say { margin: 2px 14px 10px; padding-left: 10px; border-left: 2px solid var(--a); font: 600 12.5px/1.4 var(--ncm-font-display, sans-serif); }
+  .ncm-ag__say b { display: block; font: 700 9px var(--ncm-font-mono, monospace); letter-spacing: .3em; color: var(--a); margin-bottom: 1px; }
+  .ncm-ag__say small { color: var(--dim); font-weight: 500; }
+
+  /* asking the AI: command chips (the app names table) */
+  .ncm-ag__cmds { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 14px 10px; }
+  .ncm-ag__cmd { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--a) 35%, transparent);
+    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+    background: color-mix(in srgb, var(--a) 8%, transparent); font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .06em; color: var(--ink); cursor: pointer; }
+  .ncm-ag__cmd i { color: var(--a); font-size: 10px; } .ncm-ag__cmd em { font-style: normal; color: #050505; background: var(--a); padding: 0 4px; font: 700 9.5px var(--ncm-font-mono, monospace); }
+  .ncm-ag__cmd.on { background: var(--a); color: #050505; } .ncm-ag__cmd.on i { color: #050505; }
+  .ncm-ag__cmd.off { opacity: .35; }
+
+  /* glass slips */
+  .ncm-ag__slips { display: flex; flex-direction: column; gap: 6px; padding: 0 12px 10px; }
+  .ncm-ag__slip { position: relative; padding: 8px 10px 8px 12px; background: linear-gradient(100deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
+  .ncm-ag__slip::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--a); }
+  .ncm-ag__slip.new::after { content: ''; position: absolute; right: 12px; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: var(--a); box-shadow: 0 0 6px var(--a); }
+  .ncm-ag__slip .k { font: 600 9.5px var(--ncm-font-mono, monospace); letter-spacing: .08em; color: var(--dim); text-transform: uppercase; }
+  .ncm-ag__slip .k b { color: var(--a); font-weight: 700; }
+  .ncm-ag__slip .t { font: 700 12.5px var(--ncm-font-display, sans-serif); margin-top: 2px; }
+  .ncm-ag__slip .x { font-size: 11.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ncm-ag__slip.miss::before { background: var(--bad); } .ncm-ag__slip.miss .k b { color: var(--bad); }
+  .ncm-ag__read { padding: 0 14px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ncm-ag__read h4 { margin: 0; border: 0; font: 700 15px var(--ncm-font-display, sans-serif); color: var(--ink); }
+  .ncm-ag__read .who { font: 600 10.5px var(--ncm-font-mono, monospace); color: var(--dim); }
+  .ncm-ag__read .who b { color: var(--a); }
+  .ncm-ag__read p { margin: 0; font-size: 12.5px; line-height: 1.5; }
+  .ncm-ag__att { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 1px dashed color-mix(in srgb, var(--a) 50%, transparent); font-size: 11.5px; }
+  .ncm-ag__att i { color: var(--a); }
+  .ncm-ag__acts { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 14px 12px; margin-top: auto; }
+  .ncm-ag__act { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; font: 700 10.5px var(--ncm-font-display, sans-serif); letter-spacing: .05em; text-transform: uppercase;
+    background: var(--a); color: #050505; clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px); cursor: pointer; }
+  .ncm-ag__act.ghost { background: rgba(255,255,255,.08); color: var(--ink); } .ncm-ag__act.ghost i { color: var(--a); }
+  .ncm-ag__act.dim { opacity: .35; cursor: not-allowed; }
+  .ncm-ag__foot { flex: none; display: flex; align-items: center; gap: 7px; margin-top: auto; padding: 7px 14px 9px; border-top: 1px solid rgba(255,255,255,.07);
+    font: 600 9.5px var(--ncm-font-mono, monospace); letter-spacing: .06em; color: var(--dim); background: rgba(0,0,0,.3); }
+  .ncm-ag__foot b { color: var(--ink); } .ncm-ag__foot .sp { flex: 1; } .ncm-ag__foot i { color: var(--a); }
+  .ncm-ag__foot .ro { padding: 1px 6px; border: 1px solid rgba(255,255,255,.18); font-size: 8.5px; letter-spacing: .12em; }
+  .ncm-ag__foot.mine .ro { border-color: var(--a); color: var(--a); }
+
+  /* locks */
+  .ncm-ag__dots { display: flex; gap: 10px; justify-content: center; margin: 4px 0 6px; }
+  .ncm-ag__dots i { width: 10px; height: 10px; transform: rotate(45deg); border: 1.5px solid var(--dim); } .ncm-ag__dots i.on { background: var(--a); border-color: var(--a); box-shadow: 0 0 8px var(--a); }
+  .ncm-ag__tries { text-align: center; font: 600 10px var(--ncm-font-mono, monospace); color: var(--dim); } .ncm-ag__tries b { color: var(--bad); }
+  .ncm-ag__pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 8px 18px 10px; }
+  .ncm-ag__pad span { height: 38px; display: grid; place-items: center; font: 500 17px var(--ncm-font-display, sans-serif); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07);
+    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+  .ncm-ag__pad span.b { background: none; border: 0; }
+  .ncm-ag__keyrow { display: flex; align-items: center; gap: 9px; margin: 0 12px 6px; padding: 7px 9px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04); }
+  .ncm-ag__keyrow .ico { width: 28px; height: 28px; display: grid; place-items: center; background: rgba(0,0,0,.4); color: var(--a2); }
+  .ncm-ag__keyrow .tx { flex: 1; min-width: 0; } .ncm-ag__keyrow b { display: block; font: 700 11.5px var(--ncm-font-display, sans-serif); } .ncm-ag__keyrow small { font-size: 10.5px; color: var(--dim); }
+  .ncm-ag__keyrow .st { font: 700 9px var(--ncm-font-mono, monospace); color: var(--ok); } .ncm-ag__keyrow.no { opacity: .5; } .ncm-ag__keyrow.no .st { color: var(--bad); }
+  .ncm-ag__keyrow.pick { border-color: var(--a); box-shadow: inset 0 0 0 1px var(--a); }
+  .ncm-ag__scan { height: 92px; display: grid; place-items: center; position: relative; }
+  .ncm-ag__scan i.fp { font-size: 62px; color: color-mix(in srgb, var(--a) 40%, transparent); }
+  .ncm-ag__scan .beam { position: absolute; left: 30%; right: 30%; height: 2px; background: var(--a); box-shadow: 0 0 12px 2px var(--a); animation: ncm-ag-beam 2.2s ease-in-out infinite; }
+  @keyframes ncm-ag-beam { 0%, 100% { top: 12%; } 50% { top: 84%; } }
+  @media (prefers-reduced-motion: reduce) { .ncm-ag__scan .beam { animation: none; } }
+  .ncm-ag__roll { margin: 0 12px 8px; padding: 9px 11px; border: 1px solid rgba(255,255,255,.1); background: rgba(0,0,0,.35); font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .ncm-ag__roll .r { display: flex; justify-content: space-between; align-items: center; } .ncm-ag__roll .dv { font: 700 17px var(--ncm-font-mono, monospace); color: var(--a); }
+  .ncm-ag__roll .bar { height: 4px; background: rgba(255,255,255,.1); } .ncm-ag__roll .bar i { display: block; height: 100%; width: 62%; background: var(--a); }
+  .ncm-ag__warn { margin: 0 12px 8px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--bad) 60%, transparent); background: color-mix(in srgb, var(--bad) 12%, transparent); font-size: 11.5px; line-height: 1.35; }
+  .ncm-ag__warn b { color: var(--bad); }
+  .ncm-ag__crack { position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: .45;
+    background: linear-gradient(118deg, transparent 47%, rgba(255,255,255,.4) 47.3%, transparent 47.8%), linear-gradient(64deg, transparent 58%, rgba(255,255,255,.3) 58.2%, transparent 58.6%), linear-gradient(160deg, transparent 30%, rgba(255,255,255,.2) 30.2%, transparent 30.5%); }
+  /* lock styles over a form */
+  .ncm-ag__photo { position: absolute; inset: 0; z-index: 0 !important; background:
+      radial-gradient(26% 20% at 50% 36%, #e9b48f 0 60%, transparent 62%), radial-gradient(40% 30% at 50% 80%, #7a3f2c 0 70%, transparent 72%),
+      radial-gradient(70% 55% at 50% 40%, #ffcf9e 0%, transparent 70%), linear-gradient(180deg, #ff9a6b 0%, #c4566b 45%, #3b1f35 100%); }
+  .ncm-ag__photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.2), transparent 30%, transparent 55%, rgba(0,0,0,.6)); }
+  .ncm-ag__corp { margin: auto 12px 8px; padding: 9px 10px; border-top: 1px solid var(--edge); font: 10px/1.45 var(--ncm-font-mono, monospace); color: #aaa; }
+  .ncm-ag__corp b { display: block; color: var(--edge); letter-spacing: .14em; }
+  .ncm-ag__logo { width: 70px; height: 70px; margin: 22px auto 6px; border-radius: 50%; border: 2px solid var(--edge); box-shadow: 0 0 0 7px var(--bg), 0 0 0 9px var(--edge); background: radial-gradient(circle, var(--edge) 0 18%, transparent 19%); }
+  /* the cheap Agent's AI: a pixel face */
+  .ncm-ag__pix { width: 74px; height: 58px; margin: 6px auto 4px; display: grid; place-items: center; border: 2px solid var(--a); font: 700 22px var(--ncm-font-mono, monospace); color: var(--a); text-shadow: 0 0 8px var(--a); }
+
+  /* the view toggle on the player's Agent */
+  .mk-toggle { display: inline-flex; border: 1px solid #456; margin-bottom: 10px; font: 700 10px var(--ncm-font-display, sans-serif); letter-spacing: .08em; }
+  .mk-toggle span { padding: 4px 10px; color: #8aa; } .mk-toggle span.on { background: #19f3f7; color: #04121a; }
+
+  /* GM frames */
+  .ncm-app .mk-cfg { width: 520px; border: 1px solid var(--ncm-border); border-radius: 2px; background: var(--ncm-bg-pane, var(--ncm-bg-base)); color: var(--ncm-text-primary); }
+  .ncm-app .mk-cfg__hd { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-card-head, var(--ncm-bg-card)); }
+  .ncm-app .mk-cfg__hd b { font: 700 13px var(--ncm-font-display); } .ncm-app .mk-cfg__hd small { display: block; font: 11px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-cfg__sec { padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 70%, transparent); display: flex; flex-direction: column; gap: 8px; }
+  .ncm-app .mk-cfg__k { font: 700 10px var(--ncm-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ncm-text-label, var(--ncm-text-secondary)); display: flex; gap: 6px; align-items: center; }
+  .ncm-app .mk-cfg__k i { color: var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .mk-forms { display: flex; gap: 10px; }
+  .ncm-app .mk-form { flex: 1; padding: 8px; border: 1px solid var(--ncm-border); display: flex; flex-direction: column; align-items: center; gap: 6px; font: 600 11px var(--ncm-font-display); color: var(--ncm-text-primary); }
+  .ncm-app .mk-form small { font: 10px var(--ncm-font-body); color: var(--ncm-text-secondary); text-align: center; }
+  .ncm-app .mk-form.on { border-color: var(--ncm-act, var(--ncm-secondary)); box-shadow: inset 0 0 0 1px var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .mk-form svg { width: 60px; height: 74px; } .ncm-app .mk-form svg * { fill: none; stroke: var(--ncm-text-secondary); stroke-width: 1.5; }
+  .ncm-app .mk-form.on svg * { stroke: var(--ncm-act, var(--ncm-secondary)); }
+  .ncm-app .mk-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+  .ncm-app .mk-pill { padding: 3px 9px; border: 1px solid var(--ncm-border); font: 600 11px var(--ncm-font-display); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-pill.on { color: var(--ncm-text-primary); border-color: var(--ncm-act, var(--ncm-secondary)); background: color-mix(in srgb, var(--ncm-act, var(--ncm-secondary)) 10%, transparent); }
+  .ncm-app .mk-names { display: grid; grid-template-columns: 110px 1fr 110px 1fr; gap: 6px 10px; align-items: center; font: 11.5px var(--ncm-font-body); color: var(--ncm-text-secondary); }
+  .ncm-app .mk-names span.v { height: 24px; display: flex; align-items: center; padding: 0 8px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-card, var(--ncm-bg-surface)); color: var(--ncm-text-primary); font: 12px var(--ncm-font-body); }
+  .ncm-app .mk-hint { font: 11px/1.4 var(--ncm-font-body); color: var(--ncm-text-secondary); }
+</style>
+</head>
+<body>
+<div class="mk-top">The Agent look</div>
+<p class="mk-sub">Built around the <b>AI</b>, not app icons: its projection sits at the top, it says one line about what matters, content is
+<b>glass slips</b>, and you get around by <b>asking it</b> (the command chips). The <b>form factor</b> sets the layout — holo slab, clamshell,
+slab — and the device's <b>theme</b> colours it. Everyone's Agent uses this: your own (full) and someone else's (read-only, "held by").
+App names come from one editable table — <b>ZPost</b> and <b>BabelChat</b> by default.</p>
+
+<div class="mk-h">1 · Your own Agent <span style="font-weight:400;color:#999">— Rache's, a holo slab, her player theme</span></div>
+<p class="mk-p">A player can flip their inbox between <b>Desktop</b> (today's window, for heavy mail work) and <b>Agent</b>. In Agent view
+everything is live: reply, call back, open a chat. Bigger jobs open the windows that already exist (the composer, the call screen, a conversation).</p>
+<div class="mk-row" id="row1"></div>
+
+<div class="mk-h">2 · Someone else's Agent, locked — the three forms</div>
+<p class="mk-p">The form changes the whole layout. A <b>holo slab</b> projects its AI above the glass; a <b>clamshell</b> talks on its little
+display-only lid while you work the panel below; a cheap <b>slab</b> has a pixel face and no manners.</p>
+<div class="mk-row" id="row2"></div>
+
+<div class="mk-h">3 · Inside someone else's, and lock styles</div>
+<p class="mk-p">Read-only, same screens as your own, with the "held by" strip and an AI that keeps telling you whose life you are in. The
+<b>lock style</b> rides on any form: a corp slab with its legal notice, a friend's holo slab with a photo of his wife.</p>
+<div class="mk-row" id="row3"></div>
+
+<div class="mk-h">4 · GM — the device's form, and the app names</div>
+<p class="mk-p">Plain words here. The form and the quality are per device; the app names are one world setting every Agent reads.</p>
+<div class="mk-row">
+  <div class="ncm-app ncm-admin-panel mk-adm" data-adm><div class="mk-cfg">
+    <div class="mk-cfg__hd"><i class="fas fa-mobile-screen" style="color:var(--ncm-act)"></i><div><b>Configure → Device</b><small>Mei Kosaka's Agent</small></div></div>
+    <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-shapes"></i>Form</div>
+      <div class="mk-forms">
+        <div class="mk-form"><svg viewBox="0 0 60 74"><path d="M10 2H52V64L44 72H2V10Z"/><circle cx="31" cy="20" r="7"/></svg>Slab<small>one glass, the AI inside it</small></div>
+        <div class="mk-form"><svg viewBox="0 0 60 74"><circle cx="30" cy="12" r="8"/><path d="M22 22L12 40M38 22L48 40"/><path d="M14 40H50V68L44 73H8V46Z"/></svg>Holo slab<small>the AI floats above</small></div>
+        <div class="mk-form on"><svg viewBox="0 0 60 74"><path d="M8 2H52V28H8Z"/><circle cx="30" cy="15" r="6"/><path d="M14 31H22M38 31H46"/><path d="M8 34H52V66L46 72H2V40Z"/></svg>Clamshell<small>the AI talks on the lid</small></div>
+      </div></div>
+    <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-star-half-stroke"></i>Quality</div>
+      <div class="mk-pills"><span class="mk-pill">Poor</span><span class="mk-pill on">Standard</span><span class="mk-pill">Excellent</span></div>
+      <div class="mk-hint">Sets the default DV of a skill bypass on this device (your numbers, set once in Module Settings). Excellent devices can have a holo slab.</div></div>
+    <div class="mk-cfg__sec"><div class="mk-cfg__k"><i class="fas fa-robot"></i>Its AI</div>
+      <div class="mk-names" style="grid-template-columns:110px 1fr"><span>Name</span><span class="v">LÓNG</span><span>To a stranger</span><span class="v">Present the owner's hand.</span><span>Face</span><span class="v">line-drawn (made from its name) ▾</span></div></div>
+  </div></div>
+
+  <div class="ncm-app ncm-admin-panel mk-adm" data-adm><div class="mk-cfg">
+    <div class="mk-cfg__hd"><i class="fas fa-font" style="color:var(--ncm-act)"></i><div><b>Module Settings → Agent app names</b><small>What players see on every Agent. GM tools keep saying Mail, Chats…</small></div></div>
+    <div class="mk-cfg__sec"><div class="mk-names">
+      <span>Mail</span><span class="v">ZPost</span><span>Chats</span><span class="v">BabelChat</span>
+      <span>Calls</span><span class="v">Calls</span><span>People</span><span class="v">People</span>
+      <span>Chips</span><span class="v" style="color:var(--ncm-text-secondary)" title="Follows What Players Call a Shard">= the shard word</span><span>Money</span><span class="v">BangMe!</span>
+      <span>Search</span><span class="v">Ask Alex</span><span></span><span></span>
+    </div><div class="mk-hint">Empty = the default. Change "ZPost" to "Mail" for a plain table.</div></div>
+  </div></div>
+</div>
+
+<template id="faceTpl"></template>
+<script>
+  const t = new URLSearchParams(location.search).get('t') || 'clean-dark';
+  document.querySelectorAll('[data-adm]').forEach((e) => { e.dataset.ncmAdminTheme = t; });
+
+  // ── the app names table (the world setting) ──
+  const APPS = { mail: 'ZPost', chats: 'BabelChat', calls: 'Calls', people: 'People', chips: 'Chips', money: 'BangMe!' };
+
+  // ── a line-drawn face (in the build: seeded from the AI's name) ──
+  function face(size = 120) {
+    const lat = [-30, -16, -2, 12, 26, 38].map((y) => { const w = Math.sqrt(Math.max(0, 1 - (y / 50) ** 2)) * 36; return `<path class="m" d="M${60 - w} ${62 + y} Q60 ${62 + y + 5} ${60 + w} ${62 + y}"/>`; }).join('');
+    const mer = [0.35, 0.7].map((k) => `<ellipse class="m" cx="60" cy="62" rx="${36 * k}" ry="50"/>`).join('');
+    const px = Array.from({ length: 14 }, (_, i) => { const a = i * 2.4, r = 52 + (i % 4) * 7; return `<rect class="px" x="${60 + Math.cos(a) * r}" y="${62 + Math.sin(a) * r * .9}" width="${2 + (i % 3)}" height="${2 + (i % 3)}"/>`; }).join('');
+    return `<svg class="ncm-ag__face" width="${size}" height="${size * 1.08}" viewBox="0 0 120 130">
+      ${px}<ellipse class="o" cx="60" cy="62" rx="36" ry="50"/>${mer}${lat}
+      <path class="f" d="M40 50 L52 52 M68 52 L80 50"/><path class="f" d="M43 56 Q48 53 53 56 Q48 59 43 56Z M67 56 Q72 53 77 56 Q72 59 67 56Z"/>
+      <path class="f" d="M60 58 L57 76 L63 76"/><path class="f" d="M50 88 Q60 93 70 88"/>
+      <path class="m" d="M38 104 Q44 122 50 128 M82 104 Q76 122 70 128"/>
+      <circle class="n" cx="24" cy="62" r="1.6"/><circle class="n" cx="96" cy="62" r="1.6"/><circle class="n" cx="60" cy="12" r="1.6"/></svg>`;
+  }
+  const status = (l, r = '<i class="fas fa-lock"></i>') => `<div class="ncm-ag__status"><span>${l}</span><span class="sp"></span>${r}</div>`;
+  const say = (ai, line) => `<div class="ncm-ag__say"><b>${ai}</b>${line}</div>`;
+  const cmds = (on, counts = {}, off = []) => `<div class="ncm-ag__cmds">${[['mail', 'fa-envelope'], ['calls', 'fa-phone'], ['chats', 'fa-comments'], ['people', 'fa-address-book'], ['chips', 'fa-microchip']]
+    .map(([k, ic]) => `<span class="ncm-ag__cmd${k === on ? ' on' : ''}${off.includes(k) ? ' off' : ''}"><i class="fas ${ic}"></i>${APPS[k]}${counts[k] ? `<em>${counts[k]}</em>` : ''}</span>`).join('')}</div>`;
+  const slip = (k, t, x, cls = '') => `<div class="ncm-ag__slip ${cls}"><div class="k">${k}</div><div class="t">${t}</div>${x ? `<div class="x">${x}</div>` : ''}</div>`;
+  const foot = (html, ro, mine = false) => `<div class="ncm-ag__foot${mine ? ' mine' : ''}">${html}<span class="sp"></span><span class="ro">${ro}</span></div>`;
+  const pad = `<div class="ncm-ag__pad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k) => `<span class="${k ? '' : 'b'}">${k}</span>`).join('')}</div>`;
+
+  function device({ form, look, model, body, lid, glassH, extra = '' }) {
+    const shell = (inner, h, label = '') => `<div class="ncm-ag__shell"><div class="ncm-ag__bezel"><div class="ncm-ag__glass" style="${h ? `height:${h}px` : ''}">${inner}</div></div>${label ? `<div class="ncm-ag__model">${label}</div>` : ''}</div>`;
+    const holo = form === 'holo' ? `<div class="ncm-ag__holo"><div class="ncm-ag__beam"></div>${face(118)}</div>` : '';
+    const top = form === 'clamshell' ? `<div class="ncm-ag__lid">${shell(lid)}</div><div class="ncm-ag__hinge"><i></i><i></i></div>` : '';
+    return `<div class="ncm-ag" data-form="${form}" data-look="${look}">${holo}${top}${shell(body + extra, glassH, model)}</div>`;
+  }
+  const put = (id, cap, html) => { document.getElementById(id).insertAdjacentHTML('beforeend', `<div><div class="mk-cap">${cap}</div>${html}</div>`); };
+
+  // ═══ 1 · your own ═══
+  put('row1', 'Home <em>· holo slab, full access</em>', `<div class="mk-toggle"><span>Desktop</span><span class="on">Agent</span></div>` + device({ form: 'holo', look: 'player', model: 'Zetatech Grade A-Plus', glassH: 500,
+    body: status('CitiNet · 82%', '<i class="fas fa-battery-three-quarters"></i>')
+      + say('MIRA', 'Three new on ZPost, Rache. Hands moved Saturday’s drop. <small>Also: you owe Ana a call.</small>')
+      + cmds('', { mail: 3, calls: 1 })
+      + `<div class="ncm-ag__slips">${slip('<b>ZPost</b> · Mr. Hands · 20:12', 'Saturday, not Friday', 'The Kabuki drop moves to Saturday. Bring the chip.', 'new')}${slip('<b>Calls</b> · missed · 19:40', 'Ana', 'No voicemail', 'miss')}${slip('<b>BabelChat</b> · The Crew · 18:02', 'V: "who has the van?"', '4 new lines', 'new')}</div>`
+      + foot('<i class="fas fa-user"></i><b>Rache</b> · rache@nightcity.net', 'YOURS', true) }));
+  put('row1', 'ZPost · a message <em>· the AI steps back to one line</em>', `<div class="mk-toggle" style="visibility:hidden"><span>.</span></div>` + device({ form: 'holo', look: 'player', model: 'Zetatech Grade A-Plus', glassH: 500,
+    body: status('ZPost', '<i class="fas fa-chevron-left"></i>')
+      + `<div class="ncm-ag__read"><div class="who">From <b>Mr. Hands</b> · Fri 20:12</div><h4>Saturday, not Friday</h4>
+         <p>The Kabuki drop moves to Saturday. Same stall, same time. Bring the chip and come alone.</p>
+         <div class="ncm-ag__att"><i class="fas fa-microchip"></i><span><b>Kabuki ledger</b> · chip, ICE</span></div></div>`
+      + say('MIRA', 'He wrote “alone” twice this month. <small>Want me to tell the crew?</small>')
+      + `<div class="ncm-ag__acts"><span class="ncm-ag__act"><i class="fas fa-reply"></i>Reply</span><span class="ncm-ag__act ghost"><i class="fas fa-share"></i>Forward</span><span class="ncm-ag__act ghost"><i class="fas fa-phone"></i>Call him</span></div>`
+      + foot('<i class="fas fa-user"></i><b>Rache</b>', 'YOURS', true) }));
+
+  // ═══ 2 · locked, three forms ═══
+  put('row2', 'Holo slab · passcode <em>· Yuri Vance, Zetatech</em>', device({ form: 'holo', look: 'player', model: 'Zetatech Grade A-Plus', glassH: 470,
+    body: status('CitiNet · 21:47')
+      + say('MIRA', 'You’re not Yuri. <small>Code, please.</small>')
+      + `<div class="ncm-ag__dots"><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="ncm-ag__tries"><b>2</b> tries before lockout</div>` + pad
+      + `<div class="ncm-ag__cmds" style="justify-content:center"><span class="ncm-ag__cmd"><i class="fas fa-fingerprint"></i>Biometric</span><span class="ncm-ag__cmd"><i class="fas fa-microchip"></i>Bypass</span></div>`
+      + foot('<i class="fas fa-hand"></i>Yuri’s · held by <b>Rache</b>', 'LOCKED') }));
+  put('row2', 'Clamshell · biometric with a key item <em>· Mei Kosaka, Kang Tao</em>', device({ form: 'clamshell', look: 'kangtao', model: 'Segotari Double Agent', glassH: 390,
+    lid: face(84) + `<div class="ncm-ag__lidsay"><b>LÓNG</b>Present the owner’s hand.</div>`,
+    body: status('KTNet · 34%')
+      + `<div class="ncm-ag__scan"><i class="fas fa-fingerprint fp"></i><span class="beam"></span></div>`
+      + `<div class="ncm-ag__keyrow pick"><span class="ico"><i class="fas fa-hand-dots"></i></span><span class="tx"><b>Cloned print film</b><small>in your inventory</small></span><span class="st">MATCH</span></div>`
+      + `<div class="ncm-ag__keyrow no"><span class="ico"><i class="fas fa-user"></i></span><span class="tx"><b>Mei Kosaka</b><small>her body is 9 squares away</small></span><span class="st">TOO FAR</span></div>`
+      + `<div class="ncm-ag__acts" style="justify-content:center"><span class="ncm-ag__act"><i class="fas fa-fingerprint"></i>Scan the film</span><span class="ncm-ag__act ghost"><i class="fas fa-keyboard"></i>Code</span></div>`
+      + foot('<i class="fas fa-hand"></i>Mei’s · held by <b>Hana Ito</b>', 'LOCKED') }));
+  put('row2', 'Slab · bypass, last try <em>· a street burner, poor quality</em>', device({ form: 'slab', look: 'street', model: 'Mediaware burner', glassH: 560,
+    extra: '<div class="ncm-ag__crack"></div>',
+    body: status('no net · 9%')
+      + `<div class="ncm-ag__pix">ಠ_ಠ</div>` + say('BUDDY', 'heh. nice try, choom.')
+      + `<div class="ncm-ag__roll"><div class="r"><span>Electronics/Security Tech</span><span class="dv">DV 13</span></div><div class="r" style="font-size:11px;color:var(--dim)"><span>your chance</span><span>62%</span></div><div class="bar"><i></i></div></div>`
+      + `<div class="ncm-ag__warn"><b>Last try.</b> It wipes itself if you fail — everything on it, for everyone.</div>`
+      + `<div class="ncm-ag__acts" style="justify-content:center;margin-top:0"><span class="ncm-ag__act"><i class="fas fa-dice-d20"></i>Roll</span><span class="ncm-ag__act ghost dim"><i class="fas fa-keyboard"></i>Code · 10 min</span></div>`
+      + foot('<i class="fas fa-hand"></i>held by <b>V</b>', '1 TRY') }));
+
+  // ═══ 3 · inside, and lock styles ═══
+  put('row3', 'Clamshell · ZPost, read-only <em>· Mei’s, cracked</em>', device({ form: 'clamshell', look: 'kangtao', model: 'Segotari Double Agent', glassH: 390,
+    lid: face(84) + `<div class="ncm-ag__lidsay"><b>LÓNG</b>Mei would not want you here.</div>`,
+    body: status('ZPost · read-only', '<i class="fas fa-lock-open"></i>')
+      + cmds('mail', { mail: 2 }, ['chats'])
+      + `<div class="ncm-ag__slips">${slip('<b>ZPost</b> · Kang Tao HR · 09:10', 'Your transfer to Beijing', 'Effective the 30th. Clear your desk by…', 'new')}${slip('<b>ZPost</b> · “Sister” · yest.', 'they know', 'Don’t go home tonight.', 'new')}${slip('<b>ZPost</b> · to Lt. Cho · Tue', 'Re: the files', 'Sent · I can get you the rest.')}</div>`
+      + `<div class="ncm-ag__acts"><span class="ncm-ag__act ghost"><i class="fas fa-address-book"></i>Save “Sister”</span><span class="ncm-ag__act ghost dim"><i class="fas fa-reply"></i>Reply as Mei</span></div>`
+      + foot('<i class="fas fa-hand"></i>Mei’s · held by <b>Hana Ito</b>', 'READ ONLY') }));
+  put('row3', 'Slab · Corporate lock style <em>· an Arasaka issue device</em>', device({ form: 'slab', look: 'corp', model: 'Arasaka secure slab', glassH: 560,
+    body: status('ARASAKA SECURE') + `<div class="ncm-ag__logo"></div>`
+      + `<div style="text-align:center;font:700 13px var(--ncm-font-mono);letter-spacing:.5em">ARASAKA</div><div style="text-align:center;font:10.5px var(--ncm-font-mono);letter-spacing:.2em;color:var(--dim);margin:2px 0 10px">ISSUED · K. TANAKA · SEC-4</div>`
+      + say('SENTINEL', 'Credentials required.')
+      + `<div class="ncm-ag__dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>`
+      + `<div class="ncm-ag__corp"><b>PROPERTY OF ARASAKA</b>Unauthorized access is logged and reported to Counterintelligence.</div>`
+      + foot('<i class="fas fa-hand"></i>held by <b>Rache</b>', 'LOCKED') }));
+  put('row3', 'Holo slab · Personal lock style <em>· Chen’s, a photo of his wife</em>', device({ form: 'holo', look: 'warm', model: 'Zetatech Grade A-Plus', glassH: 470,
+    body: `<div class="ncm-ag__photo"></div>` + status('CitiNet · 58%')
+      + `<div style="text-align:center;margin-top:8px;font:600 11px var(--ncm-font-mono);letter-spacing:.12em;text-shadow:0 1px 3px #0008">SATURDAY 15 AUGUST</div><div style="text-align:center;font:200 60px/1 var(--ncm-font-display);text-shadow:0 2px 6px #0007">8:12</div>`
+      + `<div style="margin:auto 14px 8px;padding:8px 11px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);font-size:12px;text-shadow:0 1px 2px #0006"><small style="display:block;font-size:10px;opacity:.85">BabelChat · Ana · now</small>Don’t forget the milk 💕</div>`
+      + say('JUNE', 'Hi! Chen’s busy. <small>Want to leave a message?</small>')
+      + foot('<i class="fas fa-hand"></i>Chen’s · held by <b>V</b>', 'LOCKED') }));
+</script>
+</body>
+</html>

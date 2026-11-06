@@ -9,6 +9,11 @@ Create an in-world browser that allows players to access fictional websites, int
 
 The browser should feel like a natural extension of Night City Messenger's existing digital ecosystem.
 
+> **Where it would live (2026-11-05):** the Agent design (`dev/design/AGENTS.md` §11) plans a launcher of "ask the AI"
+> command chips with editable app names; the setting's own apps map onto this section — **Ask Alex** (search /
+> browser), **the Garden** (social networks), **BangMe!** (marketplaces, payments). §2's applications would be more
+> chips on the same launcher.
+
 ### Website Types
 
 Websites can use predefined types to provide specialized content and functionality.

@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Agent AI v3 — mock</title>
+<!--
+  The Agent's AI, v3 (dev, 2026-11-05: "think generic man, Unreal-engine-ish male and woman… you're stylizing too much").
+  Realism cannot be sculpted from code; it comes from a REAL head mesh. This prototype loads a realistic scanned head
+  with ARKit face blend shapes (three.js's public example model "facecap.glb", loaded from a CDN for the MOCK ONLY —
+  its licence for shipping is not settled) and gives it the hologram treatment: a dim body, a fresnel rim, the mesh's
+  own topology as a wireframe (the reference's look), scanlines, a halo. The face animates through its real blend
+  shapes: jawOpen (talking), eyeBlink, mouthSmile / mouthFrown, browInnerUp / browDown, eyeSquint, eyeLook* (gaze).
+  For the build: a male and a female head we may ship (MakeHuman exports are CC0; or a bought asset), compressed glTF.
+  Needs network (three.js + the model from jsDelivr). Debug: ?look=yaw,pitch ?jaw=0..1 ?m=mood ?view=holo|wire|solid
+-->
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<style>
+  body { margin: 0; padding: 22px 26px 60px; background: radial-gradient(120% 70% at 50% 0%, #1d2430, #0a0c10 65%); color: #ddd; font-family: sans-serif; overflow-y: auto !important; height: auto !important; }
+  .mk-top { font: 700 20px sans-serif; margin: 0 0 4px; color: #eee; }
+  .mk-sub { color: #9aa; font: 13px/1.5 sans-serif; margin: 0 0 16px; max-width: 1100px; } .mk-sub b { color: #ddd; }
+  .mk-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
+  .mk-ctl { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #2c3442; background: rgba(10,14,20,.7); }
+  .mk-ctl h4 { margin: 0 0 6px; border: 0; font: 700 10px sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8ab; }
+  .mk-seg { display: flex; flex-wrap: wrap; gap: 5px; }
+  .mk-seg button { appearance: none; width: auto; height: auto; margin: 0; padding: 5px 10px; line-height: 1.2; border: 1px solid #3a4658; background: #121a24; color: #cde; font: 600 11.5px sans-serif; cursor: pointer; border-radius: 2px; box-shadow: none; }
+  .mk-seg button.on { background: var(--acc, #5ef2b0); color: #04110c; border-color: var(--acc, #5ef2b0); }
+  .mk-sw { display: flex; gap: 6px; } .mk-sw i { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; } .mk-sw i.on { border-color: #fff; }
+  .mk-note { font: 11.5px/1.45 sans-serif; color: #899; }
+  .mk-stage { display: flex; flex-direction: column; align-items: center; }
+  .mk-holo { position: relative; width: 560px; height: 620px; }
+  .mk-holo canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+  .mk-beam { position: absolute; left: 50%; bottom: 26px; width: 440px; height: 560px; transform: translateX(-50%); clip-path: polygon(44% 100%, 56% 100%, 100% 0, 0 0);
+    background: linear-gradient(0deg, color-mix(in srgb, var(--acc) 26%, transparent), transparent 85%); opacity: .4; }
+  .mk-pad { position: absolute; left: 50%; bottom: 6px; width: 300px; height: 44px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 55%, transparent), transparent); filter: blur(2px); opacity: .7; }
+  .mk-speech { min-height: 52px; max-width: 520px; margin-top: 6px; padding: 9px 14px; border-left: 2px solid var(--acc); background: rgba(255,255,255,.03); font: 600 15px/1.4 var(--ncm-font-display, sans-serif); color: #eef; }
+  .mk-speech b { display: block; font: 700 10px var(--ncm-font-mono, monospace); letter-spacing: .3em; color: var(--acc); margin-bottom: 3px; }
+  .mk-msg { color: #9ab; font: 12px monospace; margin-top: 6px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="mk-top">The Agent's AI — v3, a real head</div>
+<p class="mk-sub">A <b>realistic head model</b> (a scan, with the 52 face-capture blend shapes phones use) given the hologram treatment. Its own mesh
+topology is the wireframe — like the reference. The face moves through real blend shapes: the jaw when it talks, the lids when it
+blinks, the brows, cheeks and mouth corners with its mood, the eyes where you are. <b>Male only in this mock</b> — a female (and the
+male we ship) need a model we're allowed to distribute; see the note.</p>
+<div class="mk-wrap">
+  <div class="mk-ctl">
+    <div><h4>Look</h4><div class="mk-seg" data-ctl="view"><button data-v="holo">Hologram + wire</button><button data-v="wire">Wire only</button><button data-v="solid">Solid glow</button></div></div>
+    <div><h4>Mood</h4><div class="mk-seg" data-ctl="mood"><button data-v="calm">Calm</button><button data-v="happy">Happy</button><button data-v="suspicious">Suspicious</button><button data-v="alarm">Alarm</button></div></div>
+    <div><h4>Colour</h4><div class="mk-sw" data-ctl="acc"><i data-v="#5ef2b0" style="background:#5ef2b0"></i><i data-v="#19f3f7" style="background:#19f3f7"></i><i data-v="#ff5b4a" style="background:#ff5b4a"></i><i data-v="#ffb37a" style="background:#ffb37a"></i><i data-v="#c9a7ff" style="background:#c9a7ff"></i><i data-v="#f2f2f2" style="background:#f2f2f2"></i></div></div>
+    <div><h4>Make it talk</h4><div class="mk-seg" id="lines"></div></div>
+    <div class="mk-note"><b>Shipping models:</b> MetaHuman can't be used (its licence only allows rendering in Unreal). Realistic heads we could ship:
+      <b>MakeHuman</b> exports (CC0 — a generic realistic man, woman and anything between, with face expressions), or a bought head with a
+      redistribution licence. One compressed glTF per build (~1–3 MB), in <code>assets/</code>.</div>
+  </div>
+  <div class="mk-stage">
+    <div class="mk-holo"><div class="mk-beam"></div><div class="mk-pad"></div><div id="host" style="position:absolute;inset:0"></div></div>
+    <div class="mk-speech"><b>MIRA</b><span id="text">Loading the head…</span></div>
+    <div class="mk-msg" id="msg"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const Q = new URLSearchParams(location.search);
+const state = { view: Q.get('view') || 'holo', mood: Q.get('m') || 'calm', acc: '#5ef2b0' };
+const MOODS = { // blend-shape targets per mood
+  calm:       { mouthSmile: .12, mouthFrown: 0, browInnerUp: 0, browDown: 0, eyeSquint: 0, eyeWide: 0 },
+  happy:      { mouthSmile: .75, mouthFrown: 0, browInnerUp: .15, browDown: 0, eyeSquint: .35, eyeWide: 0 },
+  suspicious: { mouthSmile: 0, mouthFrown: .3, browInnerUp: 0, browDown: .7, eyeSquint: .6, eyeWide: 0 },
+  alarm:      { mouthSmile: 0, mouthFrown: .5, browInnerUp: .8, browDown: 0, eyeSquint: 0, eyeWide: .7 },
+};
+const host = document.getElementById('host'), msg = (t) => { document.getElementById('msg').textContent = t; };
+const W = 560, H = 620;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.setSize(W, H); renderer.setClearColor(0, 0); host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(26, W / H, .1, 100); camera.position.set(0, -.02, 1.75);
+const rig = new THREE.Group(); scene.add(rig);
+const col = new THREE.Color(state.acc);
+
+// the hologram skin: dim body + key light + fresnel rim + scanlines (onBeforeCompile on a standard material keeps morph targets working)
+const uni = { uCol: { value: col }, uTime: { value: 0 } };
+function holoMat() {
+  const m = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: .6, metalness: 0, transparent: true, depthWrite: true });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uCol = uni.uCol; sh.uniforms.uTime = uni.uTime;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vWY;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWY = (modelMatrix * vec4(transformed, 1.)).y;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uCol; uniform float uTime; varying float vWY;')
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        float fr = pow(1. - abs(normal.z), 2.2);
+        float key = max(0., dot(normal, normalize(vec3(-.4, .5, .8))));
+        float scan = .9 + .1 * sin(vWY * 900. + uTime * 4.);
+        vec3 c = uCol * (.05 + .38 * key * key + 1.0 * fr) * scan + vec3(1.) * pow(fr, 6.) * .2;
+        gl_FragColor = vec4(c, clamp(.35 + fr, 0., 1.));`);
+  };
+  return m;
+}
+const wireMat = new THREE.MeshBasicMaterial({ color: col, wireframe: true, transparent: true, opacity: .22, depthWrite: false, blending: THREE.AdditiveBlending });
+let head = null, wire = null, dict = {}, meshes = [], wrapY = 0;
+
+const ktx2 = new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/basis/').detectSupport(renderer);
+new GLTFLoader().setKTX2Loader(ktx2).setMeshoptDecoder(MeshoptDecoder)
+  .load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/facecap.glb', (gltf) => {
+    const model = gltf.scene.children[0];
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = holoMat(); meshes.push(o);
+      if (o.morphTargetDictionary && Object.keys(o.morphTargetDictionary).length > 40) head = o;
+    });
+    // centre and scale the head in the rig
+    const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    model.position.sub(c); const s = .6 / size.y; wrapY = .04; const wrap = new THREE.Group(); wrap.add(model); wrap.scale.setScalar(s); wrap.position.y = wrapY; rig.add(wrap);
+    if (head) {
+      dict = head.morphTargetDictionary;
+      wire = new THREE.Mesh(head.geometry, wireMat); wire.morphTargetInfluences = head.morphTargetInfluences; wire.morphTargetDictionary = dict; head.add(wire);
+    }
+    document.getElementById('text').textContent = "Move the mouse. I'm watching.";
+    msg(head ? `${Object.keys(dict).length} blend shapes: ${Object.keys(dict).slice(0, 12).join(', ')}…` : 'No blend shapes found.');
+    applyView();
+  }, undefined, (err) => msg('Could not load the model (needs network): ' + (err?.message || err)));
+
+function applyView() {
+  for (const m of meshes) m.visible = state.view !== 'wire';
+  if (wire) { wire.visible = state.view !== 'solid'; wireMat.opacity = state.view === 'wire' ? .55 : .2; }
+  if (state.view === 'wire') for (const m of meshes) { if (m === head) { m.visible = true; m.material.opacity = 0; } }
+}
+
+// ── life: gaze, blink, talk, mood ──
+let tYaw = 0, tPitch = 0, yaw = 0, pitch = 0, gx = 0, gy = 0, idle = 0, blink = 0, nextBlink = 2, mouth = 0, speech = null, t = 0, last = performance.now(), fixed = null, holdJaw = null;
+const cur = { ...MOODS[state.mood] };
+if (Q.get('look')) { fixed = Q.get('look').split(',').map(Number); }
+if (Q.get('jaw')) holdJaw = Number(Q.get('jaw'));
+document.addEventListener('pointermove', (e) => { if (fixed) return; const r = renderer.domElement.getBoundingClientRect(); const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height * .42);
+  tYaw = Math.max(-1, Math.min(1, dx / 650)) * .7; tPitch = Math.max(-1, Math.min(1, dy / 480)) * .3; gx = Math.max(-1, Math.min(1, dx / 380)); gy = Math.max(-1, Math.min(1, dy / 380)); idle = 0; });
+const set = (name, v) => { if (!head) return; const i = dict[name]; if (i !== undefined) head.morphTargetInfluences[i] = v; };
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt; uni.uTime.value = t;
+  idle += dt;
+  if (fixed) { tYaw = fixed[0] * .7; tPitch = fixed[1] * .3; gx = fixed[0]; gy = fixed[1]; yaw = tYaw; pitch = tPitch; }
+  else if (idle > 2.5) { if (!frame.w || t > frame.w.until) frame.w = { y: (Math.random() - .5) * .5, p: (Math.random() - .5) * .2, until: t + 1 + Math.random() * 2 }; tYaw = frame.w.y; tPitch = frame.w.p; gx = frame.w.y * 1.4; gy = frame.w.p * 2; }
+  yaw += (tYaw - yaw) * (1 - Math.pow(.02, dt)); pitch += (tPitch - pitch) * (1 - Math.pow(.02, dt));
+  rig.rotation.set(pitch, yaw, 0); rig.position.y = Math.sin(t * 1.3) * .004;
+  nextBlink -= dt; if (nextBlink <= 0) { blink = 1; nextBlink = 2 + Math.random() * 4; } blink = Math.max(0, blink - dt * 7);
+  const lid = blink > 0 ? 1 - Math.abs(Math.cos(blink * Math.PI)) : 0;
+  let mt = 0;
+  if (speech) { speech.t += dt; while (speech.t > .05 && speech.i < speech.text.length) { speech.t -= .05; speech.i++; } const ch = speech.text[speech.i - 1] || ' ';
+    mt = /[aAoO]/.test(ch) ? .65 : /[eiuEIU]/.test(ch) ? .4 : /[ .,!?'mbpMBP]/.test(ch) ? 0 : .25; document.getElementById('text').textContent = speech.text.slice(0, speech.i);
+    if (speech.i >= speech.text.length && speech.t > .45) speech = null; }
+  mouth += (mt - mouth) * (1 - Math.pow(.00005, dt));
+  const tm = MOODS[state.mood]; for (const k in tm) cur[k] += (tm[k] - cur[k]) * (1 - Math.pow(.003, dt));
+  // drive the blend shapes (ARKit names)
+  set('jawOpen', holdJaw ?? mouth); set('mouthClose', 0);
+  for (const s of ['_L', '_R']) {
+    set('eyeBlink' + s, Math.min(1, lid + cur.eyeSquint * .25)); set('eyeSquint' + s, cur.eyeSquint); set('eyeWide' + s, cur.eyeWide);
+    set('mouthSmile' + s, cur.mouthSmile); set('mouthFrown' + s, cur.mouthFrown); set('browDown' + s, cur.browDown); set('cheekSquint' + s, cur.mouthSmile * .5);
+  }
+  set('browInnerUp', cur.browInnerUp);
+  // gaze: the eyes lead the head
+  const ex = gx * .8, ey = gy * .8;
+  set('eyeLookOut_L', Math.max(0, -ex)); set('eyeLookIn_L', Math.max(0, ex)); set('eyeLookIn_R', Math.max(0, -ex)); set('eyeLookOut_R', Math.max(0, ex));
+  for (const s of ['_L', '_R']) { set('eyeLookUp' + s, Math.max(0, -ey)); set('eyeLookDown' + s, Math.max(0, ey)); }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// controls
+const LINES = [["You're not Yuri. Code, please.", 'suspicious'], ['Three new on ZPost. Hands moved Saturday\'s drop.', 'calm'], ['Ana called! Want me to call her back?', 'happy'], ['Intrusion detected. Notifying the owner.', 'alarm']];
+document.getElementById('lines').innerHTML = LINES.map(([l], i) => `<button data-line="${i}">“${l.split(/[.!?]/)[0]}”</button>`).join('');
+document.getElementById('lines').addEventListener('click', (e) => { const b = e.target.closest('[data-line]'); if (!b) return; const [text, mood] = LINES[+b.dataset.line]; state.mood = mood; speech = { text, i: 0, t: 0 }; paint(); });
+function paint() {
+  document.documentElement.style.setProperty('--acc', state.acc);
+  document.querySelectorAll('[data-ctl]').forEach((g) => g.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === state[g.dataset.ctl])));
+}
+document.querySelectorAll('[data-ctl]').forEach((g) => g.addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; state[g.dataset.ctl] = b.dataset.v;
+  if (g.dataset.ctl === 'acc') { col.set(state.acc); } if (g.dataset.ctl === 'view') applyView(); paint(); }));
+paint();
+</script>
+</body>
+</html>
