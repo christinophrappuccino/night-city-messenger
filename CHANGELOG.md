@@ -3,10 +3,12 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
-## [Unreleased] — 2.1.0
+## [2.1.0] — 2026-11-05
+
+Everything since 2.0.7.
 
 ### Added
-- **Conversations.** Group chat beside mail: plain lines, pictures, shared contacts and numbers, and members who can be added or removed. A conversation sits in the inbox list with the mail. Switch it on in Module Settings. GMs watch and step in from Admin → Messages → Conversations.
+- **Conversations.** Group chat beside mail: plain lines, pictures, shared contacts and numbers, and members who can be added or removed. A conversation sits in the inbox list with the mail. Off by default: switch it on in Module Settings → Systems. GMs watch and step in from Admin → Messages → Conversations.
 - **Phone calls.** Numbers, a dial pad, voicemail, call logs, and calls over the scene. Talk out loud, type, or dictate. Calls follow the networks: a dead zone or a downed node drops them, and taps can catch them.
 - **Our own number system.** A number says where it was issued. The GM edits the place table, sets what players can pick, and can give numbers in bulk.
 - **Corporations and shared lines.** Switchboards, extensions, and voicemail with a real mailbox.
@@ -14,18 +16,59 @@ patch = fixes, minor = new features, major = breaking changes.
 - **Trauma Team and Lawman Backup calls,** with real dice and a countdown. Each has an opening, a tracker, an on-scene banner and an exit. The GM sets their names, pictures, spoken lines and titles. Backup can also change per organization or per Lawman: callsign, extra groups, colour, lights and sounds. The GM gets a toast and a short tone when one is called.
 - **Overheard calls.** Write a conversation between NPCs that players can catch.
 - **Payphones.** A booth on the map anyone standing at it can call from: the other end and a trace see the place, never the person. Calling one rings its scene, and the first person at it picks up. Wired, so they work in dead zones. The GM styles each booth (style, colours, grit, exposed wiring, graffiti, screen text, sounds) under Admin → Phone → Payphones, and can ring one as an NPC.
+- **What players call a payphone** (Module Settings, beside the shard name): any word, such as Public Comm. Players see it on the booth, on calls from one, on its map pins (renamed when you change it) and in messages. GM windows keep saying "payphone".
 - **Search, filters and date folds on every call log and voicemail list.**
 - **Watching another player.** A player can share a terminal, shard or node window, and others watch a live copy.
 - **A roll panel.** Shows the formula, the DV, your chance, and Luck before the die moves.
 - **Network programs in the Workshop,** with Install on a shard from the library.
 - **Sharing a contact's address, number or both.** Who knows whom shows them separately.
+- **NPCs have their own contact lists.** "Who X knows", and Share with… lists NPCs too.
+- **Typed calls, transcripts, voicemail with typed or recorded greetings, recorded voice, and dictation** (the browser's speech recognition, with a consent notice).
+- **Calls on the network.** Drops with a reason (dead zone, jammed node, changed network), withheld numbers that a Trace can reveal, and taps that catch answered calls.
+- **A call log editor** for any line or terminal account: add, edit or delete entries, fill in a week, CSV.
+- **A phone button in the scene controls.**
+- **Every NPC has an inbox the GM can read.** The GM's Identity drawer has Switch inbox, and Character Select has an NPCs section, including NPCs with no sheet.
+- **Admin → Messages → New is a menu,** with Message as an NPC inside it.
+- **Switch whole systems on or off** (Module Settings → Systems): Conversations, Calls, and the three parts of Calls (Payphones, Emergency lines, Overheard calls). A system that is off is not loaded at all, and nothing is deleted.
+- **Simple network mode** (the Network simulation switch): every scene is on CitiNet with full signal, with no dead zones, logins, restricted mail or network nodes.
+- **A Trace consequences switch.** Heat, the GM's trace alert and the player's trace splash can be turned off and on at once, with no reload.
+- **Module Settings are in sections** (Systems, Mail, Email addresses, Anonymous send, Spam filter, GM alerts, Shards & terminals, Date & time, Advanced) instead of one long list.
+- **The startup report.** If part of NCM fails to start, the GM gets one notice that names it and says what stopped working.
+- **For module authors: public API v2** (`game.modules.get('night-city-messenger').api.v2`, documented in `docs/API.md`). Every call answers `{ ok, data }` or `{ ok: false, code, error }`. 2.1.0 adds GM writes (directory add, update and push to a player, group push), placing calls and reading call logs, and setting a scene's network. The v1 fields still work.
 
 ### Changed
 - **A tie now fails.** On forge and encode rolls, a tie lands on the sloppy rung.
 - **Interface rolls Rank + 1d10 by default.** A world with saved Interface DVs is asked once what to do with them.
 - **When the GM decides a roll, players see no DV or chance.**
+- **Moves follow the book's table.** The sliding DV reduction and the bonus move for a big margin are off unless the GM turns them on.
+- **Rolls follow the chat box's roll mode** (public, GM, blind or self), for the Dice So Nice dice and the chat card.
+- **Every NCM dialog uses Foundry's newer dialog window.** It looks and behaves the same, and keeps working when Foundry removes the old one.
+- **The trace log and network access log moved to a GM-only journal**, as did the recycle bin. Players no longer download them every time they log in. They are moved across once when the world loads, and the old copy is emptied only after the move is checked.
+- **The Items sidebar's right-click entries** (Open, Configure, … options ▸, Convert) are part of Foundry's own menu now, and "options ▸" opens just under the item.
+- **The admin panel's keyboard tooltip names what each number key opens.** It said "in the order shown", but Phone has no key, so from 5 on every key opened the tab after the one you counted to.
+- **Forward is on by default for new terminals.** Terminals that saved it off stay off.
+- **Old phone numbers are cleared on upgrade.** They were free text from before the number system.
+- **Needs a reply is a list.** One line per NPC and the identity they wrote to: who is waiting, for how long, and the last thing they wrote. **Reply** opens the composer as that NPC or alias, to everyone waiting; the inbox button opens the NPC's inbox at the message; ✓ marks it answered. Search, four sorts, grouping by NPC or player, a page at a time, and the answered lines folded at the bottom. The thread, persona panel and inline reply box are gone (the NPC's own inbox and the composer do that job).
+- **The Agent's header has fewer buttons.** Compose has a ▾ with New conversation; a player's ⚙ ▾ holds Settings & theme and the Player guide.
+- **The Messages filter row is shorter.** Drafts, Scheduled, the exfil folder, Spam and Trash are behind **More ▾**, which shows a red count when Spam or the exfil folder has something unread. The folder you open shows as a chip. **Mark all read** is a strip under Unread.
+- **My line's tools are icons,** and the ? sits beside the label.
+- **The inbox footer follows the tab.** Calls lists / Dial · Enter Call · Esc Close (/ jumps to the number box, Esc closes the directory); Chips lists / Search · ↑↓ · Enter Open, and the search box now searches chips by name or sender. The top search box is gone from Calls, whose log has its own. A Chips filter pill no longer resets when the list redraws.
+
+### Security
+- **Players can no longer pretend to be the GM or another player** in the messages NCM sends between browsers. Foundry's server now confirms who sent each one.
+- **A player can no longer make the GM's browser run a macro.**
+- **Every player request the GM acts on is checked:** who is asking, whether that character is theirs, and whether they can reach the shard, terminal, account or node. The GM works out what a player's action does instead of accepting a result the player sent. This covers shard hacks, terminal downloads and sessions, mail, scheduling, contact sharing, traces, network nodes, call logs, emergencies and netrun results.
+- **Names, subjects and other text players type can no longer run script,** wherever they appear: toasts, tooltips, GM dialogs, the admin panel, chat cards, stored mail and shard entries, and watched windows.
+- **Stored mail and shard text keep their formatting,** but scripts, `javascript:` links and dangerous styles are removed when shown.
+- **Mail a player sends is checked again by the GM before delivery** (send-only addresses, "must be in the directory"). In a group send, only the refused people are dropped, and the player is told who and why.
+- **A payphone hides its caller on screen.** Whoever answers sees the booth, not the person on it.
 
 ### Fixed
+- **The phone directory filled the whole Agent and could not be closed.** It covered the header, whose buttons sat over its Close. It now opens inside the Calls area.
+- **The phone directory was white on white.** The Cyberpunk RED system's button style won over its tabs and rows, and its search box had no style at all.
+- **The ? on My line was clipped by the card's corner** once Text Size went above 100%.
+- **The Call button covered the keypad's bottom row** (7, 8, 9 and 0) at the Agent's normal size, worse with a second line or Call for backup. The button no longer floats over the pad; a tall dial column scrolls instead.
+- **The inbox's Dates / Sort / Filters row ran off the message column** once a date range was set. It wraps now, and Filters is no longer the only one in capitals.
 - **Held mail survives a reload.** Mail queued in a dead zone or with no GM online used to be lost when the page reloaded, along with any eddies taken for it. If held mail is refused when it finally sends, the player is now told why.
 - **Add on mail from an alias saved the main address.**
 - **Scheduled mail to several people read "Unknown".** Edit also lost its recipients and settings.
@@ -33,6 +76,66 @@ patch = fixes, minor = new features, major = breaking changes.
 - **Refused scheduled mail retried forever without saying so.** It now stops, refunds and shows in Outbox.
 - **A timed self-destruct on scheduled mail could arrive already expired.**
 - **A player's To search showed addresses they had not been given.**
+
+**Other modules and Foundry**
+- **The token HUD's elevation box was locked for everyone.** NCM's `or` / `and` template helpers replace Foundry's for every template, and they gave the wrong answer inside a subexpression. They now answer exactly like Foundry's.
+- **Grid Scaler (and other modules) opened instead of the messenger** from the scene controls. NCM's button group now has its own layer.
+- **NCM no longer fails to start on a slow host:** everything it sets up at startup is in place before the game loads. Its templates no longer depend on helpers other modules can replace.
+- **Dragging a terminal or shard to the hotbar works with the Cyberpunk RED system,** and a terminal's item sheet opens the terminal.
+- **Map notes are switched on once per user,** instead of coming back on at every load.
+- **Dragging an item from inside a compendium no longer throws an error.** Chat-card buttons work in a popped-out chat log.
+- **NCM's stylesheet no longer styles other modules' elements.**
+- **A phone preview no longer changes `game.user.isGM`** for the rest of the session.
+
+**Mail**
+- **With two GMs logged in, mail, traces and plants no longer happen twice.** One GM handles each request.
+- **A message sent while the GM's answer is slow is no longer delivered twice or refunded too early.** With no answer it is held, not failed, and goes out shortly after a GM connects.
+- **Scheduled mail:** the delivering GM confirms adding, cancelling and editing, and eddies come back only once that is confirmed. A player's scheduled mail obeys the player's rules when it is delivered.
+- **The broadcast icon in Admin → Messages shows again.** Low-signal garble and the Reconstruct roll apply again, to a player's sends only. Tapped conversations keep their running log.
+- **Taps, exfil copies, tap logs and files no longer pop a "new message" toast,** and a second GM is no longer toasted for every player's mail.
+- **Saving one field of a message no longer re-sends the whole record,** so an out-of-date copy can't undo a just-claimed eddies payment or a just-read flag.
+- **Rich text keeps the space between two formatted words** ("**Hello** *world*" no longer becomes "Helloworld").
+
+**Contacts and identities**
+- **Changes to the GM directory reach every client without a reload.**
+- **Deleting an NPC's main identity makes one of its aliases the new main,** so the aliases' mail still has a home. Mail to a deleted character reaches its directory entry.
+- **If the sender's sent copy can't be saved, the GM is told.**
+- **Contact-list changes from different places** (sharing, phone numbers, the contact manager) no longer overwrite each other.
+- **Sharing an alias never gives away its main person or number.**
+
+**Shards, terminals and programs**
+- **No money or program charges are lost when no GM is online:** siphons, eddies claims and program runs are refused instead.
+- **A program spends one charge each time it runs;** one with no charges set runs once.
+- **Destroying an archive copy of a shard no longer wipes the player's real shard.** Purging a real shard also unconverts its archive copies.
+- **Backdoor accounts and timed programs on terminals carried by a character now expire and fire,** not only on terminals in the Items directory.
+- **Lockouts and failed tries survive a reload.**
+- **The Shard Encoder handles two conversions at once.**
+- **Shard and terminal badges keep fixed colours** on sheets and in the Items directory, whatever the player's theme.
+- **Simultaneous terminal logins no longer overwrite each other.**
+- **Workshop programs:** descriptions save and show; custom malware stays Custom and keeps its macro; program settings reach the effect (Backdoor's username and duration work); "After an action" and "On a date" triggers fire; "What a scan reports" is stored and shown, and Analyze can expose disguised malware; Wipe and Corrupt ask which files; other payloads run when pushed; a full shard is reported instead of claiming success.
+- **Setting a shard's price or unconverting it no longer loses the GM's answer** when two requests cross.
+
+**Calls and payphones**
+- **When someone disconnects, their calls end on every client** and their payphone is freed.
+- **A payphone caller can leave voicemail,** and only the person who answered can talk into a call.
+- **The booth's handset cord reaches the handset in the Foundry desktop app.** Hanging up puts the handset back and no longer reopens the booth. Key tones play, and long numbers no longer push the dial pad aside.
+- **A ringing payphone's bell stops by itself** once the call ends.
+- **The Admin → Phone call log and voicemail were always empty.** They fill in now, and update live.
+
+**Admin panel and performance**
+- **The unread badge no longer creates empty inboxes.** Orphan Audit lists empty ones and deletes them only if you tick the box, and also repairs aliases whose main was deleted and contacts linked to a deleted character.
+- **Admin → Messages and the GM's inbox roster no longer rescan every page in the world on each redraw.**
+- **With two GMs online, they no longer erase each other's network access log entries.**
+- **Admin → Tools → Force Refresh does what it says:** every client re-reads NCM's contacts and redraws its open NCM windows.
+- **Create Network opens again,** and windows no longer stack duplicate listeners on each redraw.
+- **Watched windows no longer flood the network** while they animate.
+- **The weak-signal wave redraws about 12 times a second instead of 60,** and stops while the inbox is minimized or motion is turned down.
+- **Cut corners keep their border** on toasts, terminal tabs and rows, inbox postmarks and the ICE hexagon.
+
+### Under the hood
+- Ready for Foundry v13: moved Foundry functions go through one compatibility file, and NCM runs cleanly in a v13 test world. Cyberpunk RED data is read through one file, so a system update is a one-file fix.
+- Every check (syntax, file-name case, about 170 simulations) runs automatically before every dev build and release, once as Foundry v12 and once as v13.
+- A dev channel: every change to the dev branch publishes a test build on its own manifest, which never reaches normal installs.
 
 ## [2.0.7] — 2026-10-31
 
