@@ -21,7 +21,7 @@ import { JACK_ACTIONS, JACK_BUILT, resolveJackIn, jackInDV, movesFor, actionView
 import { runJackIn } from './JackInLock.js';
 import { requestNetAdjudication, postNetActionCard } from '../content/NetResolve.js';
 import { BaseApplication } from '../BaseApplication.js';
-import { liveRun, NODE_KINDS, ALERT_LEVELS, NODE_EFFECTS, NODE_PROGRAMS, nodeStateAt, stateLabel, nodeHex, nodeFirmware, tickerLines, activeEffects, nodeProgramKind, familyNodes } from '../../utils/networkNodes.js';
+import { liveRun, NODE_KINDS, ALERT_LEVELS, NODE_EFFECTS, NODE_PROGRAMS, nodeStateAt, stateLabel, nodeHex, nodeFirmware, tickerLines, activeEffects, nodeProgramKind, familyNodes, CUSTOM_FIRE_ON } from '../../utils/networkNodes.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { editNodeDialog } from './NodeDialogs.js';
 
@@ -444,6 +444,8 @@ export class NodeConsoleApp extends BaseApplication {
       }
       await this._saveRun(true);
       if (actor) trace?.logSuccess?.({ ...tr, outcome: 'success', severity: 'minor' });
+      // someone else's custom routine waiting for a jack-in fires now (GM side, NetworkService.noteJackIn)
+      if (actor) await ns.noteJackIn?.(node.id, actor.id);
     } else {
       if (actor) sec?.recordFailedAttempt?.(actor.id, key);
       if (rules.failure.alert) await ns.bumpNodeAlert(node.id, 1);
@@ -641,7 +643,7 @@ export class NodeConsoleApp extends BaseApplication {
         const cd = e.contentData || {};
         const kind = cd.uploadable ? nodeProgramKind(cd.uploadEffect) : null;
         if (!kind) continue;
-        out.push({ id: `${shard.id}:${e.messageId}`, kind, name: cd.program || e.subject || cd.name || NODE_PROGRAMS[kind].label, shard, entry: e, cd });
+        out.push({ id: `${shard.id}:${e.id}`, kind, name: cd.program || e.subject || cd.name || NODE_PROGRAMS[kind].label, shard, entry: e, cd });
       }
     }
     return out;
@@ -681,7 +683,8 @@ export class NodeConsoleApp extends BaseApplication {
           family: 'execute', effectType: `node${p.kind}`, _p: p })),
         outcomeFor: (prog) => ({ what: `<b>${prog.name}</b> — ${NODE_PROGRAMS[prog._p.kind].blurb}`,
           when: prog._p.kind === 'worm' ? `spreads every ${prog._p.cd.uploadParams?.every ?? 3} h, up to ${prog._p.cd.uploadParams?.maxNodes ?? 6} nodes${prog._p.cd.uploadParams?.carry ? `, carrying a ${NODE_PROGRAMS[prog._p.cd.uploadParams.carry]?.label}` : ''}`
-            : prog._p.kind === 'bomb' ? `goes off ${prog._p.cd.uploadParams?.delay ?? 2} h after you insert it` : prog._p.kind === 'patch' ? 'right away' : 'from the moment it lands' }),
+            : prog._p.kind === 'bomb' ? `goes off ${prog._p.cd.uploadParams?.delay ?? 2} h after you insert it` : prog._p.kind === 'patch' ? 'right away'
+              : prog._p.kind === 'custom' ? (CUSTOM_FIRE_ON[prog._p.cd.uploadParams?.fireOn] || CUSTOM_FIRE_ON.insert).toLowerCase() : 'from the moment it lands' }),
       });
       if (!picked) return;
       const pick = picked.program._p;
@@ -719,7 +722,9 @@ export class NodeConsoleApp extends BaseApplication {
       }
       const quality = forgeQualityFromMargin(total, dv);
       const r = await ns.insertProgram(node.id, pick.kind, { name: pick.name, actorId: actor.id, actorName: actor.name, quality,
-        stealthDV: stealthDVFromQuality(quality, pick.cd.uploadStealthDV), params: pick.cd.uploadParams || {} });
+        stealthDV: stealthDVFromQuality(quality, pick.cd.uploadStealthDV), params: pick.cd.uploadParams || {},
+        // which program it was: the GM reads a custom routine's words and macro from this entry (programSource.js)
+        source: { itemUuid: pick.shard.uuid, entryId: pick.entry.id } });
       if (!r?.success) return void ncmNotify.warn(r?.error || 'It did not install.');
       this._flash('insert', pick.kind === 'patch' ? 'NODE PATCHED' : rung === 'sloppy' ? 'INSTALLED — GLITCHY' : 'INSTALLED');
       ncmNotify.info(pick.kind === 'patch' ? `Patched — ${r.relayed ? 'the node is being cleaned' : `${r.cleaned} infection(s) cleaned`}.` : `${pick.name} installed${rung === 'sloppy' ? ' — glitchy: a sweep will find it easily' : ''}.`);

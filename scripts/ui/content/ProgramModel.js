@@ -205,7 +205,8 @@ export function programToEntry(program) {
       // authored glyph
       ...(p.icon ? { iconClass: p.icon } : {}),
       // a custom routine: the GM's macro, run when it fires
-      ...(p.verb === 'adjudicate' && p.mode === 'macro' && p.macroId ? { effect: { type: 'adjudicate', macroId: p.macroId } } : {}),
+      // (a custom NETWORK routine keeps its macro the same way: the GM reads it from this entry at insert, programSource.js)
+      ...((p.verb === 'adjudicate' || p.verb === 'nodeCustom') && p.mode === 'macro' && p.macroId ? { effect: { type: p.verb, macroId: p.macroId } } : {}),
       // uploadable — the whole point of a malware file
       uploadable: true,
       uploadDV: Number(p.uploadDV) || 9,
@@ -314,11 +315,12 @@ export function programSentence(program) {
   const p = program || {};
   const info = abilityInfo(p.verb);
   const blurb = info?.blurb || 'runs a routine you describe';
+  // a network program has no terminal trigger (this used to fall into the branch below and read "on login")
+  if (isNodeVerb(p.verb)) return { blurb, tail: ', once it is inserted into a network node' };
   if (p.type === 'malware' && p.verb !== 'plant' && p.verb !== 'adjudicate') {
     const t = TRIGGERS[p.trigger] || TRIGGERS.onLogin;
     return { blurb, tail: `, ${t[1]}` };
   }
   if (p.verb === 'plant') return { blurb: 'leaves a forged file for whoever looks next', tail: '' };
-  if (isNodeVerb(p.verb)) return { blurb, tail: ', once it is inserted into a network node' };
   return { blurb, tail: ', the moment someone runs it' };
 }

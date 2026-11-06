@@ -108,6 +108,12 @@ export class NodeInspectorApp extends BaseApplication {
       if (i.kind === 'bomb') bits.push(`goes off in ${mins(i.fireAt - now)}`);
       if (i.kind === 'sniffer') bits.push(`${i.loot.length} of ${i.cap} mails caught`);
       if (i.carry) bits.push(`carries a ${NODE_PROGRAMS[i.carry].label.toLowerCase()}`);
+      if (i.kind === 'custom') {
+        if (i.fireOn !== 'jackIn') bits.push('fired on insert');
+        if (i.fireOn !== 'insert') bits.push(i.jackFiredAt ? `fired on a jack-in at ${time(i.jackFiredAt)}` : 'waits for someone else to jack in');
+        if (i.description) bits.push(`“${i.description.length > 90 ? `${i.description.slice(0, 90)}…` : i.description}”`);
+        if (i.macroId) bits.push(`macro: ${game.macros?.get(i.macroId)?.name || 'missing'}`);
+      }
       bits.push(`a sweep finds it at DV ${i.stealthDV}`);
       return { id: i.id, family: i.family, icon: P.icon, label: i.name || P.label, kindLabel: P.label, by: i.actorName || '', sloppy: i.sloppy,
         quest: i.quest, note: i.note, detail: bits.join(' · '), isSniffer: i.kind === 'sniffer', loot: i.loot.length, isWorm: i.kind === 'worm' };

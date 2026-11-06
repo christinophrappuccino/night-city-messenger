@@ -471,14 +471,31 @@ export class TerminalScenePins {
       const ids = doc.behaviors?.contents?.map(b => ({ _id: b.id, disabled: !!hidden })) ?? [];
       if (ids.length) await doc.updateEmbeddedDocuments('RegionBehavior', ids);
       await doc.setFlag(MODULE_ID, 'accessHidden', !!hidden);
+      const ref = doc.getFlag(MODULE_ID, 'access');
+      if (!hidden && ref?.kind === 'node') await this._revealNodeOf(ref.id);
       return;
     }
+    if (!hidden && nodePinOf(doc)) await this._revealNodeOf(nodePinOf(doc));
     const item = nodePinOf(doc) || payphonePinOf(doc) ? null : this._resolveItem(doc);
     const entryId = hidden ? (await this._hiddenJournal())?.id
       : nodePinOf(doc) ? (await this._nodesJournal())?.id
       : payphonePinOf(doc) ? (await this._payphonesJournal())?.id
         : (item ? this._journalOf(item)?.id ?? null : doc.entryId);
     await doc.update({ entryId, 'texture.tint': hidden ? HIDDEN_TINT : null, [`flags.${MODULE_ID}.accessHidden`]: !!hidden });
+  }
+
+  /**
+   * Revealing a pin or area of a HIDDEN node reveals the node too (tester 2026-11-05: the pin's own "Reveal to players"
+   * showed the pin while the node stayed hidden, so a player who walked up to it got "There is nothing there").
+   * Only the node's switch moves; its other pins keep their own state. Hiding one pin never hides the node.
+   * @private
+   */
+  async _revealNodeOf(nodeId) {
+    const ns = game.nightcity?.networkService;
+    const node = ns?.getNode?.(nodeId);
+    if (!node?.hidden) return;
+    await ns.saveNode({ ...node, hidden: false });
+    ncmNotify.info(`${node.name} is no longer hidden — players can open it from this pin.`);
   }
 
   /** Delete every pin AND area for this item across all scenes (GM). */
@@ -511,7 +528,12 @@ export class TerminalScenePins {
 
     const nodeId = nodePinOf(doc);
     if (nodeId) {
-      if (!game.nightcity?.networkService?.getNode?.(nodeId)) { ncmNotify.warn('This access point is dead — the node is gone.'); return false; }
+      const node = game.nightcity?.networkService?.getNode?.(nodeId);
+      if (!node) { ncmNotify.warn('This access point is dead — the node is gone.'); return false; }
+      // a pin players can see on a node they can't: they get "There is nothing there" (a world from before the reveal fix)
+      if (isGM() && node.hidden && !doc.getFlag(MODULE_ID, 'accessHidden')) {
+        ncmNotify.warn(`${node.name} is hidden, but this pin is not: players see the pin and are told there is nothing there. Right-click the pin → Inspect (GM) and switch Hidden off to show it, or hide the pin.`, { permanent: true });
+      }
       if (!isGM()) {
         const block = this._reachBlock(doc, Number(doc.getFlag(MODULE_ID, 'accessRange')) || 0, 'the node');
         if (block) { game.nightcity?.soundService?.play('error'); ncmNotify.warn(block); return false; }

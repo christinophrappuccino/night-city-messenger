@@ -253,7 +253,30 @@ export const NODE_PROGRAMS = Object.freeze({
   bomb:    { label: 'Blackout bomb', icon: 'fa-bomb', blurb: 'after a delay every node it reached goes dark' },
   sniffer: { label: 'Sniffer', icon: 'fa-satellite-dish', blurb: 'records traffic — come back and collect it' },
   patch:   { label: 'Patch', icon: 'fa-kit-medical', blurb: 'cleans every infection on the node' },
+  // the terminal's Custom routine, on a node (tester 2026-11-05): the GM's words + an optional GM macro, fired on insert
+  // and/or the next time someone else jacks in (NetworkService._fireCustom)
+  custom:  { label: 'Custom routine', icon: 'fa-bolt', blurb: 'a routine you describe — the GM rules on it when it fires' },
 });
+
+/** When a custom network routine fires. */
+export const CUSTOM_FIRE_ON = Object.freeze({
+  insert: 'When it is inserted',
+  jackIn: 'When someone else jacks in',
+  both: 'Both — on insert, and the next jack-in',
+});
+
+/**
+ * Does this infection fire on this trigger? A custom routine only. Insert: always (the caller asks once). Jack-in: once,
+ * never for its own planter.
+ * @param {object} inf @param {'insert'|'jackIn'} trigger @param {string} [runnerId]
+ */
+export function customFires(inf, trigger, runnerId = '') {
+  if (inf?.kind !== 'custom') return false;
+  const on = CUSTOM_FIRE_ON[inf.fireOn] ? inf.fireOn : 'insert';
+  if (trigger === 'insert') return on === 'insert' || on === 'both';
+  if (trigger === 'jackIn') return (on === 'jackIn' || on === 'both') && !inf.jackFiredAt && !!runnerId && runnerId !== inf.actorId;
+  return false;
+}
 
 /** 'nodeWorm' → 'worm' (the registry key → the infection kind); anything else → null. */
 export function nodeProgramKind(effectKey) {
@@ -271,10 +294,13 @@ export function sanitizeInfections(list) {
     actorId: str(x.actorId, 64), actorName: str(x.actorName, 80), at: numOr(x.at, 0),
     quality: Math.max(0, Math.min(100, numOr(x.quality, 50))), sloppy: !!x.sloppy, stealthDV: Math.max(0, Math.min(40, Math.round(numOr(x.stealthDV, 12)))),
     every: Math.max(0.25, numOr(x.every, 3)), nextAt: numOr(x.nextAt, 0), maxNodes: Math.max(1, Math.min(50, Math.round(numOr(x.maxNodes, 6)))),
-    carry: NODE_PROGRAMS[x.carry] && x.carry !== 'worm' && x.carry !== 'patch' ? x.carry : '',
+    carry: NODE_PROGRAMS[x.carry] && !['worm', 'patch', 'custom'].includes(x.carry) ? x.carry : '',
     fireAt: numOr(x.fireAt, 0), cap: Math.max(1, Math.min(100, Math.round(numOr(x.cap, 20)))),
     loot: Array.isArray(x.loot) ? x.loot.filter((m) => m && typeof m === 'object').slice(-100) : [],
     quest: !!x.quest, note: str(x.note, 200),
+    // a custom routine: what the GM rules on, the GM's macro (read from the shard entry by the GM, never sent by a player)
+    ...(x.kind === 'custom' ? { description: str(x.description, 600), macroId: str(x.macroId, 40),
+      fireOn: CUSTOM_FIRE_ON[x.fireOn] ? x.fireOn : 'insert', firedAt: numOr(x.firedAt, 0), jackFiredAt: numOr(x.jackFiredAt, 0) } : {}),
   }));
 }
 
@@ -291,6 +317,7 @@ export function makeInfection(kind, p) {
     id: p.id, family: p.family || p.id, kind, name: p.name, actorId: p.actorId, actorName: p.actorName, at: p.now,
     quality: p.quality, sloppy, stealthDV: p.stealthDV, every, nextAt: kind === 'worm' ? p.now + every * 3600000 : 0,
     maxNodes: prm.maxNodes, carry: kind === 'worm' ? prm.carry : '', quest: !!p.quest, note: p.note, fireAt: kind === 'bomb' ? p.now + Math.max(0, numOr(prm.delay, 2)) * 3600000 : 0, cap: prm.cap,
+    description: p.description, macroId: p.macroId, fireOn: prm.fireOn,
   }]);
   return inf;
 }

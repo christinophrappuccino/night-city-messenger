@@ -147,6 +147,9 @@ export const PROGRAM_EFFECTS = Object.freeze({
   nodeSniffer:  { label: 'Sniffer',       icon: 'fas fa-satellite-dish',   blurb: 'records traffic — come back and collect it',        modes: ['node'], host: 'node', group: 'Network',
     params: [{ f: 'cap', type: 'number', label: 'Keeps up to', def: 20 }] },
   nodePatch:    { label: 'Patch',         icon: 'fas fa-kit-medical',      blurb: 'cleans every infection on the node',                modes: ['node'], host: 'node', group: 'Network' },
+  // the Custom routine for nodes: the Workshop's describe-it / run-a-macro block, plus when it fires (NetworkService._fireCustom)
+  nodeCustom:   { label: 'Custom routine', icon: 'fas fa-bolt',            blurb: 'a routine you describe — the GM rules on it when it fires', modes: ['node'], host: 'node', group: 'Network',
+    params: [{ f: 'fireOn', type: 'select', label: 'Fires', def: 'insert', options: [['insert', 'When it is inserted'], ['jackIn', 'When someone else jacks in'], ['both', 'Both — on insert, and the next jack-in']] }] },
 
   // ── Fallback ──
   adjudicate:   { label: 'Program',      icon: 'fas fa-bolt',            blurb: 'runs a custom routine (GM adjudicates the effect)', modes: ['instant', 'triggered'], host: 'any',    group: 'Custom' },

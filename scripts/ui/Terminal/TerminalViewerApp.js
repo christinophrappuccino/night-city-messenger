@@ -2087,7 +2087,7 @@ export class TerminalViewerApp extends BaseApplication {
           traceOnFail: !!cd.uploadTraceOnFail,
           // Where this program lives, so the GM reads its linked macro from the entry
           // itself instead of trusting a macro id sent over the wire (SEC-02).
-          source: { itemUuid: shard.uuid, entryId: e.messageId },
+          source: { itemUuid: shard.uuid, entryId: e.id },
         };
         if (runVerb) {
           out.push({ ...base, effectType: runVerb, family: 'run', params: cd.effect?.params || {}, macroId: cd.effect?.macroId || '',

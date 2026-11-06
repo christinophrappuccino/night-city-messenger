@@ -16,13 +16,14 @@ import { ncmNotify } from '../utils/notify.js';
 import { isFeatureOn } from '../utils/features.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS, NETWORK_ACCESS_MODES, CONNECTION_MODES } from '../utils/constants.js';
 import { beatsDV } from '../utils/rolls.js';
-import { log, isGM, generateId, whisperCardHtml, userOwnsActor } from '../utils/helpers.js';
+import { log, isGM, generateId, whisperCardHtml, userOwnsActor, runGmMacro } from '../utils/helpers.js';
 import { resolveJackIn, movesFor } from '../utils/jackIn.js';
 import { bypassDCFor } from '../utils/bypassSkills.js';
 import { sourceUuidOf, prewireFlags } from '../utils/scenesAtlas.js';
 import { liveRun, withRun, expiredRuns } from '../utils/networkNodes.js';
 import { sanitizeNode, listNodes, cutNetworks, carriedNetworks, sceneBlocks, expiredJams, statePatch, appendLog, NODE_STATES, NODE_EFFECTS, activeEffects, withEffect, expiredEffects, nodeIsUp,
-  NODE_PROGRAMS, makeInfection, familyNodes, wormTarget } from '../utils/networkNodes.js';
+  NODE_PROGRAMS, makeInfection, familyNodes, wormTarget, customFires } from '../utils/networkNodes.js';
+import { programEntry } from '../utils/programSource.js';
 
 export class NetworkService {
 
@@ -821,8 +822,15 @@ export class NetworkService {
         const quality = Math.max(0, Math.min(100, Number(p.quality) || 0));
         const stealthDV = Math.max(0, Math.min(20, Math.round(Number(p.stealthDV) || 12)));
         const prm = p.params && typeof p.params === 'object' ? p.params : {};
-        return { ok: true, data: { ...base, kind: data.kind, program: { name: s(p.name, 80), actorId: run.actorId, actorName: who, quality, stealthDV, params: { every: prm.every, maxNodes: prm.maxNodes, carry: prm.carry, delay: prm.delay, cap: prm.cap } } } };
+        // which program (a custom routine is read back from it by the GM); never its words or macro
+        const src = p.source && typeof p.source === 'object' ? { itemUuid: s(p.source.itemUuid, 200), entryId: s(p.source.entryId, 80) } : null;
+        if (data.kind === 'custom' && !src) return fail('a custom routine must name its shard entry');
+        return { ok: true, data: { ...base, kind: data.kind, program: { name: s(p.name, 80), actorId: run.actorId, actorName: who, quality, stealthDV, params: { every: prm.every, maxNodes: prm.maxNodes, carry: prm.carry, delay: prm.delay, cap: prm.cap }, ...(src ? { source: src } : {}) } } };
       }
+      case 'jackIn':
+        // the runner is the sender's own character; their session is checked in noteJackIn, which is queued behind the
+        // session save sent just before this (read here, the node may not have it yet)
+        return owns(data.actorId) ? { ok: true, data: { ...base, actorId: data.actorId, needRun: true } } : fail('not the sender\'s character');
       case 'clean':
         return run ? { ok: true, data: { ...base, infectionId: s(data.infectionId, 40), who } } : fail('cleaning needs a session');
       case 'collect': {
@@ -855,6 +863,7 @@ export class NetworkService {
     if (data.op === 'clean') return this.cleanInfection(data.nodeId, data.infectionId, data.who);
     if (data.op === 'recall') return this.recallFamily(data.family, data.actorId);
     if (data.op === 'collect') return this.collectSniffer(data.nodeId, data.infectionId, data.actorId);
+    if (data.op === 'jackIn') return this.noteJackIn(data.nodeId, data.actorId, { needRun: !!data.needRun });
   }
 
   // ─── Infections (step 5): a program inserted from a shard lives on the node ───
@@ -875,12 +884,79 @@ export class NetworkService {
       await this._writeNode(nodeId, { ...node, infections: [], log: appendLog(node.log, { ts: now, who: program.actorName || '', what: n ? `patched — ${n} infection${n === 1 ? '' : 's'} cleaned` : 'patched' }) });
       return { success: true, cleaned: n };
     }
+    if (kind === 'custom') return this._insertCustom(node, program, now);
     const id = `inf_${generateId()}`;
     const add = [makeInfection(kind, { ...program, id, now })];
     const carry = kind === 'worm' ? add[0].carry : '';
     if (carry) add.push(makeInfection(carry, { ...program, id: `inf_${generateId()}`, family: id, now, name: `${program.name || 'Worm'} → ${NODE_PROGRAMS[carry].label}` }));
     await this._writeNode(nodeId, { ...node, infections: [...node.infections, ...add].slice(-30) });
     return { success: true, infection: add[0] };
+  }
+
+  /**
+   * @private GM: a CUSTOM routine. What it says, its macro and when it fires are read from the program's own shard
+   * entry (`program.source`), never from the request: a macro link stays a GM's. The shard must be the planter's.
+   */
+  async _insertCustom(node, program, now) {
+    const found = await programEntry(program.source);
+    const cd = found?.contentData;
+    if (!cd || cd.uploadEffect !== 'nodeCustom') return { success: false, error: 'That program could not be read from its shard' };
+    const holder = found.shard?.parent;
+    if (program.actorId && holder?.id !== program.actorId) return { success: false, error: 'The shard is not on the character who inserted it' };
+    const inf = makeInfection('custom', { ...program, id: `inf_${generateId()}`, now, name: cd.program || cd.name || program.name || 'Custom routine',
+      description: cd.description || '', macroId: cd.effect?.macroId || '', params: { fireOn: cd.uploadParams?.fireOn } });
+    const firesNow = customFires(inf, 'insert');
+    if (firesNow) inf.firedAt = now;
+    await this._writeNode(node.id, { ...node, infections: [...node.infections, inf].slice(-30) });
+    // after the write leaves the node queue: a macro that changes this node would otherwise wait on its own insert
+    if (firesNow) this._afterQueue(() => this._fireCustom(node, inf, 'insert', program.actorId));
+    return { success: true, infection: inf };
+  }
+
+  /**
+   * A runner got into a node: someone else's custom routine waiting for a jack-in fires (once each). Relays to the GM.
+   * @param {string} nodeId @param {string} actorId — the runner
+   */
+  async noteJackIn(nodeId, actorId, { needRun = false } = {}) {
+    if (!actorId) return { success: false, error: 'No runner' };
+    const relayed = this._nodeRelay('jackIn', { nodeId, actorId }); if (relayed) return relayed;
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    // a player's report: only a runner with a live session here (saved just before this, in the same queue)
+    if (needRun && !liveRun(node, actorId, this._nowMs())) return { success: false, error: 'No session' };
+    const due = (node.infections || []).filter((x) => customFires(x, 'jackIn', actorId));
+    if (!due.length) return { success: true, fired: 0 };
+    const now = this._nowMs();
+    const ids = new Set(due.map((x) => x.id));
+    await this._writeNode(nodeId, { ...node, infections: node.infections.map((x) => (ids.has(x.id) ? { ...x, jackFiredAt: now } : x)) });
+    this._afterQueue(async () => { for (const inf of due) await this._fireCustom(node, inf, 'jackIn', actorId); });
+    return { success: true, fired: due.length };
+  }
+
+  /** @private Run `fn` once the node queue is free (after the writer that asked has returned). Errors are logged. */
+  _afterQueue(fn) {
+    const go = () => Promise.resolve().then(fn).catch((err) => log.error(`Network program: ${err.message}`));
+    (this._nodeQueue || Promise.resolve()).then(go, go);
+  }
+
+  /**
+   * @private GM: a custom routine fires — the GM's card with its words, then its macro (only a GM-written one runs).
+   * The macro gets `node`, `infection`, `planter`, `runner`, `trigger` (not `actor`: script macros predefine it).
+   */
+  async _fireCustom(node, inf, trigger, runnerId = '') {
+    if (!isGM()) return;
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const runner = runnerId ? game.actors?.get(runnerId) : null;
+    const planter = inf.actorId ? game.actors?.get(inf.actorId) : null;
+    const when = trigger === 'insert' ? 'as it was inserted' : `when ${esc(runner?.name || 'a runner')} jacked in`;
+    if (typeof ChatMessage !== 'undefined') {
+      const gms = (game.users?.filter?.((u) => u.isGM) || []).map((u) => u.id);
+      const html = whisperCardHtml({ tone: 'purple', icon: 'fa-bolt', title: `Network program fired — ${esc(inf.name)}`,
+        lines: [`<b>${esc(inf.actorName || planter?.name || 'Someone')}</b>'s ${esc(inf.name)} on <b>${esc(node.name)}</b> fired ${when}.`,
+          inf.description ? `<i>${esc(inf.description)}</i>` : 'No description — call it at the table.',
+          ...(inf.macroId ? ['Its macro runs now.'] : [])] });
+      await ChatMessage.create({ content: html, whisper: gms, speaker: { alias: 'Night City Messenger' } }).catch(() => {});
+    }
+    if (inf.macroId) await runGmMacro(inf.macroId, { node, infection: inf, planter, runner, trigger }, `Network program "${inf.name}"`);
   }
 
   /** Clean one infection off ONE node (a sweep that found it, the GM). Its family elsewhere is untouched. */
@@ -1601,7 +1677,7 @@ export class NetworkService {
 // None of them calls another (a nested call would wait on itself) — keep it that way.
 const NODE_WRITERS = ['setNodeState', 'nodeLog', 'bumpNodeAlert', 'wipeNodeLog', 'addNodeEffect', 'removeNodeEffect', 'saveRun', 'clearRun',
   'kickRun', 'setRunUsed', 'updateInfection', 'insertProgram', 'cleanInfection', 'recallFamily', 'collectSniffer', 'saveNode', 'deleteNode',
-  'reapNodeJams', 'tickInfections', 'tapDelivery'];
+  'reapNodeJams', 'tickInfections', 'tapDelivery', 'noteJackIn'];
 for (const name of NODE_WRITERS) {
   const orig = NetworkService.prototype[name];
   if (typeof orig !== 'function') continue;

@@ -175,7 +175,7 @@ const UF = await load('scripts/ui/content/UploadFlow.js');
 {
   const sh = read('scripts/integrations/SocketHandlers.js');
   ok(/const entryData = data\.entryData == null \? data\.entryData : stripMacroRefs\(data\.entryData\);/.test(sh), 'encode / re-encode relay strips macro links from player entries');
-  ok(/source: \{ itemUuid: shard\.uuid, entryId: e\.messageId \}/.test(read('scripts/ui/Terminal/TerminalViewerApp.js')), 'carried programs record their source entry');
+  ok(/source: \{ itemUuid: shard\.uuid, entryId: e\.id \}/.test(read('scripts/ui/Terminal/TerminalViewerApp.js')), 'carried programs record their source entry (the entry id is `id`; `messageId` is the page flag — live 2026-11-06)');
   const uf = read('scripts/ui/content/UploadFlow.js');
   ok(/kind: 'uploadRun'[^}]*source: p\.source \|\| null/.test(uf) && !/kind: 'uploadRun'[^}]*macroId:/.test(uf), 'the upload relay sends the source, not a macro id');
   // every macro execution in module code is one of the known, reviewed sites

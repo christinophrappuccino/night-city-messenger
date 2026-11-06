@@ -25,6 +25,7 @@ import { runBankHeist } from './BankHeist.js';
 import { grantPtzControl } from './ContentRenderers.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { serialize } from '../../utils/serialize.js';
+import { programEntry } from '../../utils/programSource.js';
 
 const DEFAULT_SIPHON_SKILL = 'Interface';
 const DEFAULT_SIPHON_DV = 15;
@@ -1031,19 +1032,7 @@ export async function handlePayloadEffectRequest(data, senderId) {
  * @returns {Promise<string>} the macro id, or '' when there is none / it can't be found
  */
 export async function programMacroId(source) {
-  const { itemUuid, entryId } = source || {};
-  if (!itemUuid || !entryId) return '';
-  try {
-    const shard = await fromUuid(itemUuid);
-    if (!shard) return '';
-    const journalId = shard.getFlag?.(MODULE_ID, 'journalId');
-    const journal = journalId ? game.journal?.get(journalId) : null;
-    const page = journal?.pages?.find?.((p) => p.flags?.[MODULE_ID]?.messageId === entryId);
-    return page?.flags?.[MODULE_ID]?.contentData?.effect?.macroId || '';
-  } catch (err) {
-    log.warn(`Program macro lookup failed: ${err.message}`);
-    return '';
-  }
+  return (await programEntry(source))?.contentData?.effect?.macroId || '';
 }
 
 /**

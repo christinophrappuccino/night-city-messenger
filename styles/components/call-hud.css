@@ -18,7 +18,18 @@
 .ncm-ch-stage { position: absolute; left: var(--ncm-ch-left, 76px); top: var(--ncm-ch-top, 74px); }
 
 /* ── the call: portrait (when live) + the text column ── */
-.ncm-ch-call { display: flex; gap: 16px; align-items: flex-start; }
+.ncm-ch-call { display: flex; gap: 16px; align-items: flex-start; position: relative; }
+/* the grip: drag the call off whatever it covers (hudPlace.js); double-click puts it back */
+.ncm-ch-grip { position: absolute; left: -22px; top: 0; width: 16px; height: 30px; display: flex; align-items: center; justify-content: center;
+  pointer-events: auto; cursor: grab; touch-action: none; color: rgba(255,255,255,.35); font-size: 12px; text-shadow: 0 1px 3px #000; transition: color .15s; }
+.ncm-ch-grip:hover { color: var(--ch-live, #19f3f7); }
+.ncm-ch-grip:active { cursor: grabbing; }
+.ncm-ch-call.is-out .ncm-ch-grip { opacity: 0; }
+/* the solid parts of the live badge drag it too, like any overlay (CallHud DRAG_HANDLES); the keys keep their own pointer */
+.ncm-ch-stage .ncm-ch-call > .ncm-ch-pic,
+.ncm-ch-stage .ncm-ch-call > .ncm-ch-txt > .ncm-ch-badge .ncm-ch-dialarcs,
+.ncm-ch-stage .ncm-ch-call > .ncm-ch-txt > .ncm-ch-badge .ncm-ch-chip { pointer-events: auto; cursor: grab; touch-action: none; }
+.ncm-ch-stage .ncm-ch-call:has(> .ncm-ch-pic:hover, .ncm-ch-chip:hover, .ncm-ch-dialarcs:hover) > .ncm-ch-grip { color: var(--ch-live, #19f3f7); }
 .ncm-ch-txt { display: flex; flex-direction: column; gap: 3px; padding-top: 2px; max-width: 420px; text-shadow: 0 1px 3px #000, 0 0 10px rgba(0,0,0,.8); }
 
 /* ── the portrait: the real image in a notched frame, faint scanlines + one sweep, all clipped inside ── */

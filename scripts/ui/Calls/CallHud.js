@@ -25,11 +25,14 @@ import { voiceInfo } from '../../utils/identities.js';
 import { TONE_LINE, VOICEMAIL_MAX } from '../../utils/voicemail.js';
 import { speak, stopSpeaking } from './speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from './recorder.js';
+import { currentPlace, applyPlace, clampPlace, savePlace } from './hudPlace.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const GLYPHS = '!<>-_/[]{}=+*^?#01ABCDEFXZ';
 const RAND = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
 const BEAT = 1100;
+/** The solid parts of the live badge that also drag it (the grip is the visible hint; these are where a hand goes). */
+const DRAG_HANDLES = '.ncm-ch-call > .ncm-ch-pic, .ncm-ch-call > .ncm-ch-txt > .ncm-ch-badge .ncm-ch-dialarcs, .ncm-ch-call > .ncm-ch-txt > .ncm-ch-badge .ncm-ch-chip';
 const ENDED_HOLD_MS = 2600;
 const SUBS_SHOWN = 4;          // lines on screen; the rest are in the transcript
 const TYPING_CLEAR_MS = 4000;  // "is typing…" goes away after this long with nothing new
@@ -76,6 +79,11 @@ export class CallHud {
 
   init() {
     const bus = game.nightcity.eventBus;
+    // stand clear of Foundry's left controls / scene bar, which change size as layers open (hudPlace.js)
+    const place = () => { if (!this._dragging) applyPlace(currentPlace()); };
+    place();
+    Hooks.on('renderSceneControls', () => setTimeout(place, 0));
+    globalThis.addEventListener?.('resize', place);
     bus.on(EVENTS.CALL_RINGING, (e) => this._onEvent(e));
     bus.on(EVENTS.CALL_STARTED, (e) => this._onEvent(e));
     bus.on(EVENTS.CALL_ENDED, (e) => this._onEvent(e, true));
@@ -154,6 +162,9 @@ export class CallHud {
     this.root.innerHTML = '<div class="ncm-ch-stage"></div><div class="ncm-ch-missedwrap"></div><div class="ncm-ch-subs" hidden></div>';
     document.body.appendChild(this.root);
     this.root.addEventListener('click', (e) => this._onClick(e));
+    this.root.addEventListener('pointerdown', (e) => this._onGripDown(e));
+    this.root.addEventListener('dblclick', (e) => { if (e.target.closest('[data-grip]')) { savePlace(null); applyPlace(currentPlace()); } });
+    applyPlace(currentPlace());
     this.stage = this.root.querySelector('.ncm-ch-stage');
     this.subs = this.root.querySelector('.ncm-ch-subs');
     return this.root;
@@ -174,7 +185,9 @@ export class CallHud {
     }
     const fresh = this._mainId !== main.call.id || this._wasState !== main.call.state;
     this._rendered = key; this._mainId = main.call.id; this._wasState = main.call.state;
-    this.stage.innerHTML = this._callHtml(main, { waiting, heldOther });
+    // a new call: measure again (a module may have put something down the left since the last one)
+    if (fresh && !this._dragging) applyPlace(currentPlace());
+    this.stage.innerHTML = this._callHtml(main, { waiting, heldOther, grip: true });
     if (fresh && !this.reduced) this._playIn(this.stage.querySelector('.ncm-ch-call'));
     this._startTick();
   }
@@ -222,7 +235,7 @@ export class CallHud {
         <span class="ncm-ch-chip"><span class="in"><b data-dec="${esc(name)}">${esc(name)}</b></span></span></span></div>`;
   }
 
-  _callHtml(v, { waiting, heldOther }) {
+  _callHtml(v, { waiting, heldOther, grip: withGrip = false }) {
     const { call, role } = v;
     const other = this._other(call, role);
     const st = call.state;
@@ -279,7 +292,9 @@ export class CallHud {
       return `<span class="ncm-ch-mode${m === myMode ? ' on' : ''}${off ? ' is-off' : ''}" data-mode="${esc(m)}" data-id="${esc(call.id)}" data-tooltip="${tipText(tip)}" data-tooltip-direction="DOWN"><i class="fas ${esc(info.icon)}"></i> ${esc(info.label)}</span>`;
     }).join('')}</div>` : '';
     const keysHtml = keys.length ? `<div class="ncm-ch-keys">${keys.map(([act, k, label, cls]) => `<span class="ncm-ch-key ${cls}" data-act="${act}" data-id="${esc(call.id)}"><kbd>${k}</kbd>${esc(label)}</span>`).join('')}</div>` : '';
-    return `<div class="ncm-ch-call is-${tone}" data-call="${esc(call.id)}"${st === 'ringing' && role === 'callee' && call.from?.ring ? ` data-ring="${esc(call.from.ring)}"` : ''}>${pic}<div class="ncm-ch-txt">
+    // only the live badge (render) is draggable; the previews and the Emergency / Overheard screens reuse this markup
+    const grip = !withGrip ? '' : '<span class="ncm-ch-grip" data-grip data-tooltip="Drag to move the call · double-click to put it back" data-tooltip-direction="RIGHT"><i class="fas fa-grip-vertical"></i></span>';
+    return `<div class="ncm-ch-call is-${tone}" data-call="${esc(call.id)}"${st === 'ringing' && role === 'callee' && call.from?.ring ? ` data-ring="${esc(call.from.ring)}"` : ''}>${grip}${pic}<div class="ncm-ch-txt">
       ${this._badgeHtml({ kind, name: chipName, tone, sigState, profile, callId: call.id, icon: st === 'voicemail' ? (call.vmStep === 'leave' ? 'fa-keyboard' : 'fa-voicemail') : undefined })}
       ${alias}${anonHtml}${orgHtml}<span class="ncm-ch-meta">${meta}</span>${whyHtml}${voice}${modesHtml}${keysHtml}${heldHtml}${waitHtml}</div></div>`;
   }
@@ -312,6 +327,26 @@ export class CallHud {
   }
 
   // ─── input ───
+
+  /** Drag the call like any overlay: by its grip, portrait, dial or name chip (never a key). The spot is this client's own (hudPlace.js). */
+  _onGripDown(e) {
+    if (e.button !== 0 || e.target.closest('[data-act], [data-mode], [data-dict], input, textarea, button')) return;
+    const grip = e.target.closest(`[data-grip], ${DRAG_HANDLES}`);
+    if (!grip || !this.stage?.contains(grip)) return;
+    e.preventDefault();
+    const cs = getComputedStyle(document.documentElement);
+    const start = { x: e.clientX, y: e.clientY, left: parseFloat(cs.getPropertyValue('--ncm-ch-left')) || 76, top: parseFloat(cs.getPropertyValue('--ncm-ch-top')) || 74 };
+    let at = null;
+    this._dragging = true;
+    grip.setPointerCapture?.(e.pointerId);
+    const move = (ev) => { at = clampPlace({ left: start.left + ev.clientX - start.x, top: start.top + ev.clientY - start.y }); applyPlace(at); };
+    const up = () => {
+      grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up);
+      this._dragging = false;
+      if (at) savePlace(at);
+    };
+    grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+  }
 
   _onClick(e) {
     const mode = e.target.closest('[data-mode]');
