@@ -294,7 +294,7 @@ Opening a node shows its **console**: its name, signal, state, alert level and a
 - **Switch it off / on**, or **Jam** it for a while.
 - **Tap** it — copies of mail sent from that scene over that network land in their inbox.
 - **Open a backdoor** — they skip the network's login from then on.
-- **Insert a shard** — run a network program from a shard they carry: a **worm** that spreads to other nodes, a **tap**, a **blackout bomb** that takes down every node it reached, a **sniffer** that records traffic for later, or a **patch** that cleans the node.
+- **Insert a shard** — run a network program from a shard they carry: a **worm** that spreads to other nodes, a **tap**, a **blackout bomb** that takes down every node it reached, a **sniffer** that records traffic for later, a **patch** that cleans the node, or a **custom routine** of your own: your description and, if you want, one of your macros, which fire when it is inserted, the next time someone else jacks in, or both. You get a whispered card when it fires.
 - **System sweep** — find what someone else left there, and remove it.
 - **Wipe their log line** so the node doesn't remember them.
 
@@ -340,7 +340,7 @@ Players can also put things ON a machine. They carry a forged file (a fake chat 
 
 ### The Malware Workshop
 
-Admin → Security → **Programs** opens the **Malware Workshop**. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, file wipers, and network programs for nodes (worm, tap, blackout bomb, sniffer, patch). You can disguise them as harmless files.
+Admin → Security → **Programs** opens the **Malware Workshop**. Build programs with real effects: keyloggers, secret backdoor accounts, ICE traps, file wipers, and network programs for nodes (worm, tap, blackout bomb, sniffer, patch, and a custom routine you describe or link to a macro). You can disguise them as harmless files.
 
 The usual route:
 

@@ -3,6 +3,20 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.2.0] — 2026-11-06
+
+### Added
+- **Custom routines on network nodes.** The Malware Workshop has a Custom routine under Network, like the terminal one: a description you rule on and, if you want, a macro of yours. Choose when it fires: when it is inserted, the next time someone else jacks in, or both. A jack-in fires it once, and never for the runner who planted it. You get a whispered card when it fires. Sweeps can find it, Patch cleans it, and the Node Inspector shows when it fires and which macro it runs.
+- **The call screen can be moved.** Drag it by its picture, its name or the grip at its left edge. Each player's spot is kept on their own machine; double-click the grip to put it back.
+
+### Changed
+- **The call screen stays clear of the left side of the screen.** It sits to the right of the scene controls, including an open tool column and any toolbar another module adds there, and below the scene bar.
+
+### Fixed
+- **A custom routine uploaded to a terminal by a player now runs its macro.** Since 2.1 the description showed but the macro never ran.
+- **Revealing a node's pin also reveals the node.** A pin revealed on its own (from its right-click menu or Admin → Access) left the node hidden, so players who walked up to it were told "There is nothing there." A GM opening such a pin in an older world gets a warning that explains it.
+- **The Workshop's summary of a network program** no longer says it fires on a terminal login.
+
 ## [2.1.1] — 2026-11-05
 
 ### Fixed

@@ -165,7 +165,7 @@ Open **Calls** in your inbox. The dialer is on the left, and your calls are on t
 
 **Making a call.** Type a number or a contact's name, or tap the pad, then press Call. Letters work on the keypad, so 9-2-8 spells WAT. Calling a company's main number reaches its switchboard. To reach a desk, add the extension: `MIL-0100 x17`.
 
-**During a call.** You can talk out loud at the table, type, or dictate if your browser allows it. Your GM chooses which of these are available. Calls need signal, so a dead zone or a downed node can cut you off.
+**During a call.** You can talk out loud at the table, type, or dictate if your browser allows it. Your GM chooses which of these are available. Calls need signal, so a dead zone or a downed node can cut you off. If the call covers something on your screen, drag it by its picture, its name or the grip at its left edge; double-click the grip to put it back.
 
 **Finding old calls.** The tabs are **Calls**, **Missed**, **Voicemail** and **Contacts**. Calls are folded by date, with today open. Search finds names, numbers, networks and words said on a call, and **Show** narrows the list to one kind. The up-and-down arrow opens or closes every date.
 
