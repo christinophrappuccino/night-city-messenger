@@ -385,7 +385,7 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 
 **Answering.** When someone calls an NPC, it rings for you on the **Live** tab, longest wait first. Answer as who they asked for, or as someone else, or send it to voicemail. A call nobody answers goes to voicemail by itself.
 
-**Corporations.** An office has a main number with a switchboard, and extensions (`MIL-0100 x17`). Choose whether you answer, a recording plays, or it goes to voicemail. Voicemail lands with a mailbox made for that office the first time someone leaves a message, or with a contact you pick.
+**Corporations.** An office has a main number with a switchboard, and extensions (`MIL-0100 x17`). Choose whether you answer, a recording plays, or it goes to voicemail. Voicemail lands with a mailbox made for that office the first time someone leaves a message, or with a contact you pick. **New corporation** (on Numbers → Corporations, or Places → Add → A corporation) makes one in a step.
 
 **Special numbers.** A number that follows its own rules: a hidden line, a hotline, a recording, a macro. Each can have a name and a picture.
 
@@ -399,7 +399,9 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 
 **Changing what a call says.** An organization has **What do their calls say?** and **How do their calls look?**. A Lawman has **Customize**, for their own words, callsign, extra groups, colour, lights, sounds and picture. A blank box inherits: the person from their organization, the organization from the built-in words. Put several lines in a box and one is picked each call. Trauma Team has **What does dispatch say?**, one set for the whole service. **Play** shows the call on your screen. The dice are only for show, and nothing is saved or posted.
 
-**Call log and Voicemail.** Both fold by date, or group by person or mailbox. Search reads names, numbers and transcripts. Filter narrows by who, network and dates. **Edit a log** writes history for a person or a machine: a missed call for players to find.
+**Call log and Voicemail.** Both fold by date, or group by person or mailbox. Search reads names, numbers and transcripts. Filter narrows by who, network and dates. **Select** ticks rows (Shift-click for a range, or select all), then deletes them, or marks voicemails heard or new. Deleting a call removes it from both people's logs.
+
+**Call history.** The **Call history** button on Call log and on Voicemail opens one person's whole log: calls from play and calls you write. Use it to give a character the calls and voicemails they had before the campaign, or between sessions. A new call is **From → To**: pick a character or NPC for each end, or write in any name and number. Add what was said line by line, or **Paste a script** ("Name: text" per line). **Details** holds the network, where it was made, a withheld number, a drop reason and who overheard it. Make it a voicemail and it lands in the other person's Voicemail as a real one: typed, read aloud or recorded. For many at once: **Keep adding** (each new call starts an hour earlier), **Same call to others too**, **Fill in a week**, or a CSV import that shows you the plan first. The list on the left has search, **Show** (incoming, outgoing, voicemail, missed, has a transcript…), **Group** by date or by person, a date range, and folding groups. A call from play can be copied into the form or deleted, but not edited. Terminal accounts have a call history too.
 
 **Overheard calls.** Write a conversation between two NPCs, then start it. Players can catch it in range, through a tap, from a node session or with a scanner. A running call lives on your client and ends if you reload.
 

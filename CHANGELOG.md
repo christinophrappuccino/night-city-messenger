@@ -3,6 +3,11 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.3.1] — 2026-11-06
+
+### Changed
+- **The guides cover 2.3.0.** The GM guide explains Call history, Select on the Call log and Voicemail, and New corporation. The Player Guide explains Select and Trash in the inbox.
+
 ## [2.3.0] — 2026-11-06
 
 ### Added

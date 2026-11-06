@@ -45,6 +45,7 @@ That's all the setup there is. NPCs and other players can now message you at tha
 ## Part 2 — Reading mail
 
 - **Folders:** All, Unread, Sent and Saved sit in the filter row; Drafts, Scheduled, Spam and Trash are behind **More ▾** (it shows a count when something new is in there). Pick **Unread** for a **Mark all read** button. **Unread** on an open message marks it unread again.
+- **Clearing out mail:** press **Select**, tick messages (Shift-click ticks a range; **Select all** takes every page), then **Move to Trash**. A strip says how many went and has **Open Trash** and **Undo**. In Trash you can **Restore** them or **Delete forever**; in Spam, **Not spam** moves them back to your inbox.
 - **Threads:** click the **Thread** button on a message to see the whole conversation in one view.
 - **Reply All:** a message sent to several people shows a party chip next to the To line and a **Reply All** button beside Reply.
 - **Share to chat:** posts a message as a chat card. Anyone reading the card who doesn't have the sender in their contacts gets an **Add contact** button on it.
