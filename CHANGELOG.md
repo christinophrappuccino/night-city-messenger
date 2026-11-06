@@ -3,6 +3,29 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.3.0] — 2026-11-06
+
+### Added
+- **Call history (Admin → Phone, on Calls and on Voicemail).** Write the calls and voicemails a character had before play. Each call is a whole call, From → To: pick either end from your characters and NPCs, or write in any name and number. Add what was said line by line or paste a script ("Name: text"), and set the network, where it was made, a withheld number, a drop reason and who overheard it. A written call shows in both people's logs, and a voicemail lands in the recipient's Voicemail as a real one (typed, read aloud or recorded).
+- **Many calls at once.** Keep adding (each new call starts an hour earlier), "Same call to others too", Fill in a week, and CSV import with a plan you check before anything is written.
+- **The Call history list shows everything in the person's log,** calls from play too (copy one to write a call like it, or delete it from both ends). Search, Show (incoming, outgoing, voicemail, missed, has a transcript…), Group by date or by person, a date range, folding groups, and Show more.
+- **Select on the Call log and Voicemail lists (Admin → Phone).** Tick rows (Shift-click for a range) or select all, then delete, or mark voicemails heard or new.
+- **Select in the inbox.** A Select button ticks messages (Shift-click for a range, Select all covers every page), then Move to Trash. A strip says how many went and where Trash is, with Open Trash and Undo. In Trash: Restore or Delete forever. In Spam: Not spam.
+- **New corporation.** A button on Phone → Numbers → Corporations, and Places → Add → A corporation. Add a place has a Category.
+- **Line types can show the caller's picture to strangers** (the name stays hidden).
+
+### Changed
+- **The caller's picture shows more often.** A contact saved from mail is matched by email as well as number.
+- **Call logs and voicemails sort by game time.**
+- **The payphone Grit and Wiring sliders are full width,** with their value shown.
+
+### Fixed
+- **Line types and Corporations saved nothing.** Colours, dial, checkboxes, greetings, art and extensions were dropped ("Add just clears the data"). They save now, and a setting that cannot be saved says so.
+- **An empty Corporations screen no longer fails to open.**
+
+### Under the hood
+- Calls written with the old log editor move into the people's inboxes once (data version 9), checked after the move.
+
 ## [2.2.0] — 2026-11-06
 
 ### Added
