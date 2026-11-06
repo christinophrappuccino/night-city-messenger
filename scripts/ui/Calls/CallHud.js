@@ -20,7 +20,7 @@ import { OUTCOMES, MODE_INFO, formatDuration, callSeconds, sideOf, typeOutMs } f
 import { Dictation, dictateStatus } from './dictation.js';
 import { themedConfirm } from '../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../utils/dialogBody.js';
-import { normaliseNumber } from '../../utils/phoneNumbering.js';
+import { savedContactFor } from '../../utils/phoneNumbering.js';
 import { voiceInfo } from '../../utils/identities.js';
 import { TONE_LINE, VOICEMAIL_MAX } from '../../utils/voicemail.js';
 import { speak, stopSpeaking } from './speech.js';
@@ -211,12 +211,17 @@ export class CallHud {
     if (this._gmView) return { name: o.name || o.number || 'Unknown', img: o.img || '', number: o.number || '', known: true };
     const actor = game.actors?.get(role === 'caller' ? call.from?.actorId : call.to?.actorId);
     const contacts = actor?.getFlag?.(MODULE_ID, 'contacts') || [];
-    const home = this.service.homeCode;
-    const n = normaliseNumber(o.number, home);
-    const hit = contacts.find((c) => (n && c.phone && normaliseNumber(c.phone, home) === n)
-      || (o.contactId && c.masterContactId === o.contactId) || (!o.asLine && !o.contactId && o.actorId && c.actorId === o.actorId));
+    const hit = this._savedFor(contacts, o);
+    // a stranger sees the number only, unless the line's type shows the holder's picture to everyone
     return hit ? { name: hit.name || o.name || o.number, img: o.img || hit.portrait || '', number: o.number, known: true }
-      : { name: o.number || 'Unknown number', img: '', number: o.number, known: false };
+      : { name: o.number || 'Unknown number', img: o.face && !o.anon ? (o.img || '') : '', number: o.number, known: false };
+  }
+
+  /** The contact in this character's list that stands for a call's other party (also matched by the caller's email). */
+  _savedFor(contacts, o = {}) {
+    const email = o.asLine ? '' : o.contactId ? game.nightcity?.masterContactService?.getContact?.(o.contactId)?.email
+      : o.actorId ? game.actors?.get(o.actorId)?.getFlag?.(MODULE_ID, 'email') : '';
+    return savedContactFor(contacts, o, { home: this.service.homeCode, email });
   }
 
   _netHtml(net) {
@@ -840,8 +845,7 @@ export class CallHud {
     let name = vm.from?.name || vm.from?.number || 'Unknown';
     if (!game.user.isGM) {
       const contacts = actor?.getFlag?.(MODULE_ID, 'contacts') || [];
-      const home = this.service.homeCode; const n = normaliseNumber(vm.from?.number, home);
-      const hit = contacts.find((c) => (n && c.phone && normaliseNumber(c.phone, home) === n) || (vm.from?.contactId && c.masterContactId === vm.from.contactId) || (vm.from?.actorId && c.actorId === vm.from.actorId));
+      const hit = this._savedFor(contacts, vm.from);
       name = hit?.name || vm.from?.number || 'Unknown number';
     }
     const wrap = this._ensureRoot().querySelector('.ncm-ch-missedwrap');

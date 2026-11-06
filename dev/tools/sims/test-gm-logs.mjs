@@ -70,7 +70,7 @@ ok(/getLog\(\) \{ return readGmLog\(LOG_NAME\); \}/.test(TS) && /await updateGmL
 const NA = read('scripts/services/NetworkAccessLogService.js');
 ok(/readGmLog\('networkAccessLog'\)/.test(NA) && /writeGmLog\('networkAccessLog'/.test(NA) && /updateJournalEntryPage/.test(NA), 'the access log loads, saves and reloads through the store');
 const MR = read('scripts/core/MigrationRunner.js');
-ok(/export const DATA_SCHEMA_VERSION = 8;/.test(MR) && /to: 7,\n\s*label: 'Trace \+ network access logs: move into a GM-only journal'/.test(MR) && /to: 8,\n\s*label: 'Interface rolls: clear the finished v3 ledger'/.test(MR), 'migrations v7 (logs) and v8 (ledger) are registered; schema 8');
+ok(Number(MR.match(/export const DATA_SCHEMA_VERSION = (\d+);/)?.[1]) >= 8 && /to: 7,\n\s*label: 'Trace \+ network access logs: move into a GM-only journal'/.test(MR) && /to: 8,\n\s*label: 'Interface rolls: clear the finished v3 ledger'/.test(MR), 'migrations v7 (logs) and v8 (ledger) are registered; schema 8 or later');
 ok(/if \(n < 0\) throw new Error/.test(MR), 'v7 throws on a short read-back, so the version is not stamped and it runs again next load');
 const { MIGRATIONS } = await import(pathToFileURL(path.join(ROOT, 'scripts/core/MigrationRunner.js')).href).catch(() => ({}));
 const v8 = (MIGRATIONS || []).find((m) => m.to === 8);

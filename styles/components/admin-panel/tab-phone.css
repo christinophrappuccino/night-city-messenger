@@ -1068,3 +1068,76 @@ small.ncm-wk-orgmiss { display: block; }
   .ncm-emv__look { grid-template-columns: minmax(0, 1fr); gap: 3px; }
   .ncm-emv__look .v { margin-bottom: 5px; }
 }
+
+/* ─── Select mode on Call log / Voicemail (tester round 2026-11-06: mass delete) ─── */
+.ncm-admin-panel .ncm-ph2-pickbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px; margin: 2px 0 6px;
+  border: 1px solid color-mix(in srgb, var(--ncm-act) 35%, var(--ncm-border)); border-radius: 2px; background: color-mix(in srgb, var(--ncm-act) 6%, var(--ncm-bg-surface)); }
+.ncm-admin-panel .ncm-ph2-pickbar > * { flex: 0 0 auto; }
+.ncm-admin-panel .ncm-ph2-pickbar > .grow { flex: 1 1 auto; }
+.ncm-admin-panel .ncm-ph2-pickct { font: 600 12px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; margin-right: 4px; }
+.ncm-admin-panel .ncm-ph2-pickbar button[disabled] { opacity: .45; cursor: not-allowed; }
+.ncm-admin-panel .ncm-ph2-lrow.is-picking,
+.ncm-admin-panel .ncm-ph2-vm.is-picking { grid-template-columns: 18px 24px minmax(0, 1fr) auto; cursor: pointer; }
+.ncm-admin-panel .ncm-ph2-lrow.is-picking:hover,
+.ncm-admin-panel .ncm-ph2-vm.is-picking:hover { background: var(--ncm-bg-hover); }
+.ncm-admin-panel .ncm-ph2-lrow.is-picked,
+.ncm-admin-panel .ncm-ph2-vm.is-picked { background: color-mix(in srgb, var(--ncm-act) 9%, transparent); }
+.ncm-admin-panel .ncm-ph2-vm.is-picking .acts { display: none; }
+.ncm-admin-panel .ncm-ph2-tick { align-self: center; display: inline-flex; justify-content: center; font-size: 14px; color: var(--ncm-text-label); }
+.ncm-admin-panel .is-picked .ncm-ph2-tick { color: var(--ncm-act); }
+
+/* ─── Edit a call log: From → To, the transcript (tester round 2026-11-06: "who and what, and transcript") ─── */
+.ncm-admin-panel .ncm-lg-ends { align-items: flex-end; }
+.ncm-admin-panel .ncm-lg-ends > button { flex: 0 0 auto; margin-bottom: 2px; }
+.ncm-admin-panel .ncm-lg-arrow { margin: 0 6px; font-size: 10px; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-lg-tl { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; margin-bottom: 4px; }
+.ncm-admin-panel .ncm-lg-tl .ncm-pn-seg button { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-admin-panel .ncm-lg-tl input[type="text"] { width: 100%; min-width: 0; height: calc(26px * var(--ncm-text-scale, 1)); font: 13px var(--ncm-font-body); }
+.ncm-admin-panel .ncm-lg-script { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+.ncm-admin-panel .ncm-lg-script textarea { width: 100%; min-height: 96px; resize: vertical; font: 13px var(--ncm-font-body); color: var(--ncm-text-primary); background: var(--ncm-bg-deep); border: 1px solid var(--ncm-border); border-radius: 2px; padding: 6px 8px; }
+/* Call history: the list narrow, the form wide (dev 2026-11-06: "give the form more width") */
+.ncm-admin-panel .ncm-pn .ncm-pn-split.ncm-lg-split { grid-template-columns: minmax(220px, 34%) minmax(0, 1fr); }
+.ncm-admin-panel .ncm-lg-count { padding: 6px 10px; font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent); }
+/* From / To: a picker button with the face, the name and the number */
+.ncm-admin-panel .ncm-lg-end { min-width: 180px; }
+.ncm-admin-panel button.ncm-lg-who { display: flex !important; align-items: center; gap: 8px; width: 100% !important; height: auto !important; min-height: calc(36px * var(--ncm-text-scale, 1)); padding: 4px 8px !important;
+  text-align: left; background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px; color: var(--ncm-text-primary); cursor: pointer; }
+.ncm-admin-panel button.ncm-lg-who:hover, .ncm-admin-panel button.ncm-lg-who:focus-visible { border-color: var(--ncm-act) !important; }
+.ncm-admin-panel button.ncm-lg-who .bd { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.ncm-admin-panel button.ncm-lg-who .bd b { font: 600 13px var(--ncm-font-display); color: var(--ncm-text-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel button.ncm-lg-who .bd small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel button.ncm-lg-who > i { flex: 0 0 auto; margin: 0 !important; font-size: 10px; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-lg-noface { display: inline-flex; align-items: center; justify-content: center; color: var(--ncm-text-label); background: var(--ncm-bg-surface); }
+/* the narrow list: who and what on top; how it went; then when, the tag and the buttons on one line */
+.ncm-admin-panel .ncm-lg-split .ncm-r3-lrow .st { flex: 1 1 60%; }
+.ncm-admin-panel .ncm-lg-split .ncm-r3-lrow .ncm-pn-when { flex: 1 1 auto; font-size: 10px; white-space: nowrap; }
+.ncm-admin-panel .ncm-lg-split .ncm-r3-lrow .ncm-tagp { margin-left: 0; }
+.ncm-admin-panel .ncm-lg-split .ncm-r3-lrow > button { flex: 0 0 auto; }
+.ncm-admin-panel .ncm-r3-lrow .st b.ncm-lg-real { font-weight: 600; color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-r3-lrow .st b.ncm-lg-yours { font-weight: 600; color: var(--ncm-secret); }
+/* Call history list: tools pinned on top, groups that fold (dev 2026-11-06: "organize, collapse, filter, dates, search") */
+.ncm-admin-panel .ncm-lg-tools { position: sticky; top: 0; z-index: 2; display: flex; flex-direction: column; gap: 5px; padding: 7px 8px 5px; background: var(--ncm-bg-pane); border-bottom: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-lg-srch { width: 100%; }
+.ncm-admin-panel .ncm-lg-trow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ncm-admin-panel .ncm-lg-trow > * { flex: 0 0 auto; }
+.ncm-admin-panel .ncm-lg-trow .ncm-pn-sel select { max-width: 150px; }
+.ncm-admin-panel .ncm-lg-tools .ncm-lg-count { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0; border: 0; }
+.ncm-admin-panel button.ncm-lg-pill, .ncm-admin-panel button.ncm-lg-lnk { width: auto !important; height: auto !important; flex: 0 0 auto; padding: 1px 6px !important; font: 11px var(--ncm-font-mono); border-radius: 2px; cursor: pointer; background: none !important; }
+.ncm-admin-panel button.ncm-lg-pill { border: 1px solid var(--ncm-border) !important; color: var(--ncm-text-primary); }
+.ncm-admin-panel button.ncm-lg-pill i { margin: 0 0 0 3px !important; font-size: 9px; }
+.ncm-admin-panel button.ncm-lg-lnk { border: 0 !important; color: var(--ncm-act); text-decoration: underline; }
+.ncm-admin-panel button.ncm-lg-gh { display: flex !important; align-items: center; gap: 7px; width: 100% !important; height: auto !important; padding: 6px 9px !important; border: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-act) 5%, var(--ncm-bg-surface)) !important; color: var(--ncm-text-heading); text-align: left; cursor: pointer; border-radius: 0; }
+.ncm-admin-panel button.ncm-lg-gh:hover { background: var(--ncm-bg-hover) !important; }
+.ncm-admin-panel button.ncm-lg-gh .ch { margin: 0 !important; font-size: 9px; color: var(--ncm-text-label); transition: transform .15s ease; }
+.ncm-admin-panel .ncm-lg-grp.is-shut button.ncm-lg-gh .ch { transform: rotate(-90deg); }
+.ncm-admin-panel button.ncm-lg-gh b { font: 600 12px var(--ncm-font-display); }
+.ncm-admin-panel button.ncm-lg-gh small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); }
+.ncm-admin-panel button.ncm-lg-gh .c { margin-left: auto; font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); }
+.ncm-admin-panel .ncm-lg-day { display: flex; justify-content: space-between; padding: 3px 9px; font: 10px var(--ncm-font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-label); background: color-mix(in srgb, var(--ncm-border) 18%, transparent); }
+.ncm-admin-panel button.ncm-lg-more { display: block; width: 100% !important; height: auto !important; padding: 6px !important; border: 0 !important; background: none !important; color: var(--ncm-act); font: 12px var(--ncm-font-body); cursor: pointer; }
+.ncm-admin-panel button.ncm-lg-more:hover { text-decoration: underline; }
+/* .ncm-pn-srch is flex: 1 1 150px for toolbars (rows); in this column that basis became 150px of HEIGHT */
+.ncm-admin-panel .ncm-lg-tools .ncm-pn-srch.ncm-lg-srch { flex: none; height: calc(28px * var(--ncm-text-scale, 1)); min-width: 0; }
+.ncm-admin-panel .ncm-lg-tools, .ncm-admin-panel .ncm-lg-grp { align-self: stretch; width: 100%; }
+.ncm-admin-panel .ncm-pn .ncm-lg-grp > button.ncm-lg-gh, .ncm-admin-panel .ncm-pn button.ncm-lg-more, .ncm-admin-panel .ncm-pn .ncm-lg-end > button.ncm-lg-who { width: 100% !important; }

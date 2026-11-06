@@ -369,10 +369,30 @@
 .ncm-pph-cols { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .ncm-pph-cols label, .ncm-pph-chk { display: flex; align-items: center; gap: 5px; font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); text-transform: none; letter-spacing: 0; cursor: pointer; }
 .ncm-pph input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var(--ncm-border); border-radius: 2px; background: none; cursor: pointer; }
-.ncm-pph-meter { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; align-items: center; }
-.ncm-pph-meter input[type=range] { width: 100%; accent-color: var(--ncm-act); }
-.ncm-pph-meter b { font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading); white-space: nowrap; }
-.ncm-pph-meter b small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); margin-left: 4px; }
+/* Grit / Wiring (tester 2026-11-06: "tiny and hard to tell that they are sliders"). Label and value on one line, the slider
+   on its own full-width line under them, drawn by hand: an admin reset sets appearance:none on ranges, which left a
+   24px square. --pct (set in the markup and on input) fills the track up to the thumb. */
+.ncm-pph-row--meter { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+.ncm-pph-row--meter > b { font: 700 11px var(--ncm-font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-text-heading); white-space: nowrap; justify-self: end; }
+.ncm-pph-row--meter > b small { font: 11px var(--ncm-font-mono); color: var(--ncm-text-label); margin-left: 4px; }
+.ncm-admin-panel .ncm-pph-row--meter input[type=range] {
+  grid-column: 1 / -1; width: 100% !important; min-width: 0; height: calc(20px * var(--ncm-text-scale, 1)) !important;
+  margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important;
+  background: transparent !important; -webkit-appearance: none !important; appearance: none !important; cursor: pointer;
+}
+.ncm-admin-panel .ncm-pph-row--meter input[type=range]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px; border: 1px solid var(--ncm-border);
+  background: linear-gradient(to right, var(--ncm-act) 0 var(--pct, 50%), var(--ncm-bg-deep) var(--pct, 50%) 100%);
+}
+.ncm-admin-panel .ncm-pph-row--meter input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  background: var(--ncm-text-heading); border: 2px solid var(--ncm-act); box-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+}
+.ncm-admin-panel .ncm-pph-row--meter input[type=range]:is(:hover, :focus-visible)::-webkit-slider-thumb { transform: scale(1.15); }
+.ncm-admin-panel .ncm-pph-row--meter input[type=range]:focus-visible { outline: 1px solid var(--ncm-act); outline-offset: 2px; }
+.ncm-admin-panel .ncm-pph-row--meter input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep); }
+.ncm-admin-panel .ncm-pph-row--meter input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--ncm-act); }
+.ncm-admin-panel .ncm-pph-row--meter input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--ncm-text-heading); border: 2px solid var(--ncm-act); }
 .ncm-pph-seg { display: flex; flex-wrap: wrap; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
 .ncm-admin-panel .ncm-pph-seg button { all: unset; flex: 1; cursor: pointer; text-align: center; padding: 4px 6px; font: 700 10px var(--ncm-font-display); letter-spacing: .05em; text-transform: uppercase;
   color: var(--ncm-text-label); background: var(--ncm-bg-pane); }

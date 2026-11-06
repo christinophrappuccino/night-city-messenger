@@ -28,6 +28,8 @@ export const newPayphoneState = () => ({ sel: null, q: '' });
 const seg = (key, list, cur) => `<div class="ncm-pph-seg" data-pph-seg="${key}">${list.map(([v, l, tip]) => `<button type="button" data-v="${esc(v)}" class="${v === cur ? 'is-on' : ''}"${tip ? ` data-tooltip="${tipText(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div>`;
 const sec = (icon, title, body) => `<section class="ncm-pph-sec"><h5><i class="fas ${icon}"></i>${esc(title)}</h5><div class="ncm-pph-sec__b">${body}</div></section>`;
 const row = (label, body) => `<div class="ncm-pph-row"><label>${esc(label)}</label>${body}</div>`;
+// a 0–100 slider on its own full-width line under its label and value (in the narrow editor column a slider beside them was 24px wide)
+const meter = (label, key, value, tier, mark) => `<div class="ncm-pph-row ncm-pph-row--meter"><label for="pph-${key}">${esc(label)}</label><b ${mark}>${tier}<small>${value}</small></b><input type="range" id="pph-${key}" min="0" max="100" step="1" data-pph-in="${key}" value="${value}" style="--pct:${value}%" aria-label="${esc(label)}"></div>`;
 
 function rowHtml(pp, sel) {
   const s = svc(), scene = game.scenes.get(pp.sceneId), on = s?.inUse?.get(pp.id);
@@ -55,9 +57,9 @@ function editorHtml(pp) {
       <div class="ncm-pph-acts"><button type="button" class="ncm-pph-btn" data-pph="saveLook"><i class="fas fa-floppy-disk"></i> Save this look</button></div>`)}
     ${sec('fa-palette', 'Colours & brand', `${row('Brand line', `<input type="text" data-pph-in="brand" value="${esc(l.brand)}" maxlength="40">`)}
       ${row('Colours', `<div class="ncm-pph-cols"><label><input type="color" data-pph-in="case" value="${l.case}">Casing</label><label><input type="color" data-pph-in="hand" value="${l.hand}">Handset</label><label><input type="color" data-pph-in="ink" value="${l.ink}">Screen</label></div>`)}
-      ${row('Grit', `<div class="ncm-pph-meter"><input type="range" min="0" max="100" data-pph-in="grit" value="${l.grit}"><b data-pph-gv>${gt[1]}<small>${l.grit}</small></b></div>`)}
+      ${meter('Grit', 'grit', l.grit, gt[1], 'data-pph-gv')}
       <div class="ncm-pph-hint" data-pph-gh>${esc(gt[2])}</div>
-      ${row('Wiring', `<div class="ncm-pph-meter"><input type="range" min="0" max="100" data-pph-in="wire" value="${l.wire}"><b data-pph-wv>${wt[1]}<small>${l.wire}</small></b></div>`)}
+      ${meter('Wiring', 'wire', l.wire, wt[1], 'data-pph-wv')}
       <div class="ncm-pph-hint" data-pph-wh>${esc(wt[2])}</div>
       <label class="ncm-pph-chk"><input type="checkbox" data-pph-ch="stickers"${l.stickers ? ' checked' : ''}> Stickers</label>`)}
     ${sec('fa-spray-can', 'Graffiti', `<div class="ncm-pph-tags">${tags}</div><div class="ncm-pph-hint">Up to three tags: big on the casing, small low down, smaller on the top plate. Empty = none.</div>`)}
@@ -147,7 +149,7 @@ export function wirePayphones(tab, root) {
     if (k === 'name') draft = { ...draft, name: t.value };
     else if (k === 'tag' || k === 'tagc') { const tags = look.tags.map((x) => [...x]); tags[+t.dataset.i][k === 'tag' ? 0 : 1] = t.value; look.tags = tags; }
     else if (k === 'tick') look.tick = t.value.split('\n');
-    else if (k === 'grit' || k === 'wire') look[k] = +t.value;
+    else if (k === 'grit' || k === 'wire') { look[k] = +t.value; t.style.setProperty('--pct', t.value + '%'); }
     else if (k === 'snd') { draft = { ...draft, sounds: { ...draft.sounds, [t.dataset.k]: t.value } }; saveSoon(); return; }
     else look[k] = t.value;
     if (k !== 'name' && k !== 'snd') draft = { ...draft, look: sanitizeLook(look) };

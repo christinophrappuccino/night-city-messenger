@@ -102,6 +102,8 @@ function getNetPillState(signal, isDead) {
  */
 const MESSAGE_FILTERS = new Set(['inbox', 'unread', 'conversations', 'sent', 'saved', 'trash', 'spam']);
 const GM_RECENT_INBOXES = 'ncm.inbox.gmRecent';
+/** The folders that list mail rows, where Select can tick several at once. */
+export const SELECTABLE_FILTERS = new Set(['inbox', 'unread', 'sent', 'saved', 'spam', 'trash', 'recovered']);
 function getPrimaryTab(filter) {
   if (MESSAGE_FILTERS.has(filter)) return 'messages';
   if (filter === 'shards') return 'shards';
@@ -253,6 +255,15 @@ export class MessageViewerApp extends BaseApplication {
 
   /** @type {Set<string>} IDs of bulk-selected messages */
   bulkSelected = new Set();
+
+  /** @type {boolean} Select mode: rows tick instead of opening (the Select pill) */
+  selectMode = false;
+
+  /** @type {string|null} the last row ticked, for Shift-click ranges */
+  _bulkAnchor = null;
+
+  /** @type {{ids: string[], count: number}|null} what the last delete moved to Trash, for the strip's Undo */
+  _trashNote = null;
 
   /** @type {Array|null} Cached messages from last load */
   _cachedMessages = null;
@@ -932,11 +943,8 @@ export class MessageViewerApp extends BaseApplication {
       sidebarWidth: this.sidebarWidth,
       listCollapsed: this._listCollapsed,
 
-      // Bulk Actions
-      showBulkActions: this.bulkSelected.size > 0,
-      bulkCount: this.bulkSelected.size,
-      allSelected: enriched.length > 0
-        && enriched.every(m => this.bulkSelected.has(m.messageId)),
+      // Bulk Actions (Select mode)
+      ...this._bulkContext(isMessagesTab, enriched),
 
       // Quick Reply
       quickReplies,
@@ -1468,6 +1476,7 @@ export class MessageViewerApp extends BaseApplication {
     if (action.startsWith('calls-')) { await handleCallsAction(this, action, target); return; }
 
     // One table entry per action (VIEWER_ACTIONS, after the class).
+    this._clickEvent = event;   // Shift-click ranges in Select mode
     const run = VIEWER_ACTIONS[action];
     if (run) await run.call(this, target, messageId);
   }
@@ -1690,6 +1699,9 @@ export class MessageViewerApp extends BaseApplication {
     this.selectedMessageId = null;
     this.selectedConversationId = null;
     this.bulkSelected.clear();
+    this.selectMode = false;
+    this._bulkAnchor = null;
+    this._trashNote = null;
     // Changing folder clears the MAIL/FILES solo — otherwise you'd land in a
     // folder with no files while filtered to FILES and see an empty list with
     // no chips to undo it (the chips only render on a MIXED folder).
@@ -1967,13 +1979,19 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'Delete':
       case 'Backspace':
-        if (hasSelection && isMessages) {
+        if (this.selectMode && this.bulkSelected.size && isMessages) {
+          event.preventDefault();
+          if (this.currentFilter === 'trash') this._bulkDeleteForever(); else this._bulkDelete();
+        } else if (hasSelection && isMessages) {
           event.preventDefault();
           this._deleteMessage(this.selectedMessageId);
         }
         break;
       case 'Escape':
-        if (hasSelection) {
+        if (this.selectMode) {
+          event.preventDefault();
+          this._toggleSelectMode(false);
+        } else if (hasSelection) {
           event.preventDefault();
           this.selectedMessageId = null;
           this.render();
@@ -2101,28 +2119,124 @@ export class MessageViewerApp extends BaseApplication {
 
 
 
-  async _bulkMarkRead() {
-    for (const id of this.bulkSelected) {
-      await this.messageService?.markAsRead?.(this.actorId, id);
-    }
+  /** What the template needs for Select mode, the bar and the moved-to-Trash strip. */
+  _bulkContext(isMessagesTab, rows = []) {
+    const selectable = isMessagesTab && SELECTABLE_FILTERS.has(this.currentFilter);
+    if (!selectable && this.selectMode) { this.selectMode = false; this.bulkSelected.clear(); }
+    const mail = rows.filter((m) => !m.isConversation);
+    const all = (this._cachedMessages || []).filter((m) => !m.isConversation && m.messageId);
+    // a ticked message that left the folder (deleted elsewhere, filtered out) is not counted
+    for (const id of [...this.bulkSelected]) if (!all.some((m) => m.messageId === id)) this.bulkSelected.delete(id);
+    return {
+      selectable,
+      selectMode: selectable && this.selectMode,
+      showBulkActions: selectable && this.selectMode,
+      bulkCount: this.bulkSelected.size,
+      bulkTotal: all.length,
+      allSelected: all.length > 0 && all.every((m) => this.bulkSelected.has(m.messageId)),
+      bulkInTrash: this.currentFilter === 'trash',
+      bulkInSpam: this.currentFilter === 'spam',
+      bulkNone: this.bulkSelected.size === 0,
+      trashNote: this._trashNote && this.currentFilter !== 'trash' ? { count: this._trashNote.count, one: this._trashNote.count === 1 } : null,
+      _bulkRows: mail.length,
+    };
+  }
+
+  /** Select mode on or off. Off clears the ticks. */
+  _toggleSelectMode(on = !this.selectMode) {
+    this.selectMode = !!on;
     this.bulkSelected.clear();
+    this._bulkAnchor = null;
+    if (this.selectMode) this.selectedMessageId = null;
     this.render();
   }
 
-  async _bulkDelete() {
-    for (const id of this.bulkSelected) {
-      await this.messageService?.deleteMessage?.(this.actorId, id);
-    }
+  /** Tick or untick a row; Shift ticks the range from the last one ticked (in list order). */
+  _toggleBulk(messageId, { range = false } = {}) {
+    if (!messageId) return;
+    const order = (this._cachedMessages || []).filter((m) => !m.isConversation).map((m) => m.messageId);
+    const a = range && this._bulkAnchor ? order.indexOf(this._bulkAnchor) : -1, b = order.indexOf(messageId);
+    if (a >= 0 && b >= 0) {
+      const [lo, hi] = a < b ? [a, b] : [b, a];
+      for (const id of order.slice(lo, hi + 1)) this.bulkSelected.add(id);
+    } else if (this.bulkSelected.has(messageId)) this.bulkSelected.delete(messageId);
+    else this.bulkSelected.add(messageId);
+    this._bulkAnchor = messageId;
+    this.render();
+  }
+
+  /** Tick every message in this folder (every page), or untick them all. */
+  _bulkSelectAll() {
+    const ids = (this._cachedMessages || []).filter((m) => !m.isConversation && m.messageId).map((m) => m.messageId);
+    if (ids.length && ids.every((id) => this.bulkSelected.has(id))) this.bulkSelected.clear();
+    else for (const id of ids) this.bulkSelected.add(id);
+    this.render();
+  }
+
+  /** Run one service call per ticked message; render once at the end. @returns {Promise<string[]>} the ids it worked on */
+  async _bulkEach(fn) {
+    const ids = [...this.bulkSelected], done = [];
+    this._animationActive = true;
+    try {
+      for (const id of ids) {
+        const r = await fn(id);
+        if (r?.success !== false && r?.ok !== false) done.push(id);
+      }
+    } finally { this._animationActive = false; }
+    if (done.length < ids.length) ncmNotify.warn(`${ids.length - done.length} of ${ids.length} could not be changed.`);
     this.bulkSelected.clear();
-    this.selectedMessageId = null;
+    this._bulkAnchor = null;
+    return done;
+  }
+
+  async _bulkMarkRead() {
+    await this._bulkEach((id) => this.messageService?.markAsRead?.(this.actorId, id));
+    this.render();
+  }
+
+  /** Move the ticked messages to Trash, and say where they went (with Open Trash and Undo). */
+  async _bulkDelete() {
+    if (!this.bulkSelected.size) return;
+    const done = await this._bulkEach((id) => this.messageService?.deleteMessage?.(this.actorId, id));
+    if (done.includes(this.selectedMessageId)) this.selectedMessageId = null;
+    this._trashNote = done.length ? { ids: done, count: done.length } : null;
     this.render();
   }
 
   async _bulkMarkSpam() {
-    for (const id of this.bulkSelected) {
-      await this.messageService?.markSpam?.(this.actorId, id);
-    }
-    this.bulkSelected.clear();
+    await this._bulkEach((id) => this.messageService?.markSpam?.(this.actorId, id));
+    this.render();
+  }
+
+  async _bulkNotSpam() {
+    await this._bulkEach((id) => this.messageService?.unmarkSpam?.(this.actorId, id));
+    this.render();
+  }
+
+  async _bulkRestore() {
+    await this._bulkEach((id) => this.messageService?.restoreFromTrash?.(this.actorId, id));
+    this.render();
+  }
+
+  /** Delete the ticked messages for good (Trash only), after a confirm that names how many. */
+  async _bulkDeleteForever() {
+    const n = this.bulkSelected.size;
+    if (!n) return;
+    const confirm = await playerConfirm({
+      title: 'Delete forever',
+      content: `<p><strong>${n} message${n === 1 ? '' : 's'}</strong> will be <strong>permanently deleted</strong>. This cannot be undone.</p>`,
+    });
+    if (!confirm) return;
+    const done = await this._bulkEach((id) => this.messageService?.permanentDelete?.(this.actorId, id));
+    if (done.includes(this.selectedMessageId)) this.selectedMessageId = null;
+    this.render();
+  }
+
+  /** The strip's Undo: put back what the last delete moved to Trash. */
+  async _undoTrash() {
+    const ids = this._trashNote?.ids || [];
+    this._trashNote = null;
+    for (const id of ids) await this.messageService?.restoreFromTrash?.(this.actorId, id);
     this.render();
   }
 
@@ -2242,8 +2356,10 @@ export class MessageViewerApp extends BaseApplication {
 
   async _deleteMessage(messageId) {
     if (!messageId) return;
-    await this.messageService?.deleteMessage?.(this.actorId, messageId);
+    const r = await this.messageService?.deleteMessage?.(this.actorId, messageId);
     if (this.selectedMessageId === messageId) this.selectedMessageId = null;
+    // say where it went: the strip links to Trash (it lives under More) and can undo
+    if (r?.success !== false) this._trashNote = { ids: [messageId], count: 1 };
     this.render();
   }
 
@@ -4322,6 +4438,7 @@ export class MessageViewerApp extends BaseApplication {
         ...this._enrichMessageDisplay(msg, currentNetworkName),
         selected: msg.messageId === this.selectedMessageId,
         bulkSelected: this.bulkSelected.has(msg.messageId),
+        picking: this.selectMode && SELECTABLE_FILTERS.has(this.currentFilter),
         isNetworkLocked,
         lockedNetworkName: accessState.requiredNetworkName
           || this.networkService?.getNetwork?.(msg.network)?.name
@@ -5525,6 +5642,7 @@ export class MessageViewerApp extends BaseApplication {
 const VIEWER_ACTIONS = {
   // ── Navigation ──
   'select-message': async function (target, messageId) {
+    if (this.selectMode && SELECTABLE_FILTERS.has(this.currentFilter)) { this._toggleBulk(messageId, { range: !!this._clickEvent?.shiftKey }); return; }
     this._selectMessage(messageId);
   },
   'open-conversation': async function (target, messageId) {
@@ -5777,8 +5895,26 @@ const VIEWER_ACTIONS = {
   'bulk-delete': async function (target, messageId) {
     this._bulkDelete();
   },
-  'bulk-clear': async function (target, messageId) {
-    this.bulkSelected.clear();
+  'toggle-select': async function (target, messageId) {
+    this._toggleSelectMode();
+  },
+  'bulk-select-all': async function (target, messageId) {
+    this._bulkSelectAll();
+  },
+  'bulk-not-spam': async function (target, messageId) {
+    this._bulkNotSpam();
+  },
+  'bulk-restore': async function (target, messageId) {
+    this._bulkRestore();
+  },
+  'bulk-delete-forever': async function (target, messageId) {
+    this._bulkDeleteForever();
+  },
+  'trash-undo': async function (target, messageId) {
+    this._undoTrash();
+  },
+  'trash-note-close': async function (target, messageId) {
+    this._trashNote = null;
     this.render();
   },
   'bulk-mark-spam': async function (target, messageId) {

@@ -113,7 +113,7 @@
 {{!-- ═══ CALL LOG ═══ --}}
 {{#if (eq view 'log')}}
   <header class="ncm-tabhd"><i class="fas fa-list"></i><div><h2>Call log</h2><p>Every call in the world, newest first.</p></div>
-    <div class="ncm-tabhd__end"><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="logEdit" data-tooltip="Write history for a person or a machine: a missed call, a voicemail, a trail for players to find"><i class="fas fa-pen"></i> Edit a log</button></div></header>
+    <div class="ncm-tabhd__end"><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="logEdit" data-tooltip="One person's calls, real and written. Write in calls from before play: who called whom, what was said"><i class="fas fa-clock-rotate-left"></i> Call history</button></div></header>
   <div class="ncm-ph2-subt" role="tablist">{{#each logTabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="{{#if on}}on{{/if}}" data-action="tabAct" data-owner="phone" data-op="logTab" data-view="{{key}}"><i class="fas {{icon}}"></i> {{label}}{{#if count}}<span class="ncm-ph2-navct hot">{{count}}</span>{{/if}}</button>{{/each}}</div>
   <div class="ncm-ph2-tb">
     <span class="ncm-ph2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-ph-q="log" placeholder="Name, number, network, scene, words said…" value="{{log.q}}">{{#if log.q}}<button type="button" data-action="tabAct" data-owner="phone" data-op="clearQ" data-which="log" aria-label="Clear search"><i class="fas fa-xmark"></i></button>{{/if}}</span>
@@ -126,7 +126,9 @@
         <div class="ncm-ph2-ddr"><span>Dates</span><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="logDates"><i class="fas fa-calendar"></i> Pick a range</button></div>
       </div></details>
     <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="foldToggle" aria-label="Open or close every group" data-tooltip="Open or close every group"><i class="fas fa-up-down"></i></button>
+    <button type="button" class="ncm-ph2-btn{{#if log.pick.on}} ncm-ph2-btn--on{{/if}}" data-action="tabAct" data-owner="phone" data-op="pickMode" data-which="log" aria-pressed="{{#if log.pick.on}}true{{else}}false{{/if}}" data-tooltip="Tick several to delete them together{{#if (eq 'log' 'vm')}}, or mark them heard{{/if}}. Shift-click ticks a range"><i class="{{#if log.pick.on}}fas fa-square-check{{else}}far fa-square{{/if}}"></i> Select</button>
   </div>
+  {{#if log.pick.on}}<div class="ncm-ph2-pickbar"><span class="ncm-ph2-pickct">{{log.pick.count}} selected</span><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="pickAll" data-which="log" data-tooltip="{{#if log.pick.all}}Untick everything{{else}}Everything the filters show, folded groups and every page too{{/if}}"><i class="fas {{#if log.pick.all}}fa-square-minus{{else}}fa-check-double{{/if}}"></i> {{#if log.pick.all}}Select none{{else}}Select all {{log.pick.total}}{{/if}}</button><span class="grow"></span><button type="button" class="ncm-ph2-btn ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="pickDel" data-which="log"{{#if log.pick.none}} disabled{{/if}}><i class="fas fa-trash"></i> Delete</button><button type="button" class="ncm-ph2-btn ncm-ph2-btn--pri" data-action="tabAct" data-owner="phone" data-op="pickMode" data-which="log" data-tooltip="Stop selecting"><i class="fas fa-check"></i> Done</button></div>{{/if}}
   {{#if log.forced}}<div class="ncm-ph2-count"><span>{{log.found}}</span>{{#each log.pills}}<button type="button" class="ncm-ph2-pill" data-action="tabAct" data-owner="phone" data-op="logUnfilter" data-k="{{k}}" data-tooltip="Remove this filter">{{text}} <i class="fas fa-xmark"></i></button>{{/each}}<button type="button" class="ncm-ph2-lnk" data-action="tabAct" data-owner="phone" data-op="logClear">Clear all</button></div>{{/if}}
   <div class="ncm-ph2-bands">
     {{#each log.bands}}
@@ -135,8 +137,8 @@
       <div class="ncm-ph2-gb"><div>
       {{#each days}}{{#if divider}}<div class="ncm-ph2-day">{{label}}<span class="ncm-ph2-c">{{rows.length}}</span></div>{{/if}}
       {{#each rows}}
-      <div class="ncm-ph2-lrow" style="--dc:var(--ncm-{{info.tone}}, var(--ncm-text-label))">
-        <span class="d"><i class="fas {{info.icon}}"></i></span>
+      <div class="ncm-ph2-lrow{{#if picking}} is-picking{{/if}}{{#if picked}} is-picked{{/if}}" style="--dc:var(--ncm-{{info.tone}}, var(--ncm-text-label))"{{#if picking}} data-action="tabAct" data-owner="phone" data-op="pickRow" data-which="log" data-k="{{id}}" role="checkbox" aria-checked="{{#if picked}}true{{else}}false{{/if}}"{{/if}}>
+        {{#if picking}}<span class="ncm-ph2-tick" aria-hidden="true"><i class="{{#if picked}}fas fa-square-check{{else}}far fa-square{{/if}}"></i></span>{{/if}}<span class="d"><i class="fas {{info.icon}}"></i></span>
         <span class="t"><span class="pair">{{{fromHtml}}}<i class="fas fa-arrow-right"></i>{{{toHtml}}}</span>
           <span class="meta"><span class="ncm-tagp is-{{info.tone}}">{{info.word}}</span>{{#if detail}}<span class="ncm-ph2-tm">{{detail}}</span>{{/if}}{{#if net}}<span class="net">{{net}}</span>{{/if}}{{#if scene}}<span class="sub">{{scene}}</span>{{/if}}{{#if anon}}<span class="ncm-tagp is-secret"><i class="fas fa-user-secret"></i> withheld</span>{{/if}}{{#if heardBy.length}}<span class="ncm-tagp is-secret" data-tooltip="Caught by a tap or sniffer: {{ncm-tip (join heardBy ', ')}}"><i class="fas fa-ear-listen"></i> heard by {{heardBy.length}}</span>{{/if}}</span>
           {{#if why}}<span class="why"><i class="fas fa-tower-broadcast"></i> {{why}}</span>{{/if}}
@@ -155,14 +157,17 @@
 
 {{!-- ═══ VOICEMAIL ═══ --}}
 {{#if (eq view 'vm')}}
-  <header class="ncm-tabhd"><i class="fas fa-voicemail"></i><div><h2>Voicemail</h2><p>What players left for your NPCs: play it, answer it as them, or call back. Players' own boxes are below.</p></div></header>
+  <header class="ncm-tabhd"><i class="fas fa-voicemail"></i><div><h2>Voicemail</h2><p>What players left for your NPCs: play it, answer it as them, or call back. Players' own boxes are below.</p></div>
+    <div class="ncm-tabhd__end"><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="logEdit" data-out="Voicemail" data-tooltip="Write in a voicemail someone kept from before play"><i class="fas fa-clock-rotate-left"></i> Call history</button></div></header>
   <div class="ncm-ph2-subt" role="tablist">{{#each logTabs}}<button type="button" role="tab" aria-selected="{{#if on}}true{{else}}false{{/if}}" class="{{#if on}}on{{/if}}" data-action="tabAct" data-owner="phone" data-op="logTab" data-view="{{key}}"><i class="fas {{icon}}"></i> {{label}}{{#if count}}<span class="ncm-ph2-navct hot">{{count}}</span>{{/if}}</button>{{/each}}</div>
   <div class="ncm-ph2-tb">
     <span class="ncm-ph2-srch"><i class="fas fa-magnifying-glass"></i><input type="text" data-ph-q="vm" placeholder="Name, number, mailbox, words left…" value="{{vm.q}}">{{#if vm.q}}<button type="button" data-action="tabAct" data-owner="phone" data-op="clearQ" data-which="vm" aria-label="Clear search"><i class="fas fa-xmark"></i></button>{{/if}}</span>
     <label class="ncm-ph2-sel"><span>Show</span><select data-ph-vmshow>{{#each vm.showOptions}}<option value="{{k}}"{{#if on}} selected{{/if}}>{{l}}</option>{{/each}}</select></label>
     <label class="ncm-ph2-sel"><span>Group</span><select data-ph-vmgroup>{{#each vm.groupOptions}}<option value="{{k}}"{{#if on}} selected{{/if}}>{{l}}</option>{{/each}}</select></label>
     <button type="button" class="ncm-ph2-btn ncm-ph2-btn--ic" data-action="tabAct" data-owner="phone" data-op="foldToggle" aria-label="Open or close every group" data-tooltip="Open or close every group"><i class="fas fa-up-down"></i></button>
+    <button type="button" class="ncm-ph2-btn{{#if vm.pick.on}} ncm-ph2-btn--on{{/if}}" data-action="tabAct" data-owner="phone" data-op="pickMode" data-which="vm" aria-pressed="{{#if vm.pick.on}}true{{else}}false{{/if}}" data-tooltip="Tick several to delete them together{{#if (eq 'vm' 'vm')}}, or mark them heard{{/if}}. Shift-click ticks a range"><i class="{{#if vm.pick.on}}fas fa-square-check{{else}}far fa-square{{/if}}"></i> Select</button>
   </div>
+  {{#if vm.pick.on}}<div class="ncm-ph2-pickbar"><span class="ncm-ph2-pickct">{{vm.pick.count}} selected</span><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="pickAll" data-which="vm" data-tooltip="{{#if vm.pick.all}}Untick everything{{else}}Everything the filters show, folded groups and every page too{{/if}}"><i class="fas {{#if vm.pick.all}}fa-square-minus{{else}}fa-check-double{{/if}}"></i> {{#if vm.pick.all}}Select none{{else}}Select all {{vm.pick.total}}{{/if}}</button><span class="grow"></span><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="pickHeard" data-v="heard"{{#if vm.pick.none}} disabled{{/if}}><i class="fas fa-check"></i> Mark heard</button><button type="button" class="ncm-ph2-btn" data-action="tabAct" data-owner="phone" data-op="pickHeard" data-v="new"{{#if vm.pick.none}} disabled{{/if}}><i class="fas fa-rotate-left"></i> Mark new</button><button type="button" class="ncm-ph2-btn ncm-ph2-btn--bad" data-action="tabAct" data-owner="phone" data-op="pickDel" data-which="vm"{{#if vm.pick.none}} disabled{{/if}}><i class="fas fa-trash"></i> Delete</button><button type="button" class="ncm-ph2-btn ncm-ph2-btn--pri" data-action="tabAct" data-owner="phone" data-op="pickMode" data-which="vm" data-tooltip="Stop selecting"><i class="fas fa-check"></i> Done</button></div>{{/if}}
   {{#if vm.forced}}<div class="ncm-ph2-count"><span>{{vm.found}}</span><button type="button" class="ncm-ph2-lnk" data-action="tabAct" data-owner="phone" data-op="vmClear">Clear all</button></div>{{/if}}
   <div class="ncm-ph2-bands">
   {{#each vm.groups}}
@@ -171,8 +176,8 @@
     <div class="ncm-ph2-gb"><div>
       {{#each days}}{{#if divider}}<div class="ncm-ph2-day">{{label}}<span class="ncm-ph2-c">{{rows.length}}</span></div>{{/if}}
       {{#each rows}}
-      <div class="ncm-ph2-vm{{#unless heard}} is-new{{/unless}}">
-        <span class="d"><i class="fas fa-voicemail"></i></span>
+      <div class="ncm-ph2-vm{{#unless heard}} is-new{{/unless}}{{#if picking}} is-picking{{/if}}{{#if picked}} is-picked{{/if}}"{{#if picking}} data-action="tabAct" data-owner="phone" data-op="pickRow" data-which="vm" data-k="{{key}}" role="checkbox" aria-checked="{{#if picked}}true{{else}}false{{/if}}"{{/if}}>
+        {{#if picking}}<span class="ncm-ph2-tick" aria-hidden="true"><i class="{{#if picked}}fas fa-square-check{{else}}far fa-square{{/if}}"></i></span>{{/if}}<span class="d"><i class="fas fa-voicemail"></i></span>
         <span class="t"><span class="pair">{{{fromHtml}}}<i class="fas fa-arrow-right"></i>{{{toHtml}}}{{#unless heard}} <span class="ncm-tagp is-attn">new</span>{{/unless}}{{#if tts}} <span class="ncm-tagp is-plain">read out</span>{{/if}}</span>
           {{#if isAudio}}{{#if audio}}<audio class="ncm-ph2-audio" controls preload="none" src="{{audio}}"></audio>{{else}}<span class="msg dim">Recording cleared.</span>{{/if}}{{/if}}
           {{#if text}}<span class="msg">{{{textHtml}}}</span>{{/if}}

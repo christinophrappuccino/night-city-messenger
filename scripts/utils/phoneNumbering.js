@@ -92,7 +92,7 @@ export function linkNumbers(html, ctx) {
 }
 
 /* ─── line types (PHONE-REVISION.md §6) ─── */
-const lt = (id, name, o) => ({ id, name, color: 'var(--ncm-act)', word: name, ring: 'steady', shows: 'owner', label: '', trace: 'owner', hold: 'gm', burn: false, ext: false, fixed: false, ...o });
+const lt = (id, name, o) => ({ id, name, color: 'var(--ncm-act)', word: name, ring: 'steady', shows: 'owner', label: '', trace: 'owner', hold: 'gm', burn: false, ext: false, fixed: false, face: false, ...o });
 export const DEFAULT_LINE_TYPES = Object.freeze([
   lt('std', 'Standard', { word: '', hold: 'players', builtin: true }),
   lt('corp', 'Corporate', { color: 'var(--ncm-hue-5)', shows: 'ownerOrg', ext: true, ring: 'slow' }),
@@ -107,7 +107,7 @@ export function sanitizeLineType(x = {}) {
   const v = x && typeof x === 'object' ? x : {};
   return { id: String(v.id || Math.random().toString(36).slice(2, 9)), name: String(v.name ?? 'New type').slice(0, 30), color: String(v.color || 'var(--ncm-act)'), word: String(v.word ?? '').slice(0, 20),
     ring: LT_RING.includes(v.ring) ? v.ring : 'steady', shows: LT_SHOWS.includes(v.shows) ? v.shows : 'owner', label: String(v.label ?? '').slice(0, 40), trace: LT_TRACE.includes(v.trace) ? v.trace : 'owner',
-    hold: v.hold === 'players' ? 'players' : 'gm', burn: !!v.burn, ext: !!v.ext, fixed: !!v.fixed, builtin: !!v.builtin };
+    hold: v.hold === 'players' ? 'players' : 'gm', burn: !!v.burn, ext: !!v.ext, fixed: !!v.fixed, face: !!v.face, builtin: !!v.builtin };
 }
 
 /** The types in play: the shipped ones with the GM's changes, then the GM's own. @param {{changed?: object, added?: object[], removed?: string[]}} stored */
@@ -140,7 +140,8 @@ export function lineTypeFor(line, row, types) {
  * @returns {{name: string, img: string, org: string, orgArt: string, showOnly: string, word: string, ring: string, anon: boolean, asLine: boolean}}
  */
 export function lineShown(type, { name = '', img = '', org = '', orgArt = '', label = '', place = '' } = {}) {
-  const base = { org: '', orgArt: '', word: type.word || '', ring: type.ring, showOnly: '', anon: false, asLine: false, name, img };
+  // face: someone who doesn't have the holder saved still sees their picture (only where the type shows the holder)
+  const base = { org: '', orgArt: '', word: type.word || '', ring: type.ring, showOnly: '', anon: false, asLine: false, name, img, face: !!type.face && type.shows === 'owner' };
   switch (type.shows) {
     case 'ownerOrg': return { ...base, org, orgArt, showOnly: 'name' };
     case 'label': return { ...base, name: label || type.label || type.name, img: orgArt || '', showOnly: 'name', asLine: true };
@@ -149,6 +150,21 @@ export function lineShown(type, { name = '', img = '', org = '', orgArt = '', la
     case 'none': return { ...base, name: '', img: '', anon: true, asLine: true };
     default: return base;
   }
+}
+
+/**
+ * The contact in a character's own list that stands for the other party of a call, or null. Matched by the number, the
+ * directory entry it was saved from, the email of the identity calling (a contact saved from mail, never linked), or
+ * the character itself on their own main line.
+ * @param {object[]} contacts - the character's contacts @param {object} other - call.from / call.to
+ * @param {{home?: string|null, email?: string}} opts - email = the calling identity's address
+ */
+export function savedContactFor(contacts, other, { home = null, email = '' } = {}) {
+  const o = other || {}, n = normaliseNumber(o.number, home), e = String(email || '').toLowerCase().trim();
+  return (Array.isArray(contacts) ? contacts : []).find((c) => (n && c.phone && normaliseNumber(c.phone, home) === n)
+    || (o.contactId && c.masterContactId === o.contactId)
+    || (e && !o.asLine && String(c.email || '').toLowerCase().trim() === e)
+    || (!o.asLine && !o.contactId && o.actorId && c.actorId === o.actorId)) || null;
 }
 
 /** What a Trace on this line finds: a name, or null for a dead end. The owner only when the type says so. */

@@ -19,6 +19,8 @@ import { traumaLine, ORG_KINDS, sanitizeEmergency, traumaPlan, holdsItem, roleRa
 import { SOUND_INFO } from '../../../utils/soundCatalog.js';
 import { CyberTimePicker } from '../../components/CyberTimePicker.js';
 import { parseCsv } from '../../../utils/csv.js';
+import { sanitizeCall, callProblem, copyCallTo, writtenCallId, historyCsvRows, historyFromTable, parseScript, historyList, HISTORY_SHOW, HISTORY_GROUPS } from '../../../utils/callHistory.js';
+import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { identityRole } from '../../../utils/identities.js';
 import { tagHue } from '../../../utils/tagHue.js';
 import { BUILT_IN_ROLES } from '../../../utils/contactVocab.js';
@@ -36,7 +38,7 @@ const SWITCHBOARDS = {};
 
 /** One tab's state. It lives on the tab so the panel and a pop-out don't share a selection. */
 export const newNumberState = () => ({ f: 'numbers', w: 'panel', sel: null, q: '', show: 'all', group: 'kind', shut: new Set(), prop: {}, change: null, addLine: null, okFlags: new Set(), undo: null,
-  bulk: null, bulkOff: new Set(), bulkAll: false, dock: null, tile: null, boardCity: null, boardQ: '', rq: '', relOpen: null, learn: 0, part: 'x', tryN: 'WAT-2208', tryAs: '', pOpen: new Set(), tbq: '', edit: null, addPlace: null, addBranch: null, plan: null,
+  bulk: null, bulkOff: new Set(), bulkAll: false, dock: null, tile: null, boardCity: null, boardQ: '', rq: '', relOpen: null, learn: 0, part: 'x', tryN: 'WAT-2208', tryAs: '', pOpen: new Set(), tbq: '', edit: null, addPlace: null, addBranch: null, addCorp: null, plan: null,
   lgT: '', lgE: null, ovEdit: null, ovRun: null, stStep: 1, lnOpen: null, clq: '', clShow: 'all', lq: '', lshow: 'all', ovHowShut: false, tlSide: 'a', tlVoice: 'text', shSel: null, shPick: null, typ: 'std', hudLive: false, off: null, coTab: 'sw', coQ: '', coShow: 'all', coGroup: 'corp', coOpen: new Set(), coShut: new Set(), corpFrom: 'main', dialExt: '', allOpen: false, bkOrg: 'ncpd', bkGq: '', bkRank: 'all', bkQ: '', ttQ: '', ttShow: 'all', fOpen: new Set(['rl-home', 'sp-who', 'ty-see', 'ttc', 'bkg', 'ev-room']), lineOpen: new Set(), bulkMove: null, reqSee: false, areaOpen: new Set(), areaShut: new Set(), spCall: null, spSel: null, list: '2045', custom: false, listAsk: null, walk: null, scroll: {} });
 
 /* ─── the world, as the screens read it ─── */
@@ -137,7 +139,9 @@ function load(tab) {
   PEOPLE = mains.flatMap((m) => [m, ...people.filter((p) => p.aliasOf === m.id).sort(byName)]);
   if (!S.tryAs) S.tryAs = PCS()[0]?.id || '';
   typesNow(); officesNow();
-  S.lgE ??= blankEntry();
+  S.lgE ??= blankCall();
+  // opened from Voicemail: a new call starts as one
+  if (S.lgOut) { if (!S.lgE.id) S.lgE.out = S.lgOut; S.lgOut = null; }
   RET = SVC.retired().map((r) => ({ n: r.number || r.key, was: r.was || 'Nobody', why: r.why || 'Retired', at: fmtDay(r.at) })).reverse();
   REQUESTS = SVC.requests().map((r) => { const who = byId(r.actorId)?.name || 'Someone'; const to = seenFrom(parse(r.to));
     return r.kind === 'line' ? { id: r.id, pid: r.actorId, type: 'line', kind: r.lineKind || 'extra', label: r.label || '', to: r.to, say: `${who} wants another line (${to}). They are past your limit of ${LIMITS.extra}.` }
@@ -207,7 +211,7 @@ function orgNote(p) {
   return '';
 }
 const orgChanged = () => { S.prop = {}; S.bulk = null; S.walk = null; };
-const orgDecide = (org, value, text) => undoable(text, async () => { await SVC.saveNumberSetting('phoneOrgNames', { ...ORG_MAP, [orgKey(org)]: value }); orgChanged(); return { ok: true }; });
+const orgDecide = (org, value, text) => undoable(text, async () => { await saveSetting('phoneOrgNames', { ...ORG_MAP, [orgKey(org)]: value }); orgChanged(); return { ok: true }; });
 function suggest(p, planned = {}, force = null) {
   const plannedKeys = Object.values(planned).map((x) => keyOf2(x.n));
   const m = p.aliasOf ? byId(p.aliasOf) : null;
@@ -317,7 +321,7 @@ function lineCard(p, l, i) {
   if (S.change && S.change.pid === p.id && S.change.i === i) return changeForm(p, l, i);
   const place = placeOf(q);
   return `<div class="ncm-pn-line is-${l.kind}${l.off ? ' is-off' : ''}">
-    <div class="ncm-pn-lhead"><button type="button" class="ncm-pn-lfold" data-do="lineFold" data-k="${esc(p.id + i)}" aria-expanded="${lineIsOpen(p, i)}" aria-label="Details for this line" data-tooltip="${tipText(lineIsOpen(p, i) ? 'Fold' : 'Open')} this line's details"><i class="fas fa-chevron-down ch${lineIsOpen(p, i) ? '' : ' shut'}"></i></button>${pnum(l.n)}${tagp(kt, kc, ki, kh)}${l.label ? hue(l.label, null, 'The label on this line') : ''}${l.off ? tagp('Switched off', 'is-attn', 'fa-power-off', 'Callers hear not in service. Switch it back on any time') : ''}<span class="grow"></span>${(p.kind === 'npc' && !p.actorOnly ? btn('', 'fa-phone', 'Call a player as ' + p.name + ' on this line', `data-do="lineCall" data-id="${p.id}"`, 'ic go') : '')}${btn('', 'fa-clock-rotate-left', 'Write calls into this log by hand', `data-do="lgOpen" data-id="${esc(p.id)}"`, 'ic')}${btn('', 'fa-voicemail', 'Greeting and voicemail for this line', `data-do="lineGreeting" data-n="${esc(l.n)}" data-name="${esc(p.name)}"`, 'ic')}</div>
+    <div class="ncm-pn-lhead"><button type="button" class="ncm-pn-lfold" data-do="lineFold" data-k="${esc(p.id + i)}" aria-expanded="${lineIsOpen(p, i)}" aria-label="Details for this line" data-tooltip="${tipText(lineIsOpen(p, i) ? 'Fold' : 'Open')} this line's details"><i class="fas fa-chevron-down ch${lineIsOpen(p, i) ? '' : ' shut'}"></i></button>${pnum(l.n)}${tagp(kt, kc, ki, kh)}${l.label ? hue(l.label, null, 'The label on this line') : ''}${l.off ? tagp('Switched off', 'is-attn', 'fa-power-off', 'Callers hear not in service. Switch it back on any time') : ''}<span class="grow"></span>${(p.kind === 'npc' && !p.actorOnly ? btn('', 'fa-phone', 'Call a player as ' + p.name + ' on this line', `data-do="lineCall" data-id="${p.id}"`, 'ic go') : '')}${btn('', 'fa-clock-rotate-left', 'Call history: every call on this line, and write in calls from before play', `data-do="lgOpen" data-id="${esc(p.id)}"`, 'ic')}${btn('', 'fa-voicemail', 'Greeting and voicemail for this line', `data-do="lineGreeting" data-n="${esc(l.n)}" data-name="${esc(p.name)}"`, 'ic')}</div>
     ${lineIsOpen(p, i) ? '' : (flags.some((f) => f.tone === 'warn') ? '<div class="ncm-pn-lnote"><i class="fas fa-triangle-exclamation"></i> Something to check</div>' : '')}<div class="ncm-pn-lbody"${lineIsOpen(p, i) ? '' : ' hidden'}><div class="ncm-pn-kv">
       <span class="k" data-tooltip="Where it was issued. A number never says where someone is now."><i class="fas fa-location-dot"></i> Issued in</span><span class="ncm-pn-val" style="--tc:${hueOf(place)}">${esc(place)}${r?.Listed === 'no' ? ' ' + tagp('hidden', 'is-secret', 'fa-eye-slash', 'Out of the directory. Players see Unlisted number') : ''}</span>
       <span class="k" data-tooltip="The whole number, the way someone far away would dial it"><i class="fas fa-hashtag"></i> Written as</span><span>${fullHtml(l.n)}</span>
@@ -618,6 +622,8 @@ function planView() {
   if (p.error) return `<div class="ncm-pn-plan bad">${esc(p.error)} ${btn('Close', '', 'Close this', 'data-do="planNo"')}</div>`;
   return `<div class="ncm-pn-plan"><b>This import would change:</b> ${p.added.length} added · ${p.changed.length} changed · ${p.removed.length} removed${p.extra.length ? ` · your column${p.extra.length > 1 ? 's' : ''} kept: ${esc(p.extra.join(', '))}` : ''}<ul>${p.added.slice(0, 5).map((r) => `<li>+ ${esc(r.Code || r.City)} ${esc(r.District || r.City)}, ${esc(r.City)}</li>`).join('')}${p.removed.slice(0, 3).map((r) => `<li>− ${esc(r.Code)} ${esc(r.District)}</li>`).join('')}${p.kept.map((r) => `<li>Kept ${esc(r.Code)} ${esc(r.District)}: people hold numbers there.</li>`).join('')}${p.problems.map((t) => `<li>${esc(t)}</li>`).join('')}</ul><div class="ncm-pn-acts">${btn('Apply', 'fa-check', 'Replace the table with this file', 'data-do="planYes"', 'go')}${btn('Cancel', '', 'Leave the table as it is', 'data-do="planNo"')}</div></div>`;
 }
+/** The categories offered when adding a place: the ones in the table, Corporate always among them. */
+const placeCategories = () => uniq(['District', 'City', 'Corporate', ...ROWS.map((r) => r.Category).filter(Boolean)]);
 function addPlaceForm() {
   const a = S.addPlace; if (!a) return '';
   const regions = Object.entries(REGIONS).sort((x, y) => x[1].name.localeCompare(y[1].name));
@@ -626,6 +632,7 @@ function addPlaceForm() {
   const issues = [];
   if (isNew && a.nrc && !/^\d{2}$/.test(a.nrc)) issues.push('A region code is two digits.');
   if (isNew && REGIONS[a.nrc]) issues.push(`+${a.nrc} is already ${REGIONS[a.nrc].name}.`);
+  if (a.cat === 'Corporate' && !ex) issues.push('A corporation needs a three-letter code.');
   if (cc && !/^[A-Z]{2,3}$/.test(cc)) issues.push('A city code is two or three letters.');
   if (ex && !/^[A-Z]{3}$/.test(ex)) issues.push('A district code is three letters.');
   if (ROWS.some((r) => r['Region code'] === rc && r['City code'] === cc && (r.Code || '') === ex) && cc) issues.push('That place is already in the table.');
@@ -640,7 +647,7 @@ function addPlaceForm() {
     <label class="ncm-pn-f" data-tooltip="Two or three letters">City code<input type="text" id="ap-cc" data-in="ap" data-k="cc" value="${esc(a.cc)}" style="width:68px"></label>
     <label class="ncm-pn-f" data-tooltip="Optional. Groups districts in the picker">Area<input type="text" id="ap-ar" data-in="ap" data-k="ar" value="${esc(a.ar)}"></label>
     <label class="ncm-pn-f" data-tooltip="Leave empty for a small place that dials city and four digits">District<input type="text" id="ap-di" data-in="ap" data-k="di" value="${esc(a.di)}"></label>
-    <label class="ncm-pn-f" data-tooltip="Three letters">Code<input type="text" id="ap-ex" data-in="ap" data-k="ex" value="${esc(a.ex)}" style="width:62px"></label></div>
+    <label class="ncm-pn-f" data-tooltip="Three letters">Code<input type="text" id="ap-ex" data-in="ap" data-k="ex" value="${esc(a.ex)}" style="width:62px"></label><label class="ncm-pn-f" data-tooltip="What kind of place. Corporate makes it a company with a switchboard, on Numbers → Corporations">Category<select id="ap-cat" data-ch="apCat">${opt('', 'District, or City if no district', !a.cat)}${placeCategories().map((c) => opt(c, c, a.cat === c)).join('')}</select></label></div>
     <div id="ap-out">${apOut(reading, issues)}</div>
     <div class="ncm-pn-acts">${btn('Add it', 'fa-check', 'Add this row to the table', 'data-do="apGo"', 'pri')}${btn('Cancel', '', 'Add nothing', 'data-do="apCancel"')}</div></div>`;
 }
@@ -654,6 +661,35 @@ function addBranchForm() {
   const [x, y] = a.city.split(':');
   return `<div class="ncm-pn-form"><h4><i class="fas fa-building"></i> Add a branch</h4><p style="margin:0;font:13px var(--ncm-font-body);color:var(--ncm-text-label)">A branch is a row: the corporation's three letters in one more city.</p><div class="ncm-pn-fr"><label class="ncm-pn-f" data-tooltip="Any corporation already in the table">Corporation<select id="ab-corp" data-ch="abCorp">${corps.map((c) => opt(c, c.split('|')[1] + ' ' + c.split('|')[0], a.corp === c)).join('')}</select></label><label class="ncm-pn-f" data-tooltip="Cities that don't have this office yet">City<select id="ab-city" data-ch="abCity">${cities.map((c) => opt(c.c, c.name + ', ' + c.region, a.city === c.c)).join('')}</select></label><label class="ncm-pn-chk" data-tooltip="The number works but reads as Unlisted number, like Arasaka in Night City 2045"><input type="checkbox" id="ab-hide" data-ch="abHide"${a.hide ? ' checked' : ''}><span>Keep it out of the directory</span></label></div><div class="ncm-pn-why"><i class="fas fa-eye"></i><span>Numbers here read <b style="font-family:var(--ncm-font-mono)">+${esc(x)} ${esc(y)} ${esc(code)}-0100</b></span></div><div class="ncm-pn-acts">${btn('Add it', 'fa-check', 'Add this office', 'data-do="abGo"', 'pri')}${btn('Cancel', '', 'Add nothing', 'data-do="abCancel"')}</div></div>`;
 }
+/** A new corporation is one Places row: its three letters in one city, category Corporate. A blocking problem stops Add it. */
+function corpIssues(a) {
+  const name = (a.name || '').trim(), code = (a.code || '').toUpperCase(), [rc, cc] = (a.city || '').split(':');
+  const out = [];
+  if (!name) out.push({ t: 'Give it a name.', block: true });
+  if (code && !/^[A-Z]{3}$/.test(code)) out.push({ t: 'The code is three letters.', block: true });
+  if (!code) out.push({ t: 'Give it a three-letter code. It is the district part of its numbers.', block: true });
+  const here = ROWS.filter((r) => r['Region code'] === rc && r['City code'] === cc);
+  const same = code && here.find((r) => (r.Code || '') === code);
+  if (same) out.push({ t: `${code} is already ${same.District || same.City} in ${same.City}.`, block: true });
+  const pad = code && /^[A-Z]{3}$/.test(code) && !same && here.find((r) => r.Code && asKeys(r.Code) === asKeys(code));
+  if (pad) out.push({ t: `${pad.Code} uses the same pad keys here. Letters still work; the pad can't tell them apart.`, block: false });
+  const twin = name && ROWS.find((r) => isCorp(r) && (r.District || '').toLowerCase() === name.toLowerCase() && !(r['Region code'] === rc && r['City code'] === cc));
+  if (twin && !same) out.push({ t: `${twin.District} already has an office in ${twin.City}. Add a branch reuses its code instead.`, block: false });
+  return out;
+}
+const acOut = (a) => { const [rc, cc] = (a.city || '').split(':'), code = (a.code || '').toUpperCase(); return `${/^[A-Z]{3}$/.test(code) ? `<div class="ncm-pn-why"><i class="fas fa-eye"></i><span>Its switchboard is <b style="font-family:var(--ncm-font-mono)">+${esc(rc)} ${esc(cc)} ${esc(code)}-${OFFICE_LINE}</b></span></div>` : '<small>Fill in a three-letter code to see its number.</small>'}${corpIssues(a).filter((x) => a.name || a.code || !x.block).map((x) => `<div class="ncm-pn-check"><i class="fas fa-triangle-exclamation"></i><span>${esc(x.t)}</span></div>`).join('')}`; };
+function addCorpForm() {
+  const a = S.addCorp; if (!a) return '';
+  const cities = uniq(ROWS.map((r) => r['Region code'] + ':' + r['City code'])).map((c) => { const [x, y] = c.split(':'); const r = ROWS.find((z) => z['Region code'] === x && z['City code'] === y); return { c, name: r.City, region: r.Region }; }).sort((x, y) => x.name.localeCompare(y.name));
+  if (!cities.some((x) => x.c === a.city)) a.city = cities.find((x) => x.c === HOME.rc + ':' + HOME.city)?.c || cities[0]?.c || '';
+  return `<div class="ncm-pn-form"><h4><i class="fas fa-briefcase"></i> New corporation</h4><p style="margin:0;font:13px var(--ncm-font-body);color:var(--ncm-text-label)">A company with its own switchboard. Once it is added you set its art, who answers and its extensions.</p><div class="ncm-pn-fr">
+    <label class="ncm-pn-f grow" data-tooltip="The name players read">Name<input type="text" id="ac-name" data-in="ac" data-k="name" value="${esc(a.name)}" maxlength="40" placeholder="Xoma"></label>
+    <label class="ncm-pn-f" data-tooltip="Three letters, the district part of its numbers">Code<input type="text" id="ac-code" data-in="ac" data-k="code" value="${esc(a.code)}" maxlength="3" style="width:62px" placeholder="XOM"></label>
+    <label class="ncm-pn-f" data-tooltip="Where its office is. More cities later with Add a branch">City<select id="ac-city" data-ch="acCity">${cities.map((c) => opt(c.c, c.name + ', ' + c.region, a.city === c.c)).join('')}</select></label>
+    <label class="ncm-pn-chk" data-tooltip="The number works but reads as Unlisted number"><input type="checkbox" id="ac-hide" data-ch="acHide"${a.hide ? ' checked' : ''}><span>Keep it out of the directory</span></label></div>
+    <div id="ac-out">${acOut(a)}</div>
+    <div class="ncm-pn-acts">${btn('Add it', 'fa-check', 'Add this corporation', 'data-do="acGo"', 'pri')}${btn('Cancel', '', 'Add nothing', 'data-do="acCancel"')}</div></div>`;
+}
 function viewPlaces() {
   const hits = ROWS.map((r, i) => ({ r, i })).filter(({ r }) => tbHit(r));
   const regs = uniq(hits.map(({ r }) => r['Region code'])).sort((a, b) => (a === HOME.rc ? -1 : b === HOME.rc ? 1 : (REGIONS[a]?.name || '').localeCompare(REGIONS[b]?.name || '')));
@@ -661,8 +697,8 @@ function viewPlaces() {
   return `<header class="ncm-tabhd"><i class="fas fa-table"></i><div><h2>Places</h2><p>Every number comes from this table. Edit it here, or export it to a spreadsheet and bring it back.</p></div></header>${setupTabs()}${undoLine()}
     <div class="ncm-pn-tb"><label class="ncm-pn-srch" data-tooltip="Narrow the table, then hide or show everything it finds. Try: arasaka night"><i class="fas fa-magnifying-glass"></i><input type="text" id="tb-q" data-in="tbq" value="${esc(S.tbq)}" placeholder="Find rows" aria-label="Find rows"></label><small>${hits.length} of ${ROWS.length}</small>
       ${btn('', 'fa-eye-slash', 'Hide every row showing here from the directory. The numbers still work', 'data-do="tbHide" data-v="no"', 'ic')}${btn('', 'fa-eye', 'List every row showing here in the directory', 'data-do="tbHide" data-v="yes"', 'ic')}
-      <span class="grow"></span><details class="ncm-pn-menu"><summary class="ncm-ph2-btn ncm-ph2-btn--pri" data-tooltip="Add to the table"><i class="fas fa-plus"></i> Add</summary><div class="m"><button type="button" data-do="apOpen" data-tooltip="A region, city or district"><i class="fas fa-location-dot"></i> A place</button><button type="button" data-do="abOpen" data-tooltip="A corporation's office in another city"><i class="fas fa-building"></i> A branch</button></div></details><details class="ncm-pn-menu"><summary class="ncm-ph2-btn" data-tooltip="Work on it in Excel or Sheets. Your own columns are kept"><i class="fas fa-table"></i> Spreadsheet</summary><div class="m"><button type="button" data-do="csvPlaces" data-tooltip="Download the table as a CSV"><i class="fas fa-file-export"></i> Export</button><button type="button" data-do="csvImport" data-tooltip="Load an edited CSV. You see every change before it applies"><i class="fas fa-file-import"></i> Import</button><button type="button" data-do="csvBlank" data-tooltip="An empty CSV with the right columns and one example row"><i class="fas fa-file-circle-plus"></i> Blank template</button><button type="button" data-do="tbReset" data-tooltip="Back to the shipped table. Numbers people hold are not touched"><i class="fas fa-rotate-left"></i> Reset the table</button></div></details><input type="file" id="tbfile" accept=".csv,text/csv" hidden></div>
-    ${planView()}${addPlaceForm()}${addBranchForm()}
+      <span class="grow"></span><details class="ncm-pn-menu"><summary class="ncm-ph2-btn ncm-ph2-btn--pri" data-tooltip="Add to the table"><i class="fas fa-plus"></i> Add</summary><div class="m"><button type="button" data-do="apOpen" data-tooltip="A region, city or district"><i class="fas fa-location-dot"></i> A place</button><button type="button" data-do="acOpen" data-tooltip="A company with its own switchboard and extensions"><i class="fas fa-briefcase"></i> A corporation</button><button type="button" data-do="abOpen" data-tooltip="A corporation's office in another city"><i class="fas fa-building"></i> A branch</button></div></details><details class="ncm-pn-menu"><summary class="ncm-ph2-btn" data-tooltip="Work on it in Excel or Sheets. Your own columns are kept"><i class="fas fa-table"></i> Spreadsheet</summary><div class="m"><button type="button" data-do="csvPlaces" data-tooltip="Download the table as a CSV"><i class="fas fa-file-export"></i> Export</button><button type="button" data-do="csvImport" data-tooltip="Load an edited CSV. You see every change before it applies"><i class="fas fa-file-import"></i> Import</button><button type="button" data-do="csvBlank" data-tooltip="An empty CSV with the right columns and one example row"><i class="fas fa-file-circle-plus"></i> Blank template</button><button type="button" data-do="tbReset" data-tooltip="Back to the shipped table. Numbers people hold are not touched"><i class="fas fa-rotate-left"></i> Reset the table</button></div></details><input type="file" id="tbfile" accept=".csv,text/csv" hidden></div>
+    ${planView()}${addPlaceForm()}${addCorpForm()}${addBranchForm()}
     <div class="ncm-pn-tw" data-sc="places"><table><thead><tr>${P_COLS().map((c) => `<th class="${c === 'Held' ? 'act' : ''}" data-tooltip="${tipText(COL_HELP[c] || 'Your own column, kept through export and import')}">${esc(c)}</th>`).join('')}</tr></thead><tbody>${regs.map((rc) => { const list = hits.filter(({ r }) => r['Region code'] === rc); const open = forced || S.pOpen.has(rc); const name = list[0].r.Region; return `<tr class="grp${open ? '' : ' is-shut'}" data-do="pFold" data-k="${esc(rc)}" data-tooltip="${tipText(open ? 'Fold' : 'Open')} ${tipText(name)}"><td colspan="${P_COLS().length}" style="--tc:${hueOf(name)}"><i class="fas fa-chevron-down ch"></i>${esc(name)} <span class="ncm-pnum is-plain"><span class="r">+${esc(rc)}</span></span> <span class="ncm-pn-more">${list.length}</span>${rc === HOME.rc ? ' ' + tagp('your campaign', 'is-act', 'fa-location-dot') : ''}</td></tr>${open ? list.map(({ r, i }) => `<tr class="${r['Players can pick'] === 'no' ? 'is-off' : ''}${r.Listed === 'no' ? ' is-hid' : ''}">${cellsOf(r, i)}</tr>`).join('') : ''}`; }).join('')}</tbody></table></div>`;
 }
 const rowKey = (r) => r['Region code'] + '/' + r['City code'] + '/' + (r.Code || '-');
@@ -770,11 +806,11 @@ function viewTypes() {
   const x = typeOf(S.typ) || TYPES[0];
   const row = (t) => `<button type="button" class="ncm-pn-prow${t === x ? ' on' : ''}" data-do="typ" data-id="${t.id}" data-tooltip="Open ${tipText(t.name)}"><span class="ncm-r3-swatch" style="--tc:${t.color}"></span><span class="bd"><span class="nm">${esc(t.name)}</span><span class="mt"><span class="ncm-pn-who">${t.hold === 'players' ? 'Players can add' : 'You give it out'}</span>${t.burn ? tagp('burns', 'is-attn', 'fa-fire') : ''}${t.ext ? tagp('extensions', 'is-plain', 'fa-hashtag') : ''}${t.fixed ? tagp('in one place', 'is-plain', 'fa-location-dot') : ''}</span></span></button>`;
   const lockTip = 'Standard is what every line is unless you say otherwise';
-  const seeWord = SHOWS[x.shows][0] + (x.shows === 'label' && x.label ? ': ' + x.label : '');
+  const seeWord = SHOWS[x.shows][0] + (x.shows === 'label' && x.label ? ': ' + x.label : '') + (x.shows === 'owner' && x.face ? ', picture to everyone' : '');
   const editor = `
     <div class="ncm-pn-dh"><span class="ncm-r3-swatch lg" style="--tc:${x.color}"></span><label class="ncm-pn-f grow" data-tooltip="What you and players call this kind of line">Name<input type="text" id="ty-name" data-in="typ" data-k="name" value="${esc(x.name)}"${x.builtin ? ' disabled' : ''}></label></div>
     <div class="ncm-pn-ph" style="--sk:${x.color}"><h5>What a player sees</h5><div class="ncm-pn-fr">${themeSwitch()}</div><div class="ncm-r3-scene">${typeRing(x)}</div>${typeLog(x, '22:14', 'in', 'Answered')}</div>
-    ${qsect('ty-see', 'fa-mobile-screen', 'What does the other person see?', 'var(--ncm-hue-3)', seeWord + ' · a Trace finds ' + TRACES[x.trace][0].toLowerCase(), `<div class="ncm-pn-fr"><label class="ncm-pn-f" data-tooltip="${tipText(SHOWS[x.shows][1])}">Their screen shows<select id="ty-shows" data-ch="typSel" data-k="shows">${Object.entries(SHOWS).map(([k, v]) => opt(k, v[0], x.shows === k)).join('')}</select></label>${x.shows === 'label' ? `<label class="ncm-pn-f grow" data-tooltip="A default. Each line of this type can set its own">Name<input type="text" id="ty-label" data-in="typ" data-k="label" value="${esc(x.label)}"></label>` : ''}<label class="ncm-pn-f" data-tooltip="${tipText(TRACES[x.trace][1])}">A Trace finds<select id="ty-trace" data-ch="typSel" data-k="trace">${Object.entries(TRACES).map(([k, v]) => opt(k, v[0], x.trace === k)).join('')}</select></label></div>`)}
+    ${qsect('ty-see', 'fa-mobile-screen', 'What does the other person see?', 'var(--ncm-hue-3)', seeWord + ' · a Trace finds ' + TRACES[x.trace][0].toLowerCase(), `<div class="ncm-pn-fr"><label class="ncm-pn-f" data-tooltip="${tipText(SHOWS[x.shows][1])}">Their screen shows<select id="ty-shows" data-ch="typSel" data-k="shows">${Object.entries(SHOWS).map(([k, v]) => opt(k, v[0], x.shows === k)).join('')}</select></label>${x.shows === 'label' ? `<label class="ncm-pn-f grow" data-tooltip="A default. Each line of this type can set its own">Name<input type="text" id="ty-label" data-in="typ" data-k="label" value="${esc(x.label)}"></label>` : ''}<label class="ncm-pn-f" data-tooltip="${tipText(TRACES[x.trace][1])}">A Trace finds<select id="ty-trace" data-ch="typSel" data-k="trace">${Object.entries(TRACES).map(([k, v]) => opt(k, v[0], x.trace === k)).join('')}</select></label></div>${x.shows === 'owner' ? `<label class="ncm-pn-chk" data-tooltip="Normally someone who doesn't have the holder saved sees only the number and a question mark. With this on they see the holder's picture, still without a name"><input type="checkbox" id="ty-face" data-ch="typChk" data-k="face"${x.face ? ' checked' : ''}><span>People who don't have them saved still see their picture</span></label>` : ''}`)}
     ${qsect('ty-ring', 'fa-phone-volume', 'How does it ring?', 'var(--ncm-hue-5)', (x.word ? 'Says ' + x.word : 'No word') + ' · ' + RINGS[x.ring][0].toLowerCase() + ' dial', `<label class="ncm-pn-f" data-tooltip="Shown on the call screen and call log, like Incoming · Burner. Empty for an ordinary call">Word on the call screen<input type="text" id="ty-word" data-in="typ" data-k="word" value="${esc(x.word)}" placeholder="None"></label><div class="ncm-pn-f"><span data-tooltip="A small difference in how the dial moves. The colours always come from the player's theme">The dial</span>${seg3('typSet', 'ring', x.ring, Object.entries(RINGS).map(([k, v]) => [k, v[0], v[1]]))}</div>`)}
     ${qsect('ty-mark', 'fa-tag', 'What colour marks it?', 'var(--ncm-hue-3)', (COLORS.find(([c]) => c === x.color) || ['', 'Custom'])[1] + ', in logs and lists only', `<div class="ncm-r3-swatches" role="group" aria-label="Colour">${COLORS.map(([c, n]) => `<button type="button" class="${x.color === c ? 'on' : ''}" style="--tc:${c}" data-do="typSet" data-k="color" data-v="${c}" aria-label="${n}" data-tooltip="${tipText(n)}"></button>`).join('')}</div><small>It never touches the call screen.</small>`)}
     ${qsect('ty-beh', 'fa-sliders', 'What can it do?', 'var(--ncm-act)', [x.hold === 'players' ? 'Players can add it' : 'You give it out', x.burn && 'burns', x.ext && 'switchboard', x.fixed && 'one place'].filter(Boolean).join(' · '), `<div class="ncm-pn-f"><span data-tooltip="Whether players can add this type themselves, within their extra line limit">Who gets one</span>${seg3('typSet', 'hold', x.hold, [['players', 'Players can add', 'Counts against their extra line limit'], ['gm', 'You give it out', 'Only you can create these']])}</div><label class="ncm-pn-chk" data-tooltip="The holder gets a Burn button. Burned means retired for good"><input type="checkbox" id="ty-burn" data-ch="typChk" data-k="burn"${x.burn ? ' checked' : ''}><span>Can be burned</span></label><label class="ncm-pn-chk" data-tooltip="Callers reach a switchboard, and can dial an extension"><input type="checkbox" id="ty-ext" data-ch="typChk" data-k="ext"${x.ext ? ' checked' : ''}><span>Has a switchboard and extensions</span></label><label class="ncm-pn-chk" data-tooltip="Nobody holds it. You place it on a map like a terminal pin, and anyone there can call from it"><input type="checkbox" id="ty-fixed" data-ch="typChk" data-k="fixed"${x.fixed ? ' checked' : ''}><span>Sits in one place</span></label>`)}
@@ -792,6 +828,9 @@ function viewRing() {
 }
 function viewCorp() {
   const o = OFFICES.find((x) => x.id === S.off);
+  // no corporate rows at all: the button and the form, nothing to open yet
+  if (!o) return `<header class="ncm-tabhd"><i class="fas fa-building"></i><div><h2>Corporations</h2><p>Each office is a line with a switchboard. Set who answers, and who can be reached through it.</p></div></header>${numbersTabs()}${undoLine()}
+    <div class="ncm-pn-tb">${btn('New corporation', 'fa-plus', 'A company with its own switchboard and extensions', 'data-do="acOpen"', 'pri')}</div>${addCorpForm()}${S.addCorp ? '' : '<div class="ncm-pn-check info"><i class="fas fa-building"></i><span>No corporations yet. Add one here, or give a row in Setup → Places the category Corporate.</span></div>'}`;
   const row = (x) => `<button type="button" class="ncm-pn-prow${x === o ? ' on' : ''}" data-do="off" data-id="${x.id}" data-tooltip="Open ${tipText(x.name)}, ${tipText(x.city)}">${faceOf(x.name, '', x.art)}<span class="bd"><span class="nm">${esc(x.name)}</span><span class="ln">${pcolor(x.num)}</span><span class="mt">${hv(x.city, 'fa-location-dot')}${x.hidden ? tagp('hidden', 'is-secret', 'fa-eye-slash') : ''}${x.ext.length ? `<span class="ncm-pn-who">${x.ext.length} extension${x.ext.length === 1 ? '' : 's'}</span>` : ''}</span></span></button>`;
   const ansTip = { gm: 'Rings you. With no GM online it goes to voicemail', recording: 'Plays what you wrote, then offers the extensions', vm: 'Straight to voicemail' };
   const editor = `<div class="ncm-pn-dh">${faceOf(o.name, 'xl', o.art)}<div class="grow" style="min-width:0"><h3>${esc(o.name)}</h3><div class="tags">${hue(o.city, 'fa-location-dot')}${tagp('Corporate', 'is-plain', 'fa-building')}</div><div style="margin-top:3px">${pcolor(o.num)}</div><div class="ncm-pn-acts" style="margin-top:5px">${btn(o.art ? 'Change art' : 'Add art', 'fa-image', 'Your own art. The module ships no game logos', 'data-do="corpArt"')}</div></div></div>
@@ -815,7 +854,7 @@ function viewCorp() {
   const forced = !!q || S.coShow !== 'all';
   const groups = gnames.map((g, i) => { const list = shown.filter((x) => gkey(x) === g); const has = list.includes(o); const shut = !forced && (S.coShut.has(g) || (!S.coOpen.has(g) && !has && S.coGroup !== 'none' && i !== 0)); return `<button type="button" class="ncm-pn-gh${shut ? ' is-shut' : ''}" style="--sk:${hueOf(g)}" data-do="coFold" data-k="${esc(g)}" aria-expanded="${!shut}" data-tooltip="${tipText(shut ? 'Open' : 'Fold')} ${tipText(g)}"><i class="fas fa-chevron-down ch"></i>${esc(g)}<span class="grow"></span><span class="ncm-pn-count">${list.length}</span></button>${shut ? '' : list.map(row).join('')}`; }).join('') || '<div class="ncm-ph2-none">Nothing matches. Clear the search or filter.</div>';
   return `<header class="ncm-tabhd"><i class="fas fa-building"></i><div><h2>Corporations</h2><p>Each office is a line with a switchboard. Set who answers, and who can be reached through it.</p></div></header>${numbersTabs()}${undoLine()}
-    <div class="ncm-pn-tb"><label class="ncm-pn-srch" data-tooltip="Search companies, cities, numbers and who is on an extension"><i class="fas fa-magnifying-glass"></i><input type="text" id="co-q" data-in="coQ" value="${esc(S.coQ)}" placeholder="Company, city, person" aria-label="Search offices"></label><label class="ncm-pn-sel" data-tooltip="Narrow the list"><span>Show</span><select id="co-show" data-ch="coShow">${[['all', 'All offices'], ['ext', 'Has extensions'], ['gm', 'Rings me'], ['hidden', 'Hidden'], ['noart', 'No art yet']].map(([k, l]) => opt(k, l, S.coShow === k)).join('')}</select></label><label class="ncm-pn-sel" data-tooltip="How the list is grouped"><span>Group</span><select id="co-group" data-ch="coGroup">${[['corp', 'Company'], ['city', 'City'], ['none', 'None']].map(([k, l]) => opt(k, l, S.coGroup === k)).join('')}</select></label><small>${shown.length} of ${OFFICES.length}</small></div>
+    <div class="ncm-pn-tb">${btn('New corporation', 'fa-plus', 'A company with its own switchboard and extensions', 'data-do="acOpen"', 'pri')}<label class="ncm-pn-srch" data-tooltip="Search companies, cities, numbers and who is on an extension"><i class="fas fa-magnifying-glass"></i><input type="text" id="co-q" data-in="coQ" value="${esc(S.coQ)}" placeholder="Company, city, person" aria-label="Search offices"></label><label class="ncm-pn-sel" data-tooltip="Narrow the list"><span>Show</span><select id="co-show" data-ch="coShow">${[['all', 'All offices'], ['ext', 'Has extensions'], ['gm', 'Rings me'], ['hidden', 'Hidden'], ['noart', 'No art yet']].map(([k, l]) => opt(k, l, S.coShow === k)).join('')}</select></label><label class="ncm-pn-sel" data-tooltip="How the list is grouped"><span>Group</span><select id="co-group" data-ch="coGroup">${[['corp', 'Company'], ['city', 'City'], ['none', 'None']].map(([k, l]) => opt(k, l, S.coGroup === k)).join('')}</select></label><small>${shown.length} of ${OFFICES.length}</small></div>${addCorpForm()}
     <div class="ncm-pn-split"><div class="ncm-pn-list" data-sc="cl">${groups}</div><div class="ncm-pn-detail" data-sc="cd">${editor}${pane(S.coTab, 'in', board)}</div></div>`;
 }
 
@@ -1030,38 +1069,148 @@ function viewBackup() {
 }
 
 /* ─── the call log editor ─── */
+// A written call has two ends, From and To (utils/callHistory.js). Each end is a person with a number, anyone written
+// in, or "Unknown"; a terminal account's own log adds "This account". The call lands in the log of every end that is
+// a person, as one call. Opening someone's log puts them in To, ready for a call they got.
 const OUTS = ['Answered', 'Missed', 'Declined', 'Voicemail', 'Dropped'];
 const nowIso = () => { try { return game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString(); } catch { return new Date().toISOString(); } };
 const whenText = (t) => { try { return t ? formatCyberDate(t) : ''; } catch { return String(t); } };
-const blankEntry = () => ({ id: null, ty: 'std', dir: 'in', pick: '__none', who: '', n: '', out: 'Answered', when: nowIso(), len: '1:30', vm: '', both: false });
 /** A target: "o:<actor or contact id>", or "a:<terminal uuid>:<account id>". */
 const logParts = (t) => { const [k, ...rest] = String(t || '').split(':'); if (k === 'a') { const acc = rest.pop(); return { kind: 'acct', uuid: rest.join(':'), acc }; } return k === 'o' ? { kind: 'owner', id: rest.join(':') } : { kind: 'none' }; };
 const logTerminal = (uuid) => (game.nightcity?.terminalService?.collectTerminals?.() || []).find((i) => i.uuid === uuid);
-const logEntries = () => { const t = logParts(S.lgT); if (t.kind === 'owner') return SVC.writtenLog(t.id); if (t.kind === 'acct') { const item = logTerminal(t.uuid); return item ? game.nightcity.terminalService.callEntries(item, t.acc) : []; } return []; };
 const logName = () => { const t = logParts(S.lgT); if (t.kind === 'owner') return byId(t.id)?.name || 'Someone'; if (t.kind === 'acct') { const item = logTerminal(t.uuid); const a = item && game.nightcity.terminalService.getAccount(item, t.acc); return item ? `${item.name}: ${a?.username || t.acc}` : 'A terminal'; } return 'Pick a log'; };
-const logRow = (e) => { const editing = S.lgE.id === e.id; return `<div class="ncm-r3-lrow${editing ? ' on' : ''}"><i class="fas ${e.out === 'Voicemail' ? 'fa-voicemail' : e.dir === 'in' ? 'fa-arrow-down-long' : 'fa-arrow-up-long'}" style="color:var(--ncm-${e.out === 'Missed' || e.out === 'Dropped' ? 'bad' : 'good'})" aria-hidden="true"></i><span class="nm"><b>${esc(e.who || (e.n ? seenFrom(parse(e.n)) : 'Unknown caller'))}</b>${e.who && e.n ? pcolor(e.n) : ''}${e.vm ? `<em>"${esc(e.vm)}"</em>` : ''}</span><span class="st">${esc(e.out)}${e.len ? ' · ' + esc(e.len) : ''}</span><span class="ncm-pn-when">${esc(whenText(e.when))}</span>${typeMark(typeOf(e.ty || 'std') || TYPES[0])}${e.real ? tagp('Real', 'is-plain', 'fa-phone', 'It happened in play') : tagp('Yours', 'is-secret', 'fa-pen', 'You wrote this. Only you see this label; players see it as any other call')}${btn('', 'fa-pen', 'Edit this entry', `data-do="lgEdit" data-id="${esc(e.id)}"`, 'ic')}${btn('', 'fa-trash', 'Delete this entry', `data-do="lgDel" data-id="${esc(e.id)}"`, 'ic bad')}</div>`; };
-function viewLog() {
-  const list = logEntries(), e = S.lgE, someone = e.pick === '__other';
-  const known = PEOPLE.filter((p) => p.lines[0]);
-  const hasTarget = logParts(S.lgT).kind !== 'none';
-  const form = `<div class="ncm-pn-form"><h4><i class="fas ${e.id ? 'fa-pen' : 'fa-plus'}"></i> ${e.id ? 'Edit this call' : 'Add a call'}</h4>
-    <div class="ncm-pn-fr"><div class="ncm-pn-f"><span data-tooltip="Who called whom">Direction</span>${seg3('lgSet', 'dir', e.dir, [['in', 'Incoming', 'Someone called them'], ['out', 'Outgoing', 'They called someone']])}</div>
-    <div class="ncm-pn-f"><span data-tooltip="How it ended">How it went</span>${seg3('lgSet', 'out', e.out, OUTS.map((o) => [o, o, o]))}</div></div>
-    <div class="ncm-pn-fr"><label class="ncm-pn-f grow" data-tooltip="Pick someone with a number, or write in anyone">Other person<select id="lg-pick" data-ch="lgPick">${known.map((p) => opt(p.id, p.name, e.pick === p.id)).join('')}${opt('__other', 'Someone else…', someone)}${opt('__none', 'Unknown caller', e.pick === '__none')}</select></label>${someone ? `<label class="ncm-pn-f grow" data-tooltip="Any name, or leave it empty to show only the number">Name<input type="text" id="lg-who" data-in="lg" data-k="who" value="${esc(e.who)}"></label><label class="ncm-pn-f grow" data-tooltip="Any number">Number<input type="text" id="lg-n" data-in="lg" data-k="n" value="${esc(e.n)}" placeholder="WAT-1234"></label>` : ''}</div>
-    <div class="ncm-pn-fr"><label class="ncm-pn-f" data-tooltip="The kind of line on the other end. It marks the row">Their line<select id="lg-ty" data-ch="lgTy">${TYPES.map((t) => opt(t.id, t.name, (e.ty || 'std') === t.id)).join('')}</select></label><div class="ncm-pn-f"><span data-tooltip="Game time">When</span>${btn(whenText(e.when) || 'Pick a time', 'fa-clock', 'Game time', 'data-do="lgWhen"')}</div><label class="ncm-pn-f" data-tooltip="Minutes and seconds. Leave empty for a call nobody answered">Length<input type="text" id="lg-len" data-in="lg" data-k="len" value="${esc(e.len)}" style="width:70px"></label></div>
-    ${e.out === 'Voicemail' ? `<label class="ncm-pn-f" data-tooltip="What they left. A clue, a threat, anything">What they said<input type="text" id="lg-vm" data-in="lg" data-k="vm" value="${esc(e.vm)}"></label>` : ''}
-    ${byId(e.pick) ? `<label class="ncm-pn-chk" data-tooltip="Adds the matching entry to their log too, so the two logs agree"><input type="checkbox" id="lg-both" data-ch="lgBoth"${e.both ? ' checked' : ''}><span>Add it to ${esc(byId(e.pick).name)}'s log too</span></label>` : ''}
-    <div class="ncm-pn-acts">${btn(e.id ? 'Save' : 'Add it', 'fa-check', 'Save this entry', `data-do="lgSave" ${hasTarget ? '' : 'disabled'}`, 'pri')}${e.id ? btn('Cancel', '', 'Leave it as it was', 'data-do="lgNew"') : ''}</div></div>`;
-  return `<header class="ncm-tabhd"><i class="fas fa-clock-rotate-left"></i><div><h2>Edit a call log</h2><p>Write history for a person or a machine: a missed call, a voicemail, a trail for players to find.</p></div><div class="ncm-tabhd__end">${btn('Call log', 'fa-arrow-left', 'Back to the call log', 'data-do="logBack"')}</div></header>${undoLine()}
-    <div class="ncm-pn-tb">${btn(logName(), 'fa-magnifying-glass', 'Search any line or terminal account', 'data-do="lgPickLog"')}<span class="grow"></span>${btn('Fill in a week', 'fa-wand-magic-sparkles', 'Adds a handful of ordinary calls with people who have numbers, so the log looks lived in. You can undo it', `data-do="lgFill" ${hasTarget ? '' : 'disabled'}`)}${btn('', 'fa-file-export', 'Export this log as a CSV', 'data-do="lgCsv"', 'ic')}</div>
-    <div class="ncm-pn-split ncm-r3-half"><div class="ncm-pn-detail" data-sc="lg1" style="background:var(--ncm-bg-pane);padding:0;gap:0">${[...list].sort((a, b) => String(b.when).localeCompare(String(a.when))).map(logRow).join('') || `<div class="ncm-ph2-none">${hasTarget ? 'Nothing written yet. Add one, or fill in a week.' : 'Pick whose log to edit.'}</div>`}</div><div class="ncm-pn-detail" data-sc="lg2">${form}<small>Real calls on a person's line stay in their log and are not listed here.</small></div></div>`;
-}
-/** Write one entry to the open log. */
-async function logWrite(entries) {
+const ME = '__me';
+/** A person as a call end. */
+const partyOfPerson = (p) => { const o = ownerOf(p); return { actorId: o.actorId || null, contactId: o.contactId || null, name: p.name, number: p.lines[0]?.n || '' }; };
+/** The open log's owner as a call end (a terminal account is a name only). */
+const logOwnerParty = () => { const t = logParts(S.lgT); if (t.kind === 'owner') { const p = byId(t.id); return p ? partyOfPerson(p) : { contactId: t.id, name: logName() }; } return { name: logName() }; };
+/** The calls in the open log: written pages for a person; a terminal account's own call entries (read against it). */
+const logEntries = () => {
   const t = logParts(S.lgT);
-  if (t.kind === 'owner') return SVC.saveWrittenLog(t.id, entries);
-  return { ok: false, error: 'Use logAdd for a terminal.' };
+  if (t.kind === 'owner') return SVC.historyEntries(t.id, { real: true });
+  if (t.kind === 'acct') { const item = logTerminal(t.uuid); return item ? game.nightcity.terminalService.callEntries(item, t.acc).map((x) => ({ ...sanitizeCall(x, { owner: { name: logName() } }), acct: true })) : []; }
+  return [];
+};
+/** One end of the form → a call party. */
+const formEnd = (pick, name, number) => { if (pick === ME) return { ...logOwnerParty(), me: true }; const p = byId(pick); if (p) return partyOfPerson(p); return pick === '__other' ? { name: name || '', number: number || '' } : { name: '', number: '' }; };
+/** A call → the pick for one end of the form. */
+const endPick = (party, acct) => { const id = party.actorId || party.contactId; if (id && byId(id)) return id; if (acct && party.name === logName() && !party.number) return ME; return party.name || party.number ? '__other' : '__none'; };
+const blankCall = (keep = true) => { const acct = logParts(S.lgT).kind === 'acct', t = logParts(S.lgT);
+  return { id: null, fp: '__none', fw: '', fn: '', tp: acct ? ME : (t.kind === 'owner' ? t.id : '__none'), tw: '', tn: '', out: 'Answered', when: nowIso(), len: '1:30', ty: 'std', net: '', scene: '', anon: false, why: '', heardBy: '',
+    lines: [], script: '', scriptOpen: false, vm: '', kind: 'typed', audio: '', heard: false, also: [], keep }; };
+/** The form → a call. */
+function formCall(e) {
+  const net = e.net ? (game.nightcity?.networkService?.getAllNetworks?.() || []).find((n) => n.id === e.net) : null;
+  return sanitizeCall({ id: e.id || foundry.utils.randomID(), from: formEnd(e.fp, e.fw, e.fn), to: formEnd(e.tp, e.tw, e.tn), out: e.out, when: e.when || nowIso(), len: e.len, ty: e.ty,
+    net: net ? { id: net.id, name: net.name, color: net.color || '' } : null, scene: e.scene, anon: e.anon, why: e.why, heardBy: e.heardBy,
+    lines: e.lines, vm: e.vm, kind: e.kind, audio: e.audio, heard: e.heard });
 }
+/** A call → the form. */
+const callForm = (c, keep) => { const acct = logParts(S.lgT).kind === 'acct';
+  return { ...blankCall(keep), id: c.id, fp: endPick(c.from, acct), fw: c.from.name, fn: c.from.number, tp: endPick(c.to, acct), tw: c.to.name, tn: c.to.number,
+    out: c.out, when: c.when, len: c.len, ty: c.ty, net: c.net?.id || '', scene: c.scene, anon: c.anon, why: c.why, heardBy: c.heardBy.join(', '),
+    lines: c.lines.map((l) => ({ ...l })), vm: c.vm, kind: c.kind, audio: c.audio, heard: c.heard }; };
+const endName = (p) => p.name || (p.number ? seenFrom(parse(p.number)) : 'Unknown');
+const logRow = (c) => {
+  const editing = S.lgE.id === c.id;
+  const owner = logOwnerParty(), mineTo = (owner.actorId || owner.contactId) ? (c.to.actorId || c.to.contactId) === (owner.actorId || owner.contactId) : c.to.name === owner.name && !c.to.number;
+  const bad = c.out === 'Missed' || c.out === 'Dropped';
+  return `<div class="ncm-r3-lrow${editing ? ' on' : ''}"><i class="fas ${c.out === 'Voicemail' ? 'fa-voicemail' : mineTo ? 'fa-arrow-down-long' : 'fa-arrow-up-long'}" style="color:var(--ncm-${bad ? 'bad' : 'good'})" aria-hidden="true"></i>`
+    + `<span class="nm"><b>${esc(endName(c.from))}<i class="fas fa-arrow-right ncm-lg-arrow" aria-hidden="true"></i>${esc(endName(c.to))}</b>`
+    + `${c.vm ? `<em>"${esc(c.vm)}"</em>` : ''}${c.out === 'Voicemail' && c.kind === 'audio' ? '<em><i class="fas fa-microphone"></i> recording</em>' : ''}${c.lines.length ? `<em><i class="fas fa-closed-captioning"></i> ${c.lines.length} line${c.lines.length === 1 ? '' : 's'}: ${esc(c.lines[0].text.slice(0, 60))}</em>` : ''}${c.why ? `<em><i class="fas fa-tower-broadcast"></i> ${esc(c.why)}</em>` : ''}</span>`
+    + `<span class="st">${esc(c.out)}${c.out === 'Voicemail' && !c.legacy && !c.acct ? (c.heard ? ' · heard' : ' · new') : ''}${c.len ? ' · ' + esc(c.len) : ''}${c.anon ? ' · withheld' : ''}${c.net?.name ? ' · ' + esc(c.net.name) : ''}${c.real ? ' · <b class="ncm-lg-real" data-tooltip="It happened in play. Copy it to write one like it, or delete it">in play</b>' : ' · <b class="ncm-lg-yours" data-tooltip="You wrote this. Only you see this; players see it as any other call">yours</b>'}</span>`
+    + `<span class="ncm-pn-when">${esc(whenText(c.when))}</span>${c.real ? '' : typeMark(typeOf(c.ty || 'std') || TYPES[0])}`
+    + (c.real ? `${btn('', 'fa-copy', 'Copy it into the form as a new call', `data-do="lgCopy" data-id="${esc(c.id)}"`, 'ic')}${btn('', 'fa-trash', 'Delete this call, from both ends', `data-do="lgDelReal" data-id="${esc(c.callId)}"`, 'ic bad')}`
+      : `${btn('', 'fa-pen', 'Edit this call', `data-do="lgEdit" data-id="${esc(c.id)}"`, 'ic')}${btn('', 'fa-trash', c.acct ? 'Delete this call' : 'Delete this call, from both ends', `data-do="lgDel" data-id="${esc(c.id)}"`, 'ic bad')}`) + '</div>';
+};
+/** The list side: search, Show, Group, dates, folds, then the calls. */
+function listPane(list, hasTarget) {
+  if (!list.length) return `<div class="ncm-ph2-none">${hasTarget ? 'No calls yet. Add one, or fill in a week.' : 'Pick whose calls to see.'}</div>`;
+  S.lgShut ??= new Set(); S.lgOpenG ??= new Set(); S.lgLim ??= {};
+  const v = historyList(list, { me: logOwnerParty(), q: S.lgQ || '', show: S.lgShow || 'all', group: S.lgGroup || 'date', from: S.lgFrom || '', to: S.lgTo || '', now: nowIso(),
+    shut: S.lgShut, open: S.lgOpenG, limits: S.lgLim, dayLabel: (d) => { try { return formatCyberDate(`${d}T12:00:00.000Z`, { dateOnly: true }); } catch { return d; } } });
+  const dates = S.lgFrom || S.lgTo ? `${S.lgFrom || '…'} to ${S.lgTo || '…'}` : '';
+  const tools = `<div class="ncm-lg-tools">
+    <label class="ncm-pn-srch ncm-lg-srch" data-tooltip="Names, numbers, what was said, voicemail words, places"><i class="fas fa-magnifying-glass"></i><input type="text" id="lg-q" data-in="lgQ" value="${esc(S.lgQ || '')}" placeholder="Search calls" aria-label="Search calls"></label>
+    <div class="ncm-lg-trow"><label class="ncm-pn-sel" data-tooltip="Narrow the list"><span>Show</span><select id="lg-show" data-ch="lgShowSel">${HISTORY_SHOW.map(([k, l]) => opt(k, `${l} (${v.counts[k] || 0})`, (S.lgShow || 'all') === k)).join('')}</select></label>
+    <label class="ncm-pn-sel" data-tooltip="How the list is grouped"><span>Group</span><select id="lg-group" data-ch="lgGroupSel">${HISTORY_GROUPS.map(([k, l]) => opt(k, l, (S.lgGroup || 'date') === k)).join('')}</select></label>
+    ${btn('', 'fa-calendar', dates ? `Between ${dates}` : 'Only calls between two dates', 'data-do="lgDates"', dates ? 'ic on' : 'ic')}${(S.lgGroup || 'date') !== 'none' ? btn('', 'fa-up-down', 'Open or close every group', 'data-do="lgFoldAll"', 'ic') : ''}</div>
+    <div class="ncm-lg-count"><span>${v.forced ? `${v.total} of ${v.of}` : `${v.of}`} call${v.of === 1 ? '' : 's'} · ${v.counts.play} in play · ${v.counts.yours} yours</span>${dates ? `<button type="button" class="ncm-lg-pill" data-do="lgDatesOff" data-tooltip="Remove the dates">${esc(dates)} <i class="fas fa-xmark"></i></button>` : ''}${v.forced ? '<button type="button" class="ncm-lg-lnk" data-do="lgListClear">Clear</button>' : ''}</div></div>`;
+  const body = v.groups.map((g) => {
+    const rows = g.days.map((d) => `${d.divider ? `<div class="ncm-lg-day">${esc(d.label)}<span>${d.rows.length}</span></div>` : ''}${d.rows.map((x) => logRow(x.c)).join('')}`).join('');
+    const more = g.hidden ? `<button type="button" class="ncm-lg-more" data-do="lgMore" data-k="${esc(g.key)}">Show more · ${g.hidden} left</button>` : '';
+    if (g.flat) return rows + more;
+    return `<section class="ncm-lg-grp${g.shut ? ' is-shut' : ''}"><button type="button" class="ncm-lg-gh" data-do="lgFold" data-k="${esc(g.key)}" aria-expanded="${!g.shut}"><i class="fas fa-chevron-down ch"></i><b>${esc(g.label)}</b>${g.dateText ? `<small>${esc(g.dateText)}</small>` : ''}<span class="c">${g.total}</span>${g.hot ? `<span class="ncm-tagp is-bad">${g.hot} missed</span>` : ''}</button>${g.shut ? '' : `<div class="ncm-lg-gb">${rows}${more}</div>`}</section>`;
+  }).join('') || '<div class="ncm-ph2-none">Nothing matches.</div>';
+  return tools + body;
+}
+/** One end of the form: who, and a name / number when it is someone written in. */
+function endFields(k, label, tip, e) {
+  const pick = e[k + 'p'], p = byId(pick);
+  const name = pick === ME ? logName() : p ? p.name : pick === '__other' ? (e[k + 'w'] || 'Someone else') : 'Unknown';
+  const sub = pick === ME ? 'This account' : p ? (p.lines[0]?.n ? seenFrom(parse(p.lines[0].n)) : 'No number') : pick === '__other' ? (e[k + 'n'] || 'Written in') : 'No name, no number';
+  const face = p ? faceOf(p.name, 'sm', p.img) : `<span class="ncm-pn-face sm ncm-lg-noface"><i class="fas ${pick === ME ? 'fa-terminal' : pick === '__other' ? 'fa-pen' : 'fa-user-secret'}"></i></span>`;
+  return `<div class="ncm-pn-f grow ncm-lg-end"><span data-tooltip="${tipText(tip)}">${esc(label)}</span><button type="button" class="ncm-lg-who" id="lg-${k}" data-do="lgWho" data-k="${k}" data-tooltip="Pick who">${face}<span class="bd"><b>${esc(name)}</b><small>${esc(sub)}</small></span><i class="fas fa-chevron-down"></i></button></div>`
+    + (pick === '__other' ? `<label class="ncm-pn-f" data-tooltip="Any name, or leave it empty to show only the number">Name<input type="text" id="lg-${k}w" data-in="lg" data-k="${k}w" value="${esc(e[k + 'w'])}"></label><label class="ncm-pn-f" data-tooltip="Any number">Number<input type="text" id="lg-${k}n" data-in="lg" data-k="${k}n" value="${esc(e[k + 'n'])}" placeholder="WAT-1234" style="width:110px"></label>` : '');
+}
+/** The transcript: one row per line, the side it is on and the words. */
+function transcriptFields(e) {
+  const f = formEnd(e.fp, e.fw, e.fn), t = formEnd(e.tp, e.tw, e.tn);
+  const fName = f.name || 'Caller', tName = t.name || 'Callee';
+  const rows = e.lines.map((l, i) => `<div class="ncm-lg-tl">${seg3('lgLineSide', String(i), l.side, [['caller', fName, `${fName} says it`], ['callee', tName, `${tName} says it`]])}<input type="text" id="lg-ln-${i}" data-in="lgLine" data-i="${i}" value="${esc(l.text)}" maxlength="500" aria-label="Line ${i + 1}">${btn('', 'fa-xmark', 'Remove this line', `data-do="lgLineDel" data-i="${i}"`, 'ic bad')}</div>`).join('');
+  const paste = e.scriptOpen ? `<div class="ncm-lg-script"><textarea id="lg-script" data-in="lgScript" rows="5" placeholder="${esc(fName)}: Job tonight. Afterlife, ten.\n${esc(tName)}: Who's paying?">${esc(e.script)}</textarea><small>One line each. "Name: words" puts it on that side; a line with no name takes the other side.</small><div class="ncm-pn-acts">${btn('Use it', 'fa-check', 'Replace the transcript with this', 'data-do="lgScriptUse"', 'pri')}${btn('Cancel', '', 'Keep the transcript as it is', 'data-do="lgScriptToggle"')}</div></div>` : '';
+  return `${rows || '<small>No transcript. A call that was only talked out loud has none.</small>'}${paste}<div class="ncm-pn-acts">${btn('Line', 'fa-plus', 'Add a line, from the other side to the last one', 'data-do="lgLineAdd"')}${e.scriptOpen ? '' : btn('Paste a script', 'fa-paste', 'Type or paste the whole conversation at once', 'data-do="lgScriptToggle"')}</div>`;
+}
+/** Network, where, withheld, why it dropped, who listened in. */
+function detailFields(e) {
+  const nets = game.nightcity?.networkService?.getAllNetworks?.() || [];
+  const scenes = [...new Set((game.scenes?.contents || []).map((s) => s.name).filter(Boolean))];
+  return `<div class="ncm-pn-fr"><label class="ncm-pn-f" data-tooltip="The network it went over. Shown on the log row">Network<select id="lg-net" data-ch="lgNet">${opt('', 'None', !e.net)}${nets.map((n) => opt(n.id, n.name, e.net === n.id)).join('')}</select></label>`
+    + `<label class="ncm-pn-f grow" data-tooltip="Where they were. Any words, or a scene name">Where<input type="text" id="lg-scene" data-in="lg" data-k="scene" value="${esc(e.scene)}" list="lg-scenes" placeholder="Afterlife"><datalist id="lg-scenes">${scenes.map((s) => `<option value="${esc(s)}">`).join('')}</datalist></label></div>`
+    + `<label class="ncm-pn-chk" data-tooltip="The person called sees Number withheld, and Unknown caller, until they trace it"><input type="checkbox" id="lg-anon" data-ch="lgFlag" data-k="anon"${e.anon ? ' checked' : ''}><span>The caller withheld their number</span></label>`
+    + (e.out === 'Dropped' ? `<label class="ncm-pn-f" data-tooltip="Shown under the dropped call">Why it dropped<input type="text" id="lg-why" data-in="lg" data-k="why" value="${esc(e.why)}" placeholder="Signal lost in the Combat Zone"></label>` : '')
+    + `<label class="ncm-pn-f" data-tooltip="Only you see this: a tap or a sniffer that caught the call. Names, separated by commas">Heard by<input type="text" id="lg-heardby" data-in="lg" data-k="heardBy" value="${esc(e.heardBy)}" placeholder="NCPD tap, Netwatch"></label>`;
+}
+function viewLog() {
+  const list = logEntries(), e = S.lgE, t = logParts(S.lgT);
+  const hasTarget = t.kind !== 'none';
+  const talked = e.out === 'Answered' || e.out === 'Dropped';
+  const detailWords = [e.net && (game.nightcity?.networkService?.getAllNetworks?.() || []).find((n) => n.id === e.net)?.name, e.scene, e.anon && 'withheld', e.why && 'dropped', e.heardBy && 'heard'].filter(Boolean).join(' · ') || 'Network, where, withheld number';
+  const form = `<div class="ncm-pn-form"><h4><i class="fas ${e.id ? 'fa-pen' : 'fa-plus'}"></i> ${e.id ? 'Edit this call' : 'Add a call'}</h4>
+    <div class="ncm-pn-fr ncm-lg-ends">${endFields('f', 'From', 'Who made the call. A person here gets it in their log', e)}${btn('', 'fa-right-left', 'Swap From and To', 'data-do="lgSwap"', 'ic')}${endFields('t', 'To', 'Who was called. A person here gets it in their log', e)}</div>
+    <div class="ncm-pn-fr"><div class="ncm-pn-f"><span data-tooltip="How it ended">How it went</span>${seg3('lgSet', 'out', e.out, OUTS.map((o) => [o, o, o]))}</div></div>
+    <div class="ncm-pn-fr"><label class="ncm-pn-f" data-tooltip="The kind of line the caller used. It marks the row">Caller's line<select id="lg-ty" data-ch="lgTy">${TYPES.map((x) => opt(x.id, x.name, (e.ty || 'std') === x.id)).join('')}</select></label><div class="ncm-pn-f"><span data-tooltip="Game time">When</span>${btn(whenText(e.when) || 'Pick a time', 'fa-clock', 'Game time', 'data-do="lgWhen"')}</div><label class="ncm-pn-f" data-tooltip="Minutes and seconds. Leave empty for a call nobody answered">Length<input type="text" id="lg-len" data-in="lg" data-k="len" value="${esc(e.len)}" style="width:70px"></label></div>
+    ${e.out === 'Voicemail' ? vmFields(e, t.kind === 'owner') : ''}
+    ${talked && t.kind === 'owner' ? qsect('lg-tr', 'fa-closed-captioning', 'What was said?', 'var(--ncm-hue-3)', e.lines.length ? `${e.lines.length} line${e.lines.length === 1 ? '' : 's'}` : 'No transcript', transcriptFields(e)) : ''}
+    ${t.kind === 'owner' ? qsect('lg-more', 'fa-sliders', 'Details', 'var(--ncm-hue-5)', detailWords, detailFields(e)) : ''}
+    ${!e.id && t.kind === 'owner' ? alsoFields(e) : ''}
+    <div class="ncm-pn-acts">${btn(e.id ? 'Save' : 'Add it', 'fa-check', 'Save this call', `data-do="lgSave" ${hasTarget ? '' : 'disabled'}`, 'pri')}${e.id ? btn('Cancel', '', 'Leave it as it was', 'data-do="lgNew"') : `<label class="ncm-pn-chk" data-tooltip="After Add it, the form keeps who, line and details, clears the words, and moves the time an hour earlier, so a run of calls goes in quickly"><input type="checkbox" id="lg-keep" data-ch="lgFlag" data-k="keep"${e.keep ? ' checked' : ''}><span>Keep adding</span></label>`}</div></div>`;
+  return `<header class="ncm-tabhd"><i class="fas fa-clock-rotate-left"></i><div><h2>Call history</h2><p>Everything in one person's log. Write in calls from before play: who called whom, what was said, voicemails they kept.</p></div><div class="ncm-tabhd__end">${btn('Call log', 'fa-arrow-left', 'Back to the call log', 'data-do="logBack"')}</div></header>${undoLine()}
+    <div class="ncm-pn-tb">${btn(logName(), 'fa-magnifying-glass', 'Search any line or terminal account', 'data-do="lgPickLog"')}<span class="grow"></span>${btn('Fill in a week', 'fa-wand-magic-sparkles', 'Adds a handful of ordinary calls with people who have numbers, so the log looks lived in. You can undo it', `data-do="lgFill" ${hasTarget ? '' : 'disabled'}`)}${btn('', 'fa-file-export', 'Export this log as a CSV', 'data-do="lgCsv"', 'ic')}${t.kind === 'owner' ? btn('', 'fa-file-import', 'Import calls from a CSV. You see what it adds before anything is written', 'data-do="lgCsvIn"', 'ic') + '<input type="file" id="lgfile" accept=".csv,text/csv" hidden>' : ''}</div>${lgPlanView()}
+    <div class="ncm-pn-split ncm-lg-split"><div class="ncm-pn-detail" data-sc="lg1" style="background:var(--ncm-bg-pane);padding:0;gap:0">${listPane(list, hasTarget)}</div><div class="ncm-pn-detail" data-sc="lg2">${form}<small>Calls marked <b>in play</b> happened in a session: copy one to write a call like it.</small></div></div>`;
+}
+/** The voicemail part of the form: how it sounds, the words or the recording, and whether they have heard it. */
+function vmFields(e, real) {
+  const kinds = [['typed', 'Typed', 'Shown as text'], ['tts', 'Read out', 'Read aloud in a computer voice when they play it'], ['audio', 'Recording', 'An audio file you recorded']];
+  const words = e.kind === 'audio' ? 'Words shown with it' : 'What they said';
+  return `${real ? `<div class="ncm-pn-fr"><div class="ncm-pn-f"><span data-tooltip="How the message plays">How it sounds</span>${seg3('lgSet', 'kind', e.kind || 'typed', kinds)}</div>
+    ${e.kind === 'audio' ? `<div class="ncm-pn-f grow"><span>Recording</span>${btn(e.audio ? e.audio.split('/').pop() : 'Pick a file', 'fa-file-audio', e.audio || 'An audio file from your data folder', 'data-do="lgAudio"')}</div>` : ''}</div>` : ''}
+    <label class="ncm-pn-f" data-tooltip="${tipText(e.kind === 'audio' ? 'Optional. Shown under the recording' : 'What they left. A clue, a threat, anything')}">${words}<input type="text" id="lg-vm" data-in="lg" data-k="vm" value="${esc(e.vm)}"></label>
+    ${real ? `<label class="ncm-pn-chk" data-tooltip="Unticked, it waits in their Voicemail as new"><input type="checkbox" id="lg-heard" data-ch="lgFlag" data-k="heard"${e.heard ? ' checked' : ''}><span>To has already heard it</span></label>` : ''}`;
+}
+/** The same call to several other people (a fixer calling the whole crew): a copy each, with them in To. */
+function alsoFields(e) {
+  const names = (e.also || []).map((id) => byId(id)?.name).filter(Boolean);
+  return `<div class="ncm-pn-fr"><div class="ncm-pn-f grow"><span data-tooltip="A copy of this call for each of them, with them as the person called">Same call to others too</span><div class="ncm-pn-acts">${btn(names.length ? names.join(', ') : 'Nobody else', 'fa-users', 'Pick people', 'data-do="lgAlso"')}${names.length ? btn('', 'fa-xmark', 'Nobody else', 'data-do="lgAlsoClear"', 'ic') : ''}</div></div></div>`;
+}
+/** A CSV import waiting to be applied. */
+function lgPlanView() {
+  const p = S.lgPlan; if (!p) return '';
+  const vms = p.calls.filter((c) => c.out === 'Voicemail').length, said = p.calls.filter((c) => c.lines.length).length;
+  return `<div class="ncm-pn-plan${p.calls.length ? '' : ' bad'}"><b>This file would add ${p.calls.length} call${p.calls.length === 1 ? '' : 's'}</b>${vms ? `, ${vms} voicemail${vms === 1 ? '' : 's'}` : ''}${said ? `, ${said} with a transcript` : ''}. Each goes into the log of everyone on it who has a phone.${p.problems.length ? `<ul>${p.problems.slice(0, 6).map((x) => `<li>${esc(x)}</li>`).join('')}${p.problems.length > 6 ? `<li>…and ${p.problems.length - 6} more</li>` : ''}</ul>` : ''}<div class="ncm-pn-acts">${p.calls.length ? btn('Add them', 'fa-check', 'Write these calls', 'data-do="lgPlanYes"', 'go') : ''}${btn('Cancel', '', 'Add nothing', 'data-do="lgPlanNo"')}</div></div>`;
+}
+/** An undo that runs a function instead of restoring the number settings (written calls live in pages). */
+const undoWith = (text, revert) => { S.undo = { text, revert }; };
 
 /* ─── shared lines ─── */
 const flow = (steps) => `<div class="ncm-r3-flow">${steps.map(([ic, t, d], i) => `<div class="st"><span class="n">${i + 1}</span><i class="fas ${ic}"></i><b>${esc(t)}</b><small>${esc(d)}</small></div>`).join('')}</div>`;
@@ -1084,7 +1233,9 @@ function viewShared() {
 
 /* ─── writes ─── */
 const toast = (msg) => ncmNotify.info(msg);
-const refuse = (r) => { if (r && r.ok === false) { ncmNotify.warn(r.error || 'That did not work.'); return true; } return false; };
+/** Every setup-screen write: a refused save says so, never just redraws the old value. */
+const saveSetting = async (key, value) => { const r = await SVC.saveNumberSetting(key, value); return refuse(r) ? { ...r, told: true } : r; };
+const refuse = (r) => { if (r && r.ok === false) { if (!r.told) ncmNotify.warn(r.error || 'That did not work.'); return true; } return false; };
 const freshBulk = () => { S.bulk = null; };
 const ownerOf = (p) => (p.kind === 'pc' || p.actorOnly ? { actorId: p.id } : { contactId: p.id });
 const download = (name, text) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click(); toast('Downloaded ' + name); };
@@ -1100,9 +1251,9 @@ async function undoable(text, fn) {
 const give = (p, n, why, kind = null, label = '') => (kind === 'extra' || kind === 'burner'
   ? SVC.addLine({ ...ownerOf(p), number: n, kind, label, why })
   : SVC.assignNumber({ ...ownerOf(p), number: n, why }));
-const saveRules = (patch) => SVC.saveNumberSetting('phoneRules', { ...sanitizeRules(SVC._get('phoneRules', {})), ...patch });
-const savePlaces = (rows = ROWS, list = S.list, extra = EXTRA_COLS) => SVC.saveNumberSetting('phonePlaces', placesDiff(rows, list, extra));
-const saveSpecial = () => SVC.saveNumberSetting('phoneSpecial', SPECIAL);
+const saveRules = (patch) => saveSetting('phoneRules', { ...sanitizeRules(SVC._get('phoneRules', {})), ...patch });
+const savePlaces = (rows = ROWS, list = S.list, extra = EXTRA_COLS) => saveSetting('phonePlaces', placesDiff(rows, list, extra));
+const saveSpecial = () => saveSetting('phoneSpecial', SPECIAL);
 const spOf = () => SPECIAL.find((y) => y.id === S.spSel);
 const ovDebounce = () => { clearTimeout(TAB._ovT); const c = S.ovEdit; TAB._ovT = setTimeout(() => OV().saveScript(c), 400); };
 /** The world's item list has no ids (the same name on many sheets is one item here), so the picker is keyed by name. */
@@ -1128,8 +1279,8 @@ async function pickMembers(title, current) {
   if (!picked) return null;
   return picked.map((x) => { const id = String(x.id ?? x), e = entries.find((y) => y.id === id); return id.startsWith('a:') ? { actorId: id.slice(2), contactId: null, name: e?.name || '' } : { actorId: null, contactId: id.slice(2), name: e?.name || '' }; });
 }
-const saveTypes = (list) => SVC.saveNumberSetting('phoneLineTypes', lineTypesDiff(list.map(sanitizeLineType)));
-const saveOffice = (patch) => { const all = { ...(SVC._get('phoneOffices', {}) || {}) }; all[S.off] = sanitizeOffice({ ...sanitizeOffice(all[S.off]), ...patch }); return SVC.saveNumberSetting('phoneOffices', all); };
+const saveTypes = (list) => saveSetting('phoneLineTypes', lineTypesDiff(list.map(sanitizeLineType)));
+const saveOffice = (patch) => { const all = { ...(SVC._get('phoneOffices', {}) || {}) }; all[S.off] = sanitizeOffice({ ...sanitizeOffice(all[S.off]), ...patch }); return saveSetting('phoneOffices', all); };
 const applyList = (v) => undoable('List swapped. Places people hold numbers on stay.', async () => {
   const base = startingRows(v).map((r) => ({ ...r }));
   const key = (r) => r['Region code'] + '/' + r['City code'] + '/' + (r.Code || '-');
@@ -1178,10 +1329,12 @@ const ACT = {
   pFold: (el) => { const k = el.dataset.k; if (S.tbq.trim()) return false; if (S.pOpen.has(k)) S.pOpen.delete(k); else S.pOpen.add(k); },
   edit: (el) => { S.edit = Number(el.dataset.i); },
   edCancel: () => { S.edit = null; },
-  apOpen: () => { S.addBranch = null; S.addPlace = { rc: HOME.rc, nr: '', nrc: '', st: '', city: '', cc: '', ar: '', di: '', ex: '' }; },
+  apOpen: () => { S.addBranch = null; S.addPlace = { rc: HOME.rc, nr: '', nrc: '', st: '', city: '', cc: '', ar: '', di: '', ex: '', cat: '' }; },
   apCancel: () => { S.addPlace = null; },
   abOpen: () => { S.addPlace = null; const r = ROWS.find((x) => isCorp(x)); S.addBranch = { corp: r.Code + '|' + r.District, city: '', hide: false }; },
   abCancel: () => { S.addBranch = null; },
+  acOpen: () => { S.addPlace = null; S.addBranch = null; S.addCorp = { name: '', code: '', city: HOME.rc + ':' + HOME.city, hide: false }; },
+  acCancel: () => { S.addCorp = null; },
   planNo: () => { S.plan = null; },
   undoClose: () => { S.undo = null; },
   areaFold: (el) => {
@@ -1219,54 +1372,128 @@ const ACT = {
   },
   shRetire: async (el) => { const n = el.dataset.n; S.shSel = null; await undoable(`${n} retired for good.`, () => SVC.retireLine(n)); },
   logBack: () => { S.f = 'numbers'; S.goView = 'log'; },
-  lgOpen: (el) => { S.lgT = 'o:' + el.dataset.id; S.lgE = blankEntry(); S.f = 'editlog'; },
+  lgOpen: (el) => { S.lgT = 'o:' + el.dataset.id; S.lgPlan = null; S.f = 'editlog'; S.lgE = blankCall(); },
   lgSet: (el) => { S.lgE[el.dataset.k] = el.dataset.v; },
-  lgNew: () => { S.lgE = blankEntry(); },
-  lgEdit: (el) => { const x = logEntries().find((y) => y.id === el.dataset.id); if (!x) return false; S.lgE = { ...x, pick: (PEOPLE.find((p) => p.name === x.who) || {}).id || (x.who || x.n ? '__other' : '__none'), both: false }; },
+  lgNew: () => { S.lgE = blankCall(S.lgE.keep); },
+  lgEdit: (el) => { const x = logEntries().find((y) => y.id === el.dataset.id); if (!x) return false; S.lgE = callForm(x, S.lgE.keep); },
   lgWhen: () => { CyberTimePicker.open({ value: S.lgE.when, title: 'When was this call?', onSet: (iso) => { S.lgE.when = iso; TAB.app.render(); } }); return false; },
+  lgWho: async (el) => {
+    const k = el.dataset.k, acct = logParts(S.lgT).kind === 'acct';
+    const entries = [...(acct ? [{ id: ME, name: logName(), sub: 'This account', icon: 'fas fa-terminal', group: 'This account' }] : []),
+      ...PEOPLE.map((p) => ({ id: p.id, name: p.name, img: p.img, sub: p.lines[0]?.n ? seenFrom(parse(p.lines[0].n)) : 'no number', group: p.kind === 'pc' ? 'Players' : 'NPCs' })),
+      { id: '__other', name: 'Someone else…', sub: 'Write in any name and number', icon: 'fas fa-pen', group: 'Anyone' },
+      { id: '__none', name: 'Unknown', sub: 'No name, no number', icon: 'fas fa-user-secret', group: 'Anyone' }];
+    const pick = await showNamePicker({ title: k === 'f' ? 'Who made the call?' : 'Who was called?', hint: 'A character or NPC here gets the call in their log.', placeholder: 'search names and numbers…', entries });
+    if (!pick?.id) return false;
+    load(TAB); S.lgE[k + 'p'] = pick.id;
+  },
+  lgCopy: (el) => { const x = logEntries().find((y) => y.id === el.dataset.id); if (!x) return false; S.lgE = { ...callForm(x, S.lgE.keep), id: null }; },
+  lgDelReal: async (el) => {
+    const id = el.dataset.id;
+    const ok = await themedConfirm({ title: 'Delete a call', bad: true, yes: 'Delete', yesIcon: 'fas fa-trash',
+      content: dialogBodyHtml({ tone: 'bad', icon: 'fas fa-phone-slash', title: 'Delete this call?', lead: 'It happened in play. It goes from both ends\' logs and cannot be brought back. A voicemail left on it stays in Voicemail.' }) });
+    if (!ok) return false;
+    refuse(await SVC.deleteCalls([id]));
+  },
+  lgFold: (el) => { const k = el.dataset.k, shut = el.getAttribute('aria-expanded') === 'true'; (shut ? S.lgShut : S.lgOpenG).add(k); (shut ? S.lgOpenG : S.lgShut).delete(k); },
+  lgFoldAll: (el) => {
+    const heads = [...(el.closest('.ncm-pn')?.querySelectorAll('.ncm-lg-gh') || [])];
+    const close = heads.some((h) => h.getAttribute('aria-expanded') === 'true');
+    for (const h of heads) { const k = h.dataset.k; (close ? S.lgShut : S.lgOpenG).add(k); (close ? S.lgOpenG : S.lgShut).delete(k); }
+  },
+  lgMore: (el) => { const k = el.dataset.k; S.lgLim[k] = (S.lgLim[k] || (k === 'lg:all' ? 60 : 30)) + 30; },
+  lgDates: () => { DateRangePicker.open({ from: S.lgFrom || '', to: S.lgTo || '', title: 'Calls between', onApply: (from, to) => { S.lgFrom = from; S.lgTo = to; TAB.app.render(); }, onClear: () => { S.lgFrom = ''; S.lgTo = ''; TAB.app.render(); } }); return false; },
+  lgDatesOff: () => { S.lgFrom = ''; S.lgTo = ''; },
+  lgListClear: () => { S.lgQ = ''; S.lgShow = 'all'; S.lgFrom = ''; S.lgTo = ''; },
+  lgSwap: () => { const e = S.lgE; [e.fp, e.tp] = [e.tp, e.fp]; [e.fw, e.tw] = [e.tw, e.fw]; [e.fn, e.tn] = [e.tn, e.fn]; e.lines = e.lines.map((l) => ({ ...l, side: l.side === 'caller' ? 'callee' : 'caller' })); },
   lgPickLog: async () => {
     const ts = game.nightcity?.terminalService;
     const entries = [...PEOPLE.filter((p) => !p.actorOnly).map((p) => ({ id: 'o:' + p.id, name: p.name, img: p.img, sub: p.lines[0]?.n || 'no number', group: p.kind === 'pc' ? 'Players' : 'NPCs' })),
       ...(ts?.collectTerminals?.() || []).flatMap((item) => (ts.getConfig(item).accounts || []).map((a) => ({ id: `a:${item.uuid}:${a.id}`, name: `${item.name}: ${a.username || a.id}`, img: item.img, sub: a.displayName || 'Not linked to anyone', group: 'Terminal accounts' })))];
     const pick = await showNamePicker({ title: 'Whose log?', hint: 'Any line or terminal account.', placeholder: 'search…', entries });
     if (!pick?.id) return false;
-    load(TAB); S.lgT = pick.id; S.lgE = blankEntry();
+    load(TAB); S.lgT = pick.id; S.lgPlan = null; S.lgE = blankCall(S.lgE?.keep ?? true); S.lgQ = ''; S.lgShow = 'all'; S.lgFrom = ''; S.lgTo = ''; S.lgLim = {};
   },
   lgDel: async (el) => {
     const t = logParts(S.lgT), id = el.dataset.id;
-    if (t.kind === 'owner') { await undoable('Entry deleted.', () => logWrite(logEntries().filter((y) => y.id !== id))); return; }
+    if (t.kind === 'owner') {
+      const gone = logEntries().find((y) => y.id === id);
+      const r = await SVC.deleteCalls([writtenCallId(id)]);
+      if (refuse(r)) return false;
+      if (gone && !gone.legacy) undoWith('Call deleted.', () => SVC.writeCalls([gone]));
+      if (S.lgE.id === id) S.lgE = blankCall(S.lgE.keep);
+      return;
+    }
     const item = logTerminal(t.uuid); if (item) await game.nightcity.terminalService.removeAccountMessage(item, `call-${id}`);
   },
   lgSave: async () => {
-    const e = S.lgE, person = byId(e.pick), t = logParts(S.lgT);
-    const who = person ? person.name : e.pick === '__none' ? '' : e.who;
-    const n = person ? (person.lines[0]?.n || '') : e.pick === '__none' ? '' : e.n;
-    if (e.pick === '__other' && !who && !n) { ncmNotify.warn('Give it a name or a number.'); return false; }
-    const row = { id: e.id || foundry.utils.randomID(), dir: e.dir, who, n, out: e.out, when: e.when || nowIso(), len: e.out === 'Answered' || e.out === 'Voicemail' ? e.len : '', vm: e.out === 'Voicemail' ? e.vm : '', ty: e.ty || 'std' };
-    if (t.kind === 'owner') {
-      const list = logEntries();
-      await undoable(e.id ? 'Entry saved.' : 'Entry added.', async () => {
-        const r = await logWrite(e.id ? list.map((y) => (y.id === e.id ? row : y)) : [...list, row]);
-        if (r.ok && e.both && person && !person.actorOnly) { const me = byId(t.id); await SVC.saveWrittenLog(person.id, [...SVC.writtenLog(person.id), { ...row, id: foundry.utils.randomID(), dir: e.dir === 'in' ? 'out' : 'in', who: me?.name || '', n: me?.lines[0]?.n || '' }]); }
-        return r;
-      });
-    } else {
+    const e = S.lgE, t = logParts(S.lgT);
+    if ((e.fp === '__other' && !e.fw && !e.fn) || (e.tp === '__other' && !e.tw && !e.tn)) { ncmNotify.warn('Give someone written in a name or a number.'); return false; }
+    const c = formCall(e);
+    if (t.kind === 'acct') {
+      // a terminal account keeps its calls on the terminal, one side only: the account is one end
+      if (e.fp !== ME && e.tp !== ME) { ncmNotify.warn('One end has to be this account.'); return false; }
+      const other = e.tp === ME ? c.from : c.to;
       const item = logTerminal(t.uuid), ts = game.nightcity.terminalService;
       if (!item) return false;
       if (e.id) await ts.removeAccountMessage(item, `call-${e.id}`);
-      await ts.addCallEntry(item, t.acc, row);
+      await ts.addCallEntry(item, t.acc, { id: c.id, dir: e.tp === ME ? 'in' : 'out', who: other.name, n: other.number, out: c.out, when: c.when, len: c.len, vm: c.vm, ty: c.ty });
+      S.lgE = blankCall(e.keep);
+      return;
     }
-    S.lgE = blankEntry();
+    const bad = callProblem(c);
+    if (bad) { ncmNotify.warn(bad); return false; }
+    if (e.id) {
+      const before = logEntries().find((y) => y.id === e.id);
+      const r = await SVC.rewriteHistory(c);
+      if (refuse(r)) return false;
+      if (before && !before.legacy) undoWith('Call saved.', () => SVC.rewriteHistory(before));
+      S.lgE = blankCall(e.keep);
+      return;
+    }
+    // the same call to others: a copy each, with them as the person called
+    const copies = (e.also || []).map((pid) => byId(pid)).filter((p) => p && (p.id !== (c.to.actorId || c.to.contactId))).map((p) => copyCallTo(c, partyOfPerson(p), foundry.utils.randomID()));
+    const r = await SVC.writeCalls([c, ...copies]);
+    if (refuse(r)) return false;
+    undoWith(copies.length ? `Added ${copies.length + 1} calls.` : 'Call added.', () => SVC.deleteCalls([c, ...copies].map((x) => writtenCallId(x.id))));
+    if (e.keep) S.lgE = { ...e, id: null, lines: [], script: '', scriptOpen: false, vm: '', audio: '', heard: false, why: '', when: new Date((Date.parse(c.when) || Date.now()) - 3600000).toISOString() };
+    else S.lgE = blankCall(false);
   },
   lgFill: async () => {
-    const pool = PEOPLE.filter((p) => p.lines[0] && p.id !== logParts(S.lgT).id), t = logParts(S.lgT);
+    const t = logParts(S.lgT), me = logOwnerParty();
+    const pool = PEOPLE.filter((p) => p.lines[0] && p.id !== t.id);
     if (!pool.length) { ncmNotify.warn('Nobody has a number to fill it with yet.'); return false; }
     const base = Date.parse(nowIso()) || Date.now();
-    const made = Array.from({ length: 5 }, (_, i) => { const p = pool[i % pool.length]; const missed = i === 3; return { id: foundry.utils.randomID(), dir: i % 2 ? 'out' : 'in', who: p.name, n: p.lines[0].n, out: missed ? 'Missed' : 'Answered', when: new Date(base - (i + 1) * 31 * 3600000).toISOString(), len: missed ? '' : `${1 + i}:${String(10 + i * 9).padStart(2, '0')}`, vm: '', ty: 'std' }; });
-    if (t.kind === 'owner') { const list = logEntries(); await undoable(`Added ${made.length} calls.`, () => logWrite([...list, ...made])); return; }
-    const item = logTerminal(t.uuid); if (item) for (const m of made) await game.nightcity.terminalService.addCallEntry(item, t.acc, m);
+    const made = Array.from({ length: 5 }, (_, i) => { const other = partyOfPerson(pool[i % pool.length]), missed = i === 3; const [from, to] = i % 2 ? [me, other] : [other, me];
+      return sanitizeCall({ id: foundry.utils.randomID(), from, to, out: missed ? 'Missed' : 'Answered', when: new Date(base - (i + 1) * 31 * 3600000).toISOString(), len: missed ? '' : `${1 + i}:${String(10 + i * 9).padStart(2, '0')}` }); });
+    if (t.kind === 'owner') { const r = await SVC.writeCalls(made); if (refuse(r)) return false; undoWith(`Added ${made.length} calls.`, () => SVC.deleteCalls(made.map((m) => writtenCallId(m.id)))); return; }
+    const item = logTerminal(t.uuid);
+    if (item) for (const m of made) { const inn = m.to === me; const o = inn ? m.from : m.to; await game.nightcity.terminalService.addCallEntry(item, t.acc, { id: m.id, dir: inn ? 'in' : 'out', who: o.name, n: o.number, out: m.out, when: m.when, len: m.len, vm: '', ty: 'std' }); }
   },
-  lgCsv: () => { download('ncm-call-log.csv', [['Direction', 'Who', 'Number', 'Outcome', 'When', 'Length', 'Voicemail'], ...logEntries().map((e) => [e.dir, e.who, e.n, e.out, e.when, e.len, e.vm])].map((l) => l.map(csvCell).join(',')).join('\n')); return false; },
+  lgCsv: () => { download(`ncm-call-log-${String(logName()).replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.csv`, historyCsvRows(logEntries()).map((l) => l.map(csvCell).join(',')).join('\n')); return false; },
+  lgCsvIn: (el) => { el.closest('.ncm-pn')?.querySelector('#lgfile')?.click(); return false; },
+  lgPlanNo: () => { S.lgPlan = null; },
+  lgPlanYes: async () => {
+    const p = S.lgPlan;
+    if (!p?.calls.length) return false;
+    S.lgPlan = null;
+    const r = await SVC.writeCalls(p.calls);
+    if (refuse(r)) return false;
+    undoWith(`Imported ${p.calls.length} call${p.calls.length === 1 ? '' : 's'}.`, () => SVC.deleteCalls(p.calls.map((x) => writtenCallId(x.id))));
+  },
+  lgAudio: () => { newFilePicker({ type: 'audio', current: S.lgE.audio || '', callback: (path) => { S.lgE.audio = path; TAB.app.render(); } }).render(true); return false; },
+  lgAlso: async () => {
+    const entries = PEOPLE.filter((p) => !p.actorOnly).map((p) => ({ id: p.id, name: p.name, img: p.img, sub: p.lines[0]?.n || 'no number', group: p.kind === 'pc' ? 'Players' : 'NPCs' }));
+    const picks = await showNamePicker({ title: 'Same call to…', hint: 'A copy of the call for each of them, with them as the person called.', placeholder: 'search…', entries, multi: true, preselected: S.lgE.also || [], doneLabel: 'Use these' });
+    if (!Array.isArray(picks)) return false;
+    load(TAB); S.lgE.also = picks.map((x) => x.id);
+  },
+  lgAlsoClear: () => { S.lgE.also = []; },
+  lgLineAdd: () => { const l = S.lgE.lines; l.push({ side: l.length && l.at(-1).side === 'caller' ? 'callee' : 'caller', text: '' }); S.fOpen.add('lg-tr'); },
+  lgLineDel: (el) => { S.lgE.lines.splice(Number(el.dataset.i), 1); },
+  lgLineSide: (el) => { const x = S.lgE.lines[Number(el.dataset.k)]; if (x) x.side = el.dataset.v; },
+  lgScriptToggle: () => { const e = S.lgE; e.scriptOpen = !e.scriptOpen; if (e.scriptOpen) { const c = formCall(e); e.script = e.lines.length ? e.lines.map((l) => `${(l.side === 'caller' ? c.from.name : c.to.name) || (l.side === 'caller' ? 'Caller' : 'Callee')}: ${l.text}`).join('\n') : ''; } },
+  lgScriptUse: () => { const e = S.lgE, c = formCall(e); e.lines = parseScript(e.script, { fromName: c.from.name, toName: c.to.name }); e.scriptOpen = false; e.script = ''; },
   ovHow: () => { S.ovHowShut = !S.ovHowShut; },
   ovNew: async () => { const c = sanitizeScript({ name: 'New call', rec: true, a: { shows: 'name' }, b: { shows: 'number' }, lines: [] }); await OV().saveScript(c); S.ovEdit = c; S.stStep = 1; S.lnOpen = null; S.f = 'ovstage'; },
   ovOpen: (el) => { const id = el.dataset.id, run = ovRunOf(id); if (run) { S.ovRun = run.id; S.f = 'ovrun'; return; } S.ovEdit = OV().scripts().find((x) => x.id === id); S.stStep = 1; S.lnOpen = null; S.f = 'ovstage'; },
@@ -1387,7 +1614,7 @@ const ACT = {
   lineGreeting: (el) => { TAB._editGreeting(el.dataset.n, el.dataset.name); return false; },
   orgUse: (el) => orgDecide(el.dataset.org, el.dataset.corp, 'Everyone whose Organization reads ' + el.dataset.org + ' now goes to ' + el.dataset.corp + '. No contact was changed.'),
   orgNot: (el) => orgDecide(el.dataset.org, '', el.dataset.org + ' is not a corporation. It will not be asked again.'),
-  orgForget: async (el) => { const m = { ...ORG_MAP }; delete m[el.dataset.k]; await SVC.saveNumberSetting('phoneOrgNames', m); orgChanged(); },
+  orgForget: async (el) => { const m = { ...ORG_MAP }; delete m[el.dataset.k]; await saveSetting('phoneOrgNames', m); orgChanged(); },
   wkUse: async () => {
     const w = S.walk, p = byId(w.pid), r = wkRow(w.path), line = /^\d{4}$/.test(w.own || '') ? w.own : w.line, n = numAt(r, line);
     const sameAsStart = rowKey2(r) === rowKey2(rowOfNum(parse(w.start.n)));
@@ -1426,7 +1653,7 @@ const ACT = {
       return res;
     });
   },
-  undo: async () => { const u = S.undo; S.undo = null; refuse(await SVC.restorePhoneSnapshot(u.snap, u.after)); freshBulk(); },
+  undo: async () => { const u = S.undo; S.undo = null; if (u?.revert) { refuse(await u.revert()); return; } refuse(await SVC.restorePhoneSnapshot(u.snap, u.after)); freshBulk(); },
   bulkGo: async () => {
     const list = Object.entries(S.bulk).filter(([id]) => !S.bulkOff.has(id));
     S.f = 'numbers'; freshBulk(); S.bulkOff.clear();
@@ -1456,7 +1683,19 @@ const ACT = {
   tbHide: async (el) => { const hits = ROWS.filter(tbHit); hits.forEach((r) => { r.Listed = el.dataset.v; }); await savePlaces(); toast(`${hits.length} row${hits.length === 1 ? '' : 's'} ${el.dataset.v === 'no' ? 'hidden from' : 'listed in'} the directory.`); },
   edSave: async (el) => { const r = ROWS[Number(el.dataset.i)]; const root = el.closest('.ncm-pn'); const v = (id) => root.querySelector('#' + id)?.value.trim() ?? ''; const code = v('ed-code').toUpperCase(); if (code && !/^[A-Z]{3}$/.test(code)) { ncmNotify.warn('A district code is three letters.'); return false; } r.Code = code; r.District = v('ed-dist'); r.Area = v('ed-area'); r.State = v('ed-state'); r.Category = v('ed-cat'); r.Status = v('ed-status'); r.Source = v('ed-src'); EXTRA_COLS.forEach((c, x) => { r[c] = v('ed-x' + x); }); S.edit = null; await savePlaces(); },
   delRow: async (el) => { const i = Number(el.dataset.i), r = ROWS[i]; await undoable(`Removed ${r.Code || r.City}.`, () => savePlaces(ROWS.filter((x) => x !== r))); },
-  apGo: async () => { const a = S.addPlace; const isNew = a.rc === 'new'; const rc = isNew ? a.nrc : a.rc; if (!rc || !a.city || !a.cc) { ncmNotify.warn('A place needs a region, a city and a city code.'); return false; } const r = row([rc, isNew ? a.nr || 'New region' : REGIONS[a.rc].name, a.st, a.cc.toUpperCase(), a.city, a.ar, a.ex.toUpperCase(), a.di, a.ex ? 'District' : 'City', 'yes', 'live', 'Homebrew'].join('|')); S.pOpen.add(rc); S.addPlace = null; await undoable(`Added ${a.di || a.city}.`, () => savePlaces([...ROWS, r])); },
+  apGo: async () => { const a = S.addPlace; const isNew = a.rc === 'new'; const rc = isNew ? a.nrc : a.rc; if (!rc || !a.city || !a.cc) { ncmNotify.warn('A place needs a region, a city and a city code.'); return false; } const r = row([rc, isNew ? a.nr || 'New region' : REGIONS[a.rc].name, a.st, a.cc.toUpperCase(), a.city, a.ar, a.ex.toUpperCase(), a.di, a.cat || (a.ex ? 'District' : 'City'), a.cat === 'Corporate' ? 'no' : 'yes', 'live', 'Homebrew'].join('|')); if (a.cat === 'Corporate' && !a.ex) { ncmNotify.warn('A corporation needs a three-letter code.'); return false; } S.pOpen.add(rc); S.addPlace = null; await undoable(`Added ${a.di || a.city}.`, () => savePlaces([...ROWS, r])); },
+  acGo: async () => {
+    const a = S.addCorp; if (!a) return false;
+    const bad = corpIssues(a).find((x) => x.block); if (bad) { ncmNotify.warn(bad.t); return false; }
+    const name = a.name.trim(), code = a.code.toUpperCase(), [rc, cc] = a.city.split(':');
+    const c = ROWS.find((x) => x['Region code'] === rc && x['City code'] === cc);
+    if (!c) { ncmNotify.warn('Pick a city for it.'); return false; }
+    const r = row([rc, c.Region, c.State, cc, c.City, 'Office', code, name, 'Corporate', 'no', 'live', 'Homebrew', a.hide ? 'no' : 'yes'].join('|'));
+    S.addCorp = null;
+    const done = await undoable(`Added ${name} in ${c.City}.`, () => savePlaces([...ROWS, r]));
+    // open it on the Corporations screen, where its art, switchboard and extensions are set
+    if (done) { S.f = 'corp'; S.off = officeKey(r); S.coTab = 'sw'; S.coQ = ''; S.coShow = 'all'; }
+  },
   abGo: async () => { const a = S.addBranch; const [code, name] = a.corp.split('|'); const [rc, cc] = a.city.split(':'); const c = ROWS.find((x) => x['Region code'] === rc && x['City code'] === cc); const r = row([rc, c.Region, c.State, cc, c.City, 'Office', code, name, 'Corporate', 'no', 'live', 'Homebrew', a.hide ? 'no' : 'yes'].join('|')); S.pOpen.add(rc); S.addBranch = null; await undoable(`Added ${name} in ${c.City}.`, () => savePlaces([...ROWS, r])); },
   csvPlaces: () => { download('ncm-places.csv', toCsv()); return false; },
   csvBlank: () => { download('ncm-places-template.csv', [COLS, ['99', 'My region', 'My state', 'MC', 'My city', 'Uptown', 'UPT', 'Uptown', 'District', 'yes', 'live', 'Homebrew', 'yes']].map((l) => l.map(csvCell).join(',')).join('\n')); return false; },
@@ -1471,7 +1710,9 @@ const CH = {
   show: (el) => { S.show = el.value; }, group: (el) => { S.group = el.value; },
   typSel: async (el) => { typesNow(); const x = typeOf(S.typ) || TYPES[0]; x[el.dataset.k] = el.value; await saveTypes(TYPES); },
   typChk: async (el) => { typesNow(); const x = typeOf(S.typ) || TYPES[0]; x[el.dataset.k] = el.checked; await saveTypes(TYPES); },
-  lgTy: (el) => { S.lgE.ty = el.value; }, lgPick: (el) => { S.lgE.pick = el.value; }, lgBoth: (el) => { S.lgE.both = el.checked; },
+  lgTy: (el) => { S.lgE.ty = el.value; }, lgNet: (el) => { S.lgE.net = el.value; },
+  lgShowSel: (el) => { S.lgShow = el.value; }, lgGroupSel: (el) => { S.lgGroup = el.value; },
+  lgEnd: (el) => { S.lgE[el.dataset.k + 'p'] = el.value; }, lgFlag: (el) => { S.lgE[el.dataset.k] = el.checked; },
   ovSet: async (el) => { const k = el.dataset.k; if (k.includes('.')) { const [s, f] = k.split('.'); S.ovEdit[s][f] = el.value; if (f === 'sceneId' && el.value && S.ovEdit[s].anchor === 'off') S.ovEdit[s].anchor = 'token'; if (f === 'sceneId' && !el.value) S.ovEdit[s].anchor = 'off'; } else S.ovEdit[k] = el.value; await OV().saveScript(S.ovEdit); },
   ovChk: async (el) => { S.ovEdit[el.dataset.k] = el.checked; await OV().saveScript(S.ovEdit); },
   lnVoice: async (el) => { S.ovEdit.lines[Number(el.dataset.i)].voice = el.value; await OV().saveScript(S.ovEdit); },
@@ -1507,7 +1748,9 @@ const CH = {
   rowPick: (el) => { ROWS[Number(el.dataset.i)]['Players can pick'] = el.checked ? 'yes' : 'no'; return savePlaces(); },
   rowList: (el) => { ROWS[Number(el.dataset.i)].Listed = el.checked ? 'yes' : 'no'; return savePlaces(); },
   apRc: (el) => { S.addPlace.rc = el.value; },
+  apCat: (el) => { S.addPlace.cat = el.value; },
   abCorp: (el) => { S.addBranch.corp = el.value; }, abCity: (el) => { S.addBranch.city = el.value; }, abHide: (el) => { S.addBranch.hide = el.checked; },
+  acCity: (el) => { S.addCorp.city = el.value; const out = el.closest('.ncm-pn')?.querySelector('#ac-out'); if (out) out.innerHTML = acOut(S.addCorp); return false; }, acHide: (el) => { S.addCorp.hide = el.checked; return false; },
   spTo: (el) => { S.spCall = { to: el.value }; },
   spAct: (el) => { spOf().act = el.value; return saveSpecial(); },
   spTrace: (el) => { spOf().trace = el.value; return saveSpecial(); },
@@ -1519,6 +1762,9 @@ const CH = {
 const INP = {
   typ: (el) => { typesNow(); const x = typeOf(S.typ); if (!x) return false; x[el.dataset.k] = el.value; clearTimeout(TAB._spT); const list = TYPES; TAB._spT = setTimeout(() => saveTypes(list).then(() => TAB.app.render()), 400); return false; },
   lg: (el) => { S.lgE[el.dataset.k] = el.value; return false; },
+  lgQ: (el) => { S.lgQ = el.value; return true; },
+  lgLine: (el) => { const x = S.lgE.lines[Number(el.dataset.i)]; if (x) x.text = el.value; return false; },
+  lgScript: (el) => { S.lgE.script = el.value; return false; },
   clq: (el) => { S.clq = el.value; return true; }, lq: (el) => { S.lq = el.value; return true; },
   ovName: (el) => { S.ovEdit.name = el.value; ovDebounce(); return false; },
   lnText: (el) => { S.ovEdit.lines[Number(el.dataset.i)].text = el.value; ovDebounce(); return false; },
@@ -1535,8 +1781,9 @@ const INP = {
   q: (el) => { S.q = el.value; return true; }, boardQ: (el) => { S.boardQ = el.value; return true; }, rq: (el) => { S.rq = el.value; return true; }, tbq: (el) => { S.tbq = el.value; return true; },
   chgTyped: (el) => { S.change.typed = el.value; return true; },
   addLabel: (el) => { S.addLine.label = el.value; return false; },
-  sp: (el) => { spOf()[el.dataset.k] = el.value; clearTimeout(TAB._spT); const list = SPECIAL; TAB._spT = setTimeout(() => SVC.saveNumberSetting('phoneSpecial', list.map(sanitizeSpecial)).then(() => TAB.app.render()), 400); return false; },
+  sp: (el) => { spOf()[el.dataset.k] = el.value; clearTimeout(TAB._spT); const list = SPECIAL; TAB._spT = setTimeout(() => saveSetting('phoneSpecial', list.map(sanitizeSpecial)).then(() => TAB.app.render()), 400); return false; },
   tryN: (el) => { S.tryN = el.value; el.closest('.ncm-pn').querySelector('#try-out').innerHTML = tryPanes(); return false; },
+  ac: (el) => { S.addCorp[el.dataset.k] = el.value; const out = el.closest('.ncm-pn')?.querySelector('#ac-out'); if (out) out.innerHTML = acOut(S.addCorp); return false; },
   ap: (el) => { S.addPlace[el.dataset.k] = el.value; const box = document.createElement('div'); box.innerHTML = addPlaceForm(); el.closest('.ncm-pn').querySelector('#ap-out').innerHTML = box.querySelector('#ap-out').innerHTML; return false; },
 };
 
@@ -1597,6 +1844,7 @@ export function wireNumbers(tab, root) {
     try { after(await ACT[el.dataset.do]?.(el, e)); } catch (err) { console.error('NCM | Phone numbers:', err); ncmNotify.error(`Phone numbers: ${err.message}`); }
   });
   box.addEventListener('change', async (e) => {
+    if (e.target.id === 'lgfile') { const f = e.target.files?.[0]; if (f) { const text = await f.text(); load(tab); S.lgPlan = historyFromTable(parseCsv(text), { people: PEOPLE.filter((p) => !p.actorOnly).map((p) => ({ id: p.id, name: p.name, actor: !!partyOfPerson(p).actorId, number: p.lines[0]?.n || '' })), types: TYPES.map((x) => x.id), nets: game.nightcity?.networkService?.getAllNetworks?.() || [], owner: logParts(S.lgT).kind === 'owner' ? logOwnerParty() : null, newId: () => foundry.utils.randomID() }); tab.app.render(); } return; }
     if (e.target.id === 'tbfile') { const f = e.target.files?.[0]; if (f) { const t = await f.text(); load(tab); S.plan = planImport(t); tab.app.render(); } return; }
     const h = e.target.dataset?.ch;
     if (!h || !CH[h]) return;

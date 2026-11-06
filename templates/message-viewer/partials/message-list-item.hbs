@@ -23,13 +23,20 @@
   {{~#if isEncrypted}}{{~#unless isNetworkLocked}} ncm-viewer__msg--encrypted{{/unless~}}{{/if~}}
   {{~#if isDarknet}} ncm-viewer__msg--darknet{{/if~}}
   {{~#if isTraced}} ncm-viewer__msg--traced{{/if~}}
-  {{~#if hasSelfDestruct}} ncm-viewer__msg--destruct{{/if~}}"
+  {{~#if hasSelfDestruct}} ncm-viewer__msg--destruct{{/if~}}
+  {{~#if picking}} ncm-viewer__msg--picking{{/if~}}
+  {{~#if bulkSelected}} ncm-viewer__msg--ticked{{/if~}}"
      data-message-id="{{messageId}}"
      data-priority="{{priority}}"
      data-env="{{#if isFile}}file{{else}}mail{{/if}}"
      data-action="select-message"
      style="--ncm-i: {{@index}}"
      {{~#if netStripeColor}} style="border-right: 3px solid {{netStripeColor}}"{{/if~}}>
+
+  {{!-- Select mode: the tick box (the whole row toggles it) --}}
+  {{#if picking}}
+    <span class="ncm-viewer__msg-tick" role="checkbox" aria-checked="{{#if bulkSelected}}true{{else}}false{{/if}}" aria-label="Select"><i class="{{#if bulkSelected}}fas fa-square-check{{else}}far fa-square{{/if}}"></i></span>
+  {{/if}}
 
   {{!-- Unread dot --}}
   {{#unless status.read}}

@@ -201,6 +201,12 @@
         {{#if moreNew}}<span class="ncm-pill__badge ncm-pill__badge--alert">{{moreNew}}</span>{{/if}}
         <i class="fas fa-caret-down ncm-viewer__more-caret"></i>
       </span>
+      {{#if selectable}}
+      <span class="ncm-pill ncm-viewer__select-pill {{#if selectMode}}ncm-pill--active{{/if}}" data-action="toggle-select" role="button" aria-pressed="{{#if selectMode}}true{{else}}false{{/if}}"
+            data-tooltip="{{#if selectMode}}Stop selecting (Esc){{else}}Tick several messages to delete, mark read or mark as spam together. Shift-click ticks a range{{/if}}" data-tooltip-direction="DOWN">
+        <i class="{{#if selectMode}}fas fa-square-check{{else}}far fa-square{{/if}}"></i> Select
+      </span>
+      {{/if}}
     {{else if (eq primaryTab 'calls')}}
       {{#if calls.main}}
       <span class="ncm-pill {{#if (eq calls.filter 'all')}}ncm-pill--active{{/if}}" data-action="calls-filter" data-f="all"><i class="fas fa-phone"></i> All
@@ -245,10 +251,30 @@
   {{#if showBulkActions}}
     <div class="ncm-viewer__bulk-bar">
       <span class="ncm-viewer__bulk-count">{{bulkCount}} selected</span>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-read"><i class="fas fa-check-double"></i> Mark Read</button>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-spam"><i class="fas fa-shield-halved"></i> Spam</button>
-      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete"><i class="fas fa-trash"></i> Delete</button>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-clear"><i class="fas fa-times"></i> Clear</button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-select-all" data-tooltip="{{#if allSelected}}Untick everything{{else}}Every message in this folder, all pages{{/if}}"><i class="fas {{#if allSelected}}fa-square-minus{{else}}fa-check-double{{/if}}"></i> {{#if allSelected}}Select none{{else}}Select all {{bulkTotal}}{{/if}}</button>
+      <span class="ncm-viewer__bulk-gap"></span>
+      {{#if bulkInTrash}}
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-restore" {{#if bulkNone}}disabled{{/if}} data-tooltip="Back to where they were"><i class="fas fa-rotate-left"></i> Restore</button>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete-forever" {{#if bulkNone}}disabled{{/if}} data-tooltip="Gone for good. You are asked first"><i class="fas fa-fire"></i> Delete forever</button>
+      {{else}}
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-read" {{#if bulkNone}}disabled{{/if}}><i class="fas fa-envelope-open"></i> Mark read</button>
+      {{#if bulkInSpam}}
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-not-spam" {{#if bulkNone}}disabled{{/if}} data-tooltip="Back to your inbox"><i class="fas fa-inbox"></i> Not spam</button>
+      {{else}}
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-spam" {{#if bulkNone}}disabled{{/if}}><i class="fas fa-ban"></i> Spam</button>
+      {{/if}}
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete" {{#if bulkNone}}disabled{{/if}} data-tooltip="They go to Trash, under More. You can put them back from there"><i class="fas fa-trash"></i> Move to Trash</button>
+      {{/if}}
+      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="toggle-select" data-tooltip="Stop selecting (Esc)"><i class="fas fa-check"></i> Done</button>
+    </div>
+  {{/if}}
+  {{#if trashNote}}
+    <div class="ncm-viewer__filter-bar ncm-viewer__filter-bar--info ncm-viewer__trash-note" role="status">
+      <i class="fas fa-trash"></i>
+      <span>{{#if trashNote.one}}Moved to Trash{{else}}{{trashNote.count}} moved to Trash{{/if}}. Trash is under More.</span>
+      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="set-filter" data-filter="trash" data-tooltip="Open the Trash folder"><i class="fas fa-trash-arrow-up"></i> Open Trash</button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="trash-undo" data-tooltip="Put {{#if trashNote.one}}it{{else}}them{{/if}} back"><i class="fas fa-rotate-left"></i> Undo</button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-viewer__trash-note-x" data-action="trash-note-close" data-tooltip="Dismiss" aria-label="Dismiss"><i class="fas fa-xmark"></i></button>
     </div>
   {{/if}}
   {{#if (and (eq currentFilter 'unread') counts.unread)}}

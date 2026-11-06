@@ -143,7 +143,7 @@ export function logView(entries, { q = '', filter = 'all', who = '', net = '', f
     ? namedGroups(shown, { ...common, prefix: 'log:p:', keysOf: (r) => [r.from.name, r.to.name].filter(Boolean), head: (k) => ({ label: k }) })
     : dateBands(shown, { ...common, now, dayLabel: fmtDay });
   const uniq = (list) => [...new Set(list.filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  return { bands, counts, total: shown.length, of: all.length, forced, people: uniq(all.flatMap((r) => [r.from.name, r.to.name])), networks: uniq(all.map((r) => r.net)) };
+  return { bands, counts, total: shown.length, of: all.length, forced, ids: shown.map((r) => r.id).filter(Boolean), people: uniq(all.flatMap((r) => [r.from.name, r.to.name])), networks: uniq(all.map((r) => r.net)) };
 }
 
 /**
@@ -180,7 +180,9 @@ export function voicemailBoxes(vms, { ownerName = () => '', isNpc = () => true, 
     ? dateBands(shown, { ...common, now, dayLabel: fmtDay, prefix: 'vm:d:' })
     : namedGroups(shown, { ...common, prefix: 'vm:', keysOf: (r) => [r.ownerId], order: boxOrder,
       head: (k, rows) => ({ name: rows[0].boxName, label: rows[0].boxName, npc: rows[0].npc, player: !rows[0].npc, unheard: rows.filter((r) => !r.heard).length }) });
-  return { boxes, groups, total: (vms || []).length, shownCount: shown.length, forced, npcUnheard, empty: !boxes.length };
+  // keys of every message the filters leave (all pages, folded groups too): what Select all ticks
+  for (const r of shown) r.key = `${r.ownerId}|${r.vmId}`;
+  return { boxes, groups, total: (vms || []).length, shownCount: shown.length, forced, npcUnheard, empty: !boxes.length, keys: shown.map((r) => r.key) };
 }
 
 /** SETTINGS: the rows, read from the current values. Pure so the sim can check every key reaches a control. */

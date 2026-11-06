@@ -65,6 +65,8 @@ export class PhoneTab extends BaseTab {
     this._vmQ = '';
     this._vmShow = 'all';
     this._vmGroup = 'box';
+    /** Select mode on the Call log and Voicemail lists (tester round 2026-11-06): on/off, what is ticked, the last tick (Shift ranges) */
+    this._pick = { log: { on: false, set: new Set(), anchor: null }, vm: { on: false, set: new Set(), anchor: null } };
     this._shut = new Set();
     this._open = new Set();
     this._tick = null;
@@ -125,7 +127,10 @@ export class PhoneTab extends BaseTab {
       this._unheard = vmb.npcUnheard;
       ctx.logTabs = [['log', 'Calls', 'fa-list'], ['vm', 'Voicemail', 'fa-voicemail']].map(([key, label, icon]) => ({ key, label, icon, on: key === this._view, count: key === 'vm' ? vmb.npcUnheard : 0 }));
       if (this._view === 'vm') {
-        ctx.vm = { ...vmb, q: this._vmQ, showing: this._vmShow !== 'all', found: `${vmb.shownCount} of ${vmb.total} messages`,
+        this._order = { ...(this._order || {}), vm: vmb.keys };
+        const pk = this._pickView('vm', vmb.keys);
+        for (const g of vmb.groups) for (const d of (g.days || [])) for (const r of d.rows) { r.picking = pk.on; r.picked = pk.on && this._pick.vm.set.has(r.key); }
+        ctx.vm = { ...vmb, pick: pk, q: this._vmQ, showing: this._vmShow !== 'all', found: `${vmb.shownCount} of ${vmb.total} messages`,
           showOptions: VM_SHOW.map(([k, l]) => ({ k, l, on: k === this._vmShow })), groupOptions: VM_GROUPS.map(([k, l]) => ({ k, l, on: k === this._vmGroup })) };
       }
       if (this._view === 'live') {
@@ -152,7 +157,10 @@ export class PhoneTab extends BaseTab {
           fmtTime: (t) => formatCyberDate(t, { timeOnly: true }), fmtWhen: (t) => formatCyberDate(t),
         });
         const pills = [who && { k: 'who', text: who }, net && { k: 'net', text: net }, (this._logFrom || this._logTo) && { k: 'dates', text: `${this._logFrom || '…'} to ${this._logTo || '…'}` }].filter(Boolean);
-        ctx.log = { ...v, q: this._logQ, menu: this._logMenu, pills, filterCount: pills.length, found: `${v.total} of ${v.of} calls`,
+        this._order = { ...(this._order || {}), log: v.ids };
+        const pk = this._pickView('log', v.ids);
+        for (const b of v.bands) for (const d of b.days) for (const r of d.rows) { r.picking = pk.on; r.picked = pk.on && this._pick.log.set.has(r.id); }
+        ctx.log = { ...v, pick: pk, q: this._logQ, menu: this._logMenu, pills, filterCount: pills.length, found: `${v.total} of ${v.of} calls`,
           resultOptions: LOG_FILTERS.map(([k, l]) => ({ k, l: `${l} (${v.counts[k] || 0})`, on: k === this._logFilter })),
           groupOptions: LOG_GROUPS.map(([k, l]) => ({ k, l, on: k === this._logGroup })),
           whoPicker: ScopePicker.html(whoId, { noun: 'person', nouns: 'people', icon: 'fa-user', allLabel: 'Anyone', items: v.people.map((name) => ({ id: name, name })) }),
@@ -243,13 +251,49 @@ export class PhoneTab extends BaseTab {
 
   // ═══════════════════════════════ actions ═══════════════════════════════
 
+  /**
+   * What the Select bar needs. Ticks that left the list (deleted, filtered out) are dropped first.
+   * @param {'log'|'vm'} which @param {string[]} keys — every key the filters leave, all pages
+   */
+  _pickView(which, keys = []) {
+    const p = this._pick[which], here = new Set(keys);
+    for (const k of [...p.set]) if (!here.has(k)) p.set.delete(k);
+    return { on: p.on, count: p.set.size, none: !p.set.size, total: keys.length, all: keys.length > 0 && keys.every((k) => p.set.has(k)) };
+  }
+
+  /** Tick or untick one row; Shift ticks the range from the last one, in list order. */
+  _pickToggle(which, key, range = false) {
+    const p = this._pick[which], order = this._order?.[which] || [];
+    const a = range && p.anchor ? order.indexOf(p.anchor) : -1, b = order.indexOf(key);
+    if (a >= 0 && b >= 0) { const [lo, hi] = a < b ? [a, b] : [b, a]; for (const k of order.slice(lo, hi + 1)) p.set.add(k); }
+    else if (p.set.has(key)) p.set.delete(key);
+    else p.set.add(key);
+    p.anchor = key;
+  }
+
+  /** Delete what is ticked, after a confirm that says how many and what it means. */
+  async _pickDelete(which) {
+    const p = this._pick[which], n = p.set.size, s = this.calls;
+    if (!n || !s) return;
+    const log = which === 'log';
+    const ok = await themedConfirm({ title: log ? 'Delete calls' : 'Delete voicemail', bad: true, yes: 'Delete', yesIcon: 'fas fa-trash',
+      content: dialogBodyHtml({ tone: 'bad', icon: log ? 'fas fa-phone-slash' : 'fas fa-voicemail', title: `Delete ${n} ${log ? (n === 1 ? 'call' : 'calls') : (n === 1 ? 'voicemail' : 'voicemails')}?`,
+        lead: log ? 'They go from everyone\'s log, as if they never happened. A voicemail left on one of them stays in Voicemail. This cannot be undone.' : 'They go from the mailbox they are in, players\' boxes included. This cannot be undone.' }) });
+    if (!ok) return;
+    const r = log ? await s.deleteCalls([...p.set]) : await s.voicemailsBatch([...p.set].map((k) => { const [ownerId, vmId] = k.split('|'); return { ownerId, vmId }; }), 'delete');
+    if (r?.ok === false) ncmNotify.warn(r.error || 'That did not work.');
+    else ncmNotify.info(`Deleted ${n} ${log ? (n === 1 ? 'call' : 'calls') : (n === 1 ? 'voicemail' : 'voicemails')}.`);
+    p.set.clear(); p.anchor = null;
+    return this.app.render();
+  }
+
   async onAct(op, event, target) {
     const d = target.dataset;
     const s = this.calls;
     switch (op) {
       case 'view': this._view = d.view === 'log' ? logLanding(this._view, this._unheard || 0) : d.view; return this.app.render();
       case 'logTab': this._view = d.view; return this.app.render();
-      case 'logEdit': this._view = 'logedit'; this._pn.f = 'editlog'; return this.app.render();
+      case 'logEdit': this._view = 'logedit'; this._pn.f = 'editlog'; if (d.out) this._pn.lgOut = d.out; return this.app.render();
       case 'clearQ': if (d.which === 'vm') this._vmQ = ''; else this._logQ = ''; return this.app.render();
       case 'more': { const k = d.band; this._limits[k] = (this._limits[k] || 30) + 30; return this.app.render(); }
       case 'foldToggle': {
@@ -268,6 +312,22 @@ export class PhoneTab extends BaseTab {
         ScopePicker.set(this.scopeId('logwho'), []); ScopePicker.set(this.scopeId('lognet'), []);
         return this.app.render();
       case 'vmClear': this._vmQ = ''; this._vmShow = 'all'; return this.app.render();
+      // Select mode (Call log / Voicemail)
+      case 'pickMode': { const p = this._pick[d.which]; p.on = !p.on; p.set.clear(); p.anchor = null; return this.app.render(); }
+      case 'pickRow': this._pickToggle(d.which, d.k, !!event?.shiftKey); return this.app.render();
+      case 'pickAll': {
+        const p = this._pick[d.which], all = this._order?.[d.which] || [];
+        if (all.length && all.every((k) => p.set.has(k))) p.set.clear(); else for (const k of all) p.set.add(k);
+        return this.app.render();
+      }
+      case 'pickDel': return this._pickDelete(d.which);
+      case 'pickHeard': {
+        const list = [...this._pick.vm.set].map((k) => { const [ownerId, vmId] = k.split('|'); return { ownerId, vmId }; });
+        const r = await s?.voicemailsBatch(list, d.v === 'new' ? 'new' : 'heard');
+        if (r?.ok === false) ncmNotify.warn(r.error || 'That did not work.');
+        this._pick.vm.set.clear();
+        return this.app.render();
+      }
       case 'foldAll': {
         const open = d.open === '1';
         this._shut.clear(); this._open.clear();

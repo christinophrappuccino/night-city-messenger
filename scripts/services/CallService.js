@@ -32,6 +32,7 @@ import { placeLabel, maskPayphoneSide, payphoneSendGroups } from '../utils/payph
 import { dictateStatus } from '../utils/dictation.js';
 import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
 import { FilePickerClass } from '../utils/compat.js';
+import { realCallAsEntry, sanitizeCall, callToLog, callToVoicemail, voicemailBoxOf, callOwners, partyOwner, legacyCall, writtenCallId, isWrittenCallId } from '../utils/callHistory.js';
 import { isFeatureOn } from '../utils/features.js';
 import { payphoneTerm } from '../utils/payphoneTerm.js';
 
@@ -40,6 +41,10 @@ const AUDIO_CHUNK = 120000;                // base64 characters per socket piece
 const AUDIO_MAX_B64 = 3000000;             // ~2.2 MB: the most a recording may be (3 minutes at 32 kbps is ~1 MB)
 const DATA_URL_MAX = 700000;               // a recording kept inside the message when the world cannot take files
 
+/** Every setting the GM's phone setup screens write through saveNumberSetting. A setup screen that saves a new one adds it here (test-phone-setup-saves). */
+export const NUMBER_SETTINGS = Object.freeze(['phoneRules', 'phonePlaces', 'phoneSpecial', 'phoneOrgNames', 'phoneLineTypes', 'phoneOffices']);
+/** Logs and voicemails newest first by GAME time (a written entry has only that); the real stamp breaks a tie or stands in. */
+const newestFirst = (a, b) => ((Date.parse(b.gameTime) || 0) - (Date.parse(a.gameTime) || 0)) || ((b.startedAt || b.at || 0) - (a.startedAt || a.at || 0));
 const RING_BEAT_MS = 1100;   // one ring — the HUD dial fills on the same beat
 
 export class CallService {
@@ -437,6 +442,14 @@ export class CallService {
     return { ok: true };
   }
 
+  /** Whether a line's type shows its holder's picture to people who don't have them saved. */
+  _showsFace(number) {
+    const ctx = this.numberContext, p = parseNumber(number, ctx);
+    if (!p.done || p.service) return false;
+    const type = lineTypeFor(this.lines()[p.key], rowOf(p, ctx), this.lineTypes);
+    return !!type.face && type.shows === 'owner';
+  }
+
   /** How a caller reads on the other end: what the line's type shows. Only called for a real line. */
   _dressCaller(from) {
     const ctx = this.numberContext, p = parseNumber(from.number, ctx);
@@ -522,6 +535,194 @@ export class CallService {
     return { ok: true };
   }
 
+  // ─── written history as real pages (utils/callHistory.js; tester round 2026-11-06) ───
+  // A written call has two ends; each end that is a person gets a callLog page in their inbox (same call id on both,
+  // like a real call), keeping the call itself so the editor can open it again; a voicemail also becomes a voicemail
+  // page in the box of the person it was left for. The setting above is only read for a world migration v9 has not
+  // reached yet.
+
+  /** Who an owner id is, as a call party. */
+  _historyOwner(ownerId) {
+    const actor = game.actors?.get(ownerId);
+    if (actor) return { actorId: actor.id, contactId: null, name: actor.name, number: this.numberOf(actor.id) };
+    const c = game.nightcity?.masterContactService?.getContact?.(ownerId);
+    return { actorId: null, contactId: ownerId || null, name: c?.name || '', number: ownerId ? this.numberOfContact(ownerId) : '' };
+  }
+
+  /** An owner's inbox journal as it stands (no create, no wait): for screens that draw synchronously. */
+  _inboxNow(ownerId) {
+    const repo = game.nightcity?.messageRepository;
+    for (const j of game.journal ?? []) { const id = this._inboxOf(repo, j); if (id?.ownerId === ownerId) return j; }
+    return null;
+  }
+
+  /** The calls written into one owner's log (pages first, then any not yet migrated), newest first. Synchronous. */
+  historyEntries(ownerId, { real = false } = {}) {
+    const owner = this._historyOwner(ownerId);
+    const seen = new Set(), out = [];
+    const pages = this._inboxNow(ownerId)?.pages?.contents || [];
+    // what a real call left in this box, to show its words on the row
+    const vmText = new Map(pages.map((p) => p.flags?.[MODULE_ID]?.voicemail).filter((v) => v?.callId && !v.written).map((v) => [v.callId, v]));
+    for (const p of pages) {
+      const l = p.flags?.[MODULE_ID]?.callLog;
+      if (!l?.callId) continue;
+      if (l.written && l.entry) {
+        const c = sanitizeCall(l.entry, { owner });
+        if (!seen.has(c.id)) { seen.add(c.id); out.push(c); }
+      } else if (real && !seen.has(l.callId)) {
+        // a call that happened in play, shaped like a written one so the list reads the same (never saved back)
+        seen.add(l.callId);
+        out.push({ ...realCallAsEntry(l, vmText.get(l.callId)), real: true, callId: l.callId });
+      }
+    }
+    for (const x of this.writtenLog(ownerId)) out.push({ ...legacyCall(x, owner), legacy: true });
+    return out.sort((a, b) => String(b.when).localeCompare(String(a.when)));
+  }
+
+  /**
+   * Write calls. Each end that is a person gets a callLog page (the same call id on both); a voicemail also becomes a
+   * voicemail page in the box of the person it was left for.
+   * @param {object[]} calls
+   * @param {{voicemail?: boolean, only?: string|null}} [o] — voicemail:false writes log lines only (the legacy
+   *   migration: an old voicemail was only ever a line); only: write into this owner's log alone
+   * @returns {Promise<{ok: boolean, ids?: string[], error?: string}>}
+   */
+  async writeCalls(calls, { voicemail = true, only = null } = {}) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const repo = game.nightcity?.messageRepository;
+    const list = (calls || []).map((c) => sanitizeCall(c, { newId: () => foundry.utils.randomID() }));
+    const byOwner = new Map();
+    const add = (owner, page) => { if (!byOwner.has(owner)) byOwner.set(owner, []); byOwner.get(owner).push(page); };
+    for (const c of list) {
+      for (const [side, end] of [['from', c.from], ['to', c.to]]) {
+        const owner = partyOwner(end);
+        if (!owner || (only && owner !== only)) continue;
+        const other = side === 'from' ? c.to : c.from;
+        add(owner, { name: `[CALL] ${side === 'from' ? 'to' : 'from'} ${(c.anon && side === 'to' ? 'Unknown caller' : (other.name || other.number)) || 'unknown'}`, type: 'text', text: { content: '' },
+          flags: { [MODULE_ID]: { callLog: callToLog(c, side) } } });
+      }
+      const box = voicemail ? voicemailBoxOf(c) : null;
+      if (box && (!only || box === only)) {
+        const vm = callToVoicemail(c, { voice: c.kind === 'tts' ? this.lineSettings(c.from.number).greeting.voice : '' });
+        if (vm) add(box, { name: `[VOICEMAIL] from ${vm.from?.name || vm.from?.number || 'unknown'}`, type: 'text', text: { content: '' }, flags: { [MODULE_ID]: { voicemail: vm } } });
+      }
+    }
+    if (!byOwner.size) return { ok: false, error: 'Nobody on that call has an inbox to write into.' };
+    for (const [owner, pages] of byOwner) {
+      const j = await repo?.getInboxJournal?.(owner);
+      if (j) await j.createEmbeddedDocuments('JournalEntryPage', pages);
+      else log.warn(`Calls: no inbox for ${owner}; a written call skipped it`);
+    }
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true, ids: list.map((c) => c.id) };
+  }
+
+  /** Write calls given from one owner's side (a first-version entry, or a call): `dir`/`who` are read against them. */
+  async writeHistory(ownerId, entries, o = {}) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const owner = this._historyOwner(ownerId);
+    return this.writeCalls((entries || []).map((e) => sanitizeCall(e, { owner, newId: () => foundry.utils.randomID() })), o);
+  }
+
+  /** Replace one written call (same id): every page of it goes, the new version is written. */
+  async rewriteHistory(call) {
+    if (!isGM()) return { ok: false, error: 'GM only' };
+    const c = sanitizeCall(call);
+    await this.deleteCalls([writtenCallId(c.id)]);
+    return this.writeCalls([c]);
+  }
+
+  /**
+   * Delete calls. Every log page with one of these call ids goes (in every inbox, or only the owner's), and so does a
+   * WRITTEN voicemail made with it. A voicemail left during a real call stays: it is deleted from Voicemail.
+   * Entries still in the legacy setting are removed there too.
+   * @param {string[]} callIds
+   * @param {{ownerId?: string}} [o] — only this owner's log; omitted = everyone's
+   * @returns {Promise<{ok: boolean, count: number}>}
+   */
+  async deleteCalls(callIds, { ownerId = null } = {}) {
+    if (!isGM()) return { ok: false, count: 0, error: 'GM only' };
+    const want = new Set((callIds || []).filter(Boolean));
+    if (!want.size) return { ok: true, count: 0 };
+    const repo = game.nightcity?.messageRepository;
+    const ownJournal = ownerId ? this._inboxNow(ownerId) : null;
+    let count = 0;
+    for (const j of game.journal ?? []) {
+      const inbox = this._inboxOf(repo, j), booth = j.getFlag?.(MODULE_ID, 'payphoneLog');
+      if (!inbox && !booth) continue;
+      if (ownerId && j !== ownJournal) continue;
+      const ids = (j.pages?.contents || []).filter((p) => {
+        const f = p.flags?.[MODULE_ID];
+        if (f?.callLog?.callId && want.has(f.callLog.callId)) return true;
+        return !!(f?.voicemail?.written && want.has(f.voicemail.callId));
+      }).map((p) => p.id);
+      if (!ids.length) continue;
+      await j.deleteEmbeddedDocuments('JournalEntryPage', ids);
+      count += ids.length;
+    }
+    // the legacy setting
+    const all = { ...(this._get('phoneWrittenLogs', {}) || {}) };
+    let touched = false;
+    for (const [owner, list] of Object.entries(all)) {
+      if (ownerId && owner !== ownerId) continue;
+      const keep = (Array.isArray(list) ? list : []).filter((e) => !want.has(writtenCallId(e?.id)));
+      if (keep.length !== (list || []).length) { all[owner] = keep; touched = true; count += (list.length - keep.length); }
+    }
+    if (touched) await game.settings.set(MODULE_ID, 'phoneWrittenLogs', all);
+    this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
+    return { ok: true, count };
+  }
+
+  /**
+   * Several voicemails at once (Admin → Phone → Voicemail, Select): delete them, or mark them heard / new.
+   * One write per inbox journal.
+   * @param {{ownerId: string, vmId: string}[]} list
+   * @param {'delete'|'heard'|'new'} op
+   */
+  async voicemailsBatch(list, op) {
+    if (!isGM()) return { ok: false, count: 0, error: 'GM only' };
+    const repo = game.nightcity?.messageRepository;
+    const byOwner = new Map();
+    for (const x of list || []) { if (!x?.ownerId || !x?.vmId) continue; if (!byOwner.has(x.ownerId)) byOwner.set(x.ownerId, new Set()); byOwner.get(x.ownerId).add(x.vmId); }
+    let count = 0;
+    for (const [owner, vmIds] of byOwner) {
+      const j = await repo?.getInboxJournal?.(owner, { create: false });
+      const pages = (j?.pages?.contents || []).filter((p) => vmIds.has(p.flags?.[MODULE_ID]?.voicemail?.vmId));
+      if (!pages.length) continue;
+      if (op === 'delete') await j.deleteEmbeddedDocuments('JournalEntryPage', pages.map((p) => p.id));
+      else await j.updateEmbeddedDocuments('JournalEntryPage', pages.map((p) => ({ _id: p.id, [`flags.${MODULE_ID}.voicemail.heard`]: op === 'heard' })));
+      count += pages.length;
+    }
+    this.eventBus.emit(EVENTS.VOICEMAIL_LEFT, { vm: null, changed: 'batch' });
+    return { ok: true, count };
+  }
+
+  /**
+   * Migration v9: move the legacy written logs into pages. Per owner, the setting entry is cleared only once every
+   * entry reads back from the inbox. Idempotent: an entry already written as a page is not written again.
+   * @returns {Promise<{moved: number, kept: number}>}
+   */
+  async migrateWrittenLogs() {
+    if (!isGM()) return { moved: 0, kept: 0 };
+    const all = { ...(this._get('phoneWrittenLogs', {}) || {}) };
+    let moved = 0, kept = 0;
+    for (const [owner, list] of Object.entries(all)) {
+      const rows = (Array.isArray(list) ? list : []).filter((e) => e?.id);
+      if (!rows.length) { delete all[owner]; continue; }
+      const journal = await game.nightcity?.messageRepository?.getInboxJournal?.(owner);
+      if (!journal) { kept += rows.length; continue; }
+      const have = () => new Set((journal.pages?.contents || []).map((p) => p.flags?.[MODULE_ID]?.callLog?.callId).filter(isWrittenCallId));
+      const todo = rows.filter((e) => !have().has(writtenCallId(e.id)));
+      // a legacy voicemail was only ever a log line: keep it a log line (a page in Voicemail now would be news to the player)
+      if (todo.length) await this.writeCalls(todo.map((e) => legacyCall(e, this._historyOwner(owner))), { voicemail: false, only: owner });
+      const now = have();
+      if (rows.every((e) => now.has(writtenCallId(e.id)))) { delete all[owner]; moved += rows.length; }
+      else kept += rows.length;
+    }
+    await game.settings.set(MODULE_ID, 'phoneWrittenLogs', all);
+    return { moved, kept };
+  }
+
   // ─── a terminal's number (§9): dialling it never logs anyone in ───
 
   /** The line a terminal holds. */
@@ -569,7 +770,7 @@ export class CallService {
   /** Write any number setting from the GM's setup screens. */
   async saveNumberSetting(key, value) {
     if (!isGM()) return { ok: false, error: 'GM only' };
-    if (!['phoneRules', 'phonePlaces', 'phoneSpecial', 'phoneOrgNames'].includes(key)) return { ok: false, error: 'Not a number setting.' };
+    if (!NUMBER_SETTINGS.includes(key)) return { ok: false, error: 'Not a number setting.' };
     await game.settings.set(MODULE_ID, key, value);
     this.eventBus.emit(EVENTS.LINE_UPDATED, { number: null });
     return { ok: true };
@@ -994,7 +1195,7 @@ export class CallService {
     const verdict = canCall({ enabled: this.enabled, fromNumber: from.number, callee, noSignal: !isGM() && !from.wired && this._noSignal(), homeCode: this.homeCode, unknownNumbers: this._get('callUnknownNumbers', 'not-in-service') });
     const to = { kind: verdict.toGm && callee.kind === 'unowned' ? 'unowned' : callee.kind, actorId: callee.actorId || null, contactId: callee.contactId || null,
       number: displayNumber(number, this.homeCode), name: callee.name || '', userIds: callee.userIds || [], ...(callee.shared ? { shared: true, gmMember: callee.gmMember } : {}), ...(callee.office ? { office: callee.office, greet: callee.greet || '' } : {}), ...(callee.kind === 'payphone' ? { payphoneId: callee.payphoneId, sceneId: callee.sceneId } : {}),
-      img: callee.contactId || callee.actorId ? resolveDisplayPortrait({ contactId: callee.contactId, actorId: callee.actorId }) : '' };
+      img: callee.contactId || callee.actorId ? resolveDisplayPortrait({ contactId: callee.contactId, actorId: callee.actorId }) : '', face: this._showsFace(number) };
     // a payphone is wired: no network, no signal to lose, nothing for a node tap to hear
     const net = from.wired ? { id: '', name: `${payphoneTerm()} line`, type: 'wired', strength: 100, color: '' } : this._net();
     if (!verdict.ok) {
@@ -1461,7 +1662,7 @@ export class CallService {
     const journal = ownerId ? await game.nightcity?.messageRepository?.getInboxJournal?.(ownerId) : null;
     if (!journal) return [];
     return journal.pages.contents.map((p) => ({ pageId: p.id, journalId: journal.id, ownerId, ...(p.flags?.[MODULE_ID]?.voicemail || {}) }))
-      .filter((v) => v.vmId).sort((a, b) => (b.at || 0) - (a.at || 0));
+      .filter((v) => v.vmId).sort(newestFirst);
   }
 
   /** Every voicemail in the world (GM — Admin → Phone → Voicemail), newest first, with the inbox it is in. */
@@ -1485,7 +1686,7 @@ export class CallService {
         if (v?.vmId) out.push({ ...v, pageId: p.id, journalId: j.id, ownerId: id.ownerId, ownerIsContact: !!id.isContact });
       }
     }
-    return out.sort((a, b) => (b.at || 0) - (a.at || 0));
+    return out.sort(newestFirst);
   }
 
   /** Mark a voicemail heard (or not) / delete it. The GM writes; a player relays for their own lines. */
@@ -1908,9 +2109,9 @@ export class CallService {
   async getLog(ownerId) {
     const journal = await game.nightcity?.messageRepository?.getInboxJournal?.(ownerId);
     const written = this.writtenLog(ownerId).map((e) => writtenToLog(e));
-    if (!journal) return written.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    if (!journal) return written.sort(newestFirst);
     return [...journal.pages.contents.map((p) => ({ pageId: p.id, journalId: journal.id, ...(p.flags?.[MODULE_ID]?.callLog || {}) })).filter((l) => l.callId), ...written]
-      .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+      .sort(newestFirst);
   }
 
   /**
@@ -1935,7 +2136,7 @@ export class CallService {
     for (const [id, h] of heard) { const l = byCall.get(id); if (l && !l.heardBy?.length) l.heardBy = h; }
     const nameOf = (id) => game.actors?.get(id)?.name || game.nightcity?.masterContactService?.getContact?.(id)?.name || '';
     const written = Object.entries(this._get('phoneWrittenLogs', {}) || {}).flatMap(([id, list]) => (Array.isArray(list) ? list : []).map((e) => writtenToLog(e, { name: nameOf(id), number: '' })));
-    return [...byCall.values(), ...written].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    return [...byCall.values(), ...written].sort(newestFirst);
   }
 
   /** The GM-only journal booth call logs live in (a booth has no inbox; who really called is the GM's business). */
@@ -1949,7 +2150,7 @@ export class CallService {
   payphoneLog() {
     const j = game.journal?.find?.((e) => e.getFlag(MODULE_ID, 'payphoneLog'));
     return (j?.pages?.contents || []).map((p) => ({ pageId: p.id, journalId: j.id, ...(p.flags?.[MODULE_ID]?.callLog || {}) })).filter((l) => l.callId)
-      .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+      .sort(newestFirst);
   }
 
   /** Mark a character's missed calls as seen (the Calls tab opens). */

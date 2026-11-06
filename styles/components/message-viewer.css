@@ -269,7 +269,25 @@
   padding: 6px 16px; background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--ncm-secondary) 15%, transparent); flex-shrink: 0;
 }
-.ncm-app .ncm-viewer__bulk-count { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__bulk-count { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); white-space: nowrap; }
+/* Select mode (tester round 2026-11-06: "a way to mass delete messages"). The bar wraps rather than squeezing its
+   buttons; the Select pill sits at the end of the pill track. */
+.ncm-app .ncm-viewer__bulk-bar { flex-wrap: wrap; row-gap: 4px; }
+.ncm-app .ncm-viewer__bulk-bar > * { flex: 0 0 auto; }
+.ncm-app .ncm-viewer__bulk-gap { flex: 1 1 auto !important; min-width: 4px; }
+.ncm-app .ncm-viewer .ncm-viewer__select-pill { margin-left: auto; }
+.ncm-app .ncm-viewer__msg-tick {
+  flex: 0 0 auto; align-self: center; display: inline-flex; align-items: center; justify-content: center;
+  width: calc(16px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
+  font-size: calc(14px * var(--ncm-text-scale, 1)); line-height: 1;
+}
+.ncm-app .ncm-viewer__msg--ticked .ncm-viewer__msg-tick { color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__msg--ticked { background: color-mix(in srgb, var(--ncm-secondary) 7%, transparent); }
+/* the unread dot sits where the tick box goes: in select mode the row's bright text says unread instead */
+.ncm-app .ncm-viewer__msg--picking::before, .ncm-app .ncm-viewer__msg--picking .ncm-viewer__msg-unread-dot { display: none; }
+.ncm-app .ncm-viewer__trash-note .ncm-btn { flex: 0 0 auto; }
+.ncm-app .ncm-viewer__trash-note-x { padding-left: 6px !important; padding-right: 6px !important; }
+.ncm-app .ncm-viewer__trash-note-x i:only-child { margin: 0 !important; }
 
 .ncm-app .ncm-viewer__filter-bar {
   display: flex; align-items: center; gap: 8px;

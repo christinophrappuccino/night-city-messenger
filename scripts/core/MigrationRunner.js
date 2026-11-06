@@ -35,7 +35,7 @@ import { htmlOf } from '../utils/compat.js';
 import { need } from './providers.js';   // UI pieces come from the UI layer (R9b)
 
 /** The schema version this build of the module writes. */
-export const DATA_SCHEMA_VERSION = 8;
+export const DATA_SCHEMA_VERSION = 9;
 
 /**
  * Everything saved in this world that can hold an Interface DV.
@@ -235,6 +235,21 @@ const MIGRATIONS = [
     to: 8,
     label: 'Interface rolls: clear the finished v3 ledger',
     run: async () => { await game.settings.set(MODULE_ID, 'ifaceShiftDone', {}); },
+  },
+  {
+    // Calls the GM wrote into a log by hand lived in one world setting, sent whole to every client at login and on each
+    // write. A campaign's worth of history per character made it heavy (tester round 2026-11-06), so written calls are
+    // now pages in the owner's inbox, like real calls. Per owner the setting is emptied only once every entry reads back;
+    // an owner with no inbox keeps theirs (still shown) and is tried again next load.
+    to: 9,
+    label: 'Written call logs: move into the owners inboxes',
+    run: async () => {
+      const svc = game.nightcity?.callService;
+      if (!svc?.migrateWrittenLogs) throw new Error('the call service is not ready; trying again next load');
+      const r = await svc.migrateWrittenLogs();
+      if (r.moved) log.info(`Written call logs: moved ${r.moved} entr${r.moved === 1 ? 'y' : 'ies'} into inboxes`);
+      if (r.kept) log.warn(`Written call logs: ${r.kept} entr${r.kept === 1 ? 'y' : 'ies'} kept in the setting (no inbox to write into)`);
+    },
   },
 ];
 
