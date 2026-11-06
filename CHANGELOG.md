@@ -3,6 +3,11 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.1.1] — 2026-11-05
+
+### Fixed
+- **The name on a call card matches the face.** When the GM answered a player calling an NPC line, the card showed the caller's portrait beside the NPC's own name. It now shows the caller's name, and the line above says which NPC is being called ("Calling Rogue", then "Holocall · as Rogue").
+
 ## [2.1.0] — 2026-11-05
 
 Everything since 2.0.7.

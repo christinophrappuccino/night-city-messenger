@@ -2,7 +2,7 @@
   "id": "night-city-messenger",
   "title": "Night City Messenger",
   "description": "Immersive cyberpunk messaging, data shards, and network systems for Cyberpunk RED.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "compatibility": {
     "minimum": "12",
     "verified": "12"
