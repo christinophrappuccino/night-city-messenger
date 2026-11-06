@@ -389,6 +389,19 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 
 **Special numbers.** A number that follows its own rules: a hidden line, a hotline, a recording, a macro. Each can have a name and a picture.
 
+**Who sees a caller's name and picture.** The picture shows once a call is answered (live, on hold, and after it ends); while it rings, only a name or number shows. With no picture, the frame shows initials. You, the GM, always see the real name and picture. For players, the caller's line type decides first:
+
+| Line type | What the other end sees |
+|---|---|
+| Corporate | The person's name and picture, the company name and the office art |
+| Business | The line's label, with the office art as the picture |
+| Payphone | "Payphone, Kabuki", no picture |
+| Burner | The number only, no picture |
+| Withheld | Nothing, until a Trace reveals it |
+| Standard | Depends on their contacts (below) |
+
+On a Standard line, a player who has the caller saved sees the name and picture. A contact matches by its number, the directory entry it came from, its email (a contact saved from mail), or the same character. A player who has not saved them sees "Unknown number" and no picture, unless the line type has **Show their picture to strangers** ticked: then they see the picture, never the name. The picture is the directory contact's portrait or the character's image. So when a player says a friend's picture doesn't show, the contact usually isn't saved under that number, email or character, or the call came from a burner, payphone or withheld line.
+
 **Trauma Team.** Under Number setup → Emergency calls, set who has a plan. Dialling the Trauma Team number with a plan starts the call: real dice, chat cards, and a countdown for the player. The call uses that special number's name, number and picture, so you can rename it or point it at another one. **See the call** plays it for you with nothing rolled or saved.
 
 **Lawman Backup.** Same place. Backup is whoever this Lawman can call, not only the police: a corp's security, a gang, a nomad pack. Pick each Lawman's organization, rename its groups, and set its **Kind**. By default only Police and Government get red and blue lights and a siren. An organization can have a picture, and a group can have its own, which wins.
