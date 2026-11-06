@@ -89,5 +89,12 @@ ok(/hiding is on screen[^.]*every connected browser[^.]*developer tools/.test(re
 const devNotes = read('CLAUDE.md') + '\n' + read('dev/design/systems/phone.md');
 ok(/This is masking on screen, not secrecy/.test(devNotes) && !/the real person never reaches the other end's client/.test(devNotes), 'the developer notes no longer claim the real person never reaches the other end');
 
+// the name beside the face is the other party's, even for a GM answering an NPC line (dev, 2026-11-05)
+{
+  const hud = read('scripts/ui/Calls/CallHud.js');
+  ok(/const chipName = other\.name;/.test(hud) && /Holocall · as \$\{call\.to/.test(hud) && /`Calling \$\{call\.to/.test(hud),
+    "call card: the caller's name sits by the caller's face; the NPC line being answered reads 'Calling …' / 'Holocall · as …'");
+}
+
 console.log(`test-call-privacy: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

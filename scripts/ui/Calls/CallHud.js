@@ -229,12 +229,12 @@ export class CallHud {
     const gmCallee = this._gmView && role === 'callee';
     let kind, tone, sigState, keys = [];
     if (st === 'ringing' && role === 'callee') {
-      kind = gmCallee ? `${call.from?.name || 'Someone'} is calling` : call.from?.word ? `Incoming · ${call.from.word}` : 'Incoming call'; tone = 'ring'; sigState = 'ring';
+      kind = gmCallee ? `Calling ${call.to?.name || call.to?.number || 'them'}` : call.from?.word ? `Incoming · ${call.from.word}` : 'Incoming call'; tone = 'ring'; sigState = 'ring';
       keys = [['answer', 'Y', gmCallee ? `Answer as ${call.to?.name || 'them'}` : 'Answer', ''], ['decline', 'N', 'Decline', 'bad']];
     } else if (st === 'dialing' || (st === 'ringing' && role === 'caller')) {
       kind = call.queueHold ? 'On hold' : 'Calling…'; tone = 'ring'; sigState = 'ring'; keys = [['cancel', 'N', 'Cancel', 'bad']];
     } else if (st === 'live') {
-      kind = call.remoteHeld ? 'On hold' : 'Holocall'; tone = 'live'; sigState = 'live'; keys = [['hangup', 'N', 'Hang up', 'bad']];
+      kind = call.remoteHeld ? 'On hold' : gmCallee ? `Holocall · as ${call.to?.name || call.to?.number || 'them'}` : 'Holocall'; tone = 'live'; sigState = 'live'; keys = [['hangup', 'N', 'Hang up', 'bad']];
       // a withheld caller can be traced from the other end (a skill check; the GM reveals it on a success)
       if (role === 'callee' && call.from?.anon && !call.traced && !this._gmView) keys.unshift(['trace', 'T', 'Trace', '']);
     } else if (st === 'voicemail') {
@@ -246,8 +246,9 @@ export class CallHud {
     } else {
       kind = OUTCOMES[call.outcome] || 'Call ended'; tone = 'end'; sigState = 'end';
     }
-    // the GM answering an NPC line: the badge names the identity being called
-    const chipName = gmCallee ? (call.to?.name || call.to?.number || 'Unknown') : other.name;
+    // the name beside the face is always the OTHER party's (dev, 2026-11-05: a GM answering an NPC line saw the
+    // caller's portrait under the NPC's own name); the line being answered goes in the kind line above it
+    const chipName = other.name;
     const net = call.net;
     const profile = callProfile({ name: role === 'caller' ? call.to?.name : call.from?.name, number: other.number, net: { name: net?.name, type: net?.type, strength: net?.strength } });
     const showPic = st === 'live' || st === 'held' || (st === 'ended' && call.answeredAt);
