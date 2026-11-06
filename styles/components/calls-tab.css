@@ -24,7 +24,7 @@
 .ncm-app .ncm-calls-sig.is-warn { color: var(--calls-miss); }
 
 /* ═══ left: the dialer ═══ */
-.ncm-app .ncm-calls-dl { display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 14px; background: var(--ncm-bg-surface); border-right: 1px solid var(--ncm-border); min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-calls-dl { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 10px; background: var(--ncm-bg-surface); border-right: 1px solid var(--ncm-border); min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .ncm-app .ncm-calls-as { display: flex; align-items: center; gap: 7px; font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
 .ncm-app .ncm-calls-as select { flex: 1; min-width: 0; height: calc(26px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 55%, transparent); font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
 .ncm-app .ncm-calls-chip { flex: 1; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 55%, transparent); color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; }
@@ -54,7 +54,7 @@
 .ncm-app .ncm-calls-cb { --cbc: var(--calls-ok); margin-top: auto !important; width: 100% !important; display: block !important; padding: 1.5px !important; position: relative;
   background: color-mix(in srgb, var(--cbc) 85%, #0b2015) !important; border: 0 !important; border-radius: 0 !important;
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
-.ncm-app .ncm-calls-cb__in { position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 8px; text-align: left;
+.ncm-app .ncm-calls-cb__in { position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 8px; text-align: left;
   background: color-mix(in srgb, var(--cbc) 72%, #0b2015); transition: background .25s;
   clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 11px 100%, 0 calc(100% - 11px)); }
 .ncm-app .ncm-calls-cb__in > * { position: relative; z-index: 1; }
@@ -264,7 +264,7 @@
 .ncm-app .ncm-calls-line::before, .ncm-app .ncm-calls-res::before { content: ''; position: absolute; inset: 1px; z-index: -1;
   background: linear-gradient(150deg, color-mix(in srgb, var(--ncm-secondary) 11%, var(--ncm-bg-elevated)), var(--ncm-bg-elevated) 55%);
   clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut2) 100%, 0 calc(100% - var(--cut2))); }
-.ncm-app .ncm-calls-line { padding: 9px 11px 10px; display: flex; flex-direction: column; gap: 5px; }
+.ncm-app .ncm-calls-line { padding: 8px 11px 8px; display: flex; flex-direction: column; gap: 5px; }
 .ncm-app .ncm-calls-line__hd { padding-right: 8px; flex-wrap: wrap; row-gap: 3px; }
 .ncm-app .ncm-calls-line__hd > span:first-child { white-space: nowrap; }
 /* The SIM's contacts. A pulse walks round the four pads while the line is live; a key press makes them all flicker; ringer off turns it amber and slows it. One animation per pad, offset by a quarter, so they stay in step. */
@@ -354,7 +354,9 @@
 
 .ncm-app .ncm-calls-dl .ncm-calls-sig { flex: none; }
 /* the Call button stays on screen however tall the column gets */
-.ncm-app .ncm-calls-dl .ncm-calls-cb { position: sticky; bottom: 0; flex: none; z-index: 2; }
+/* in the flow, not pinned: a pinned Call button covered the keypad whenever the column ran taller than its space
+   (a second line, Call for backup, a 600px window). The column scrolls; Enter in the number box still calls. */
+.ncm-app .ncm-calls-dl .ncm-calls-cb { position: relative; flex: none; z-index: 2; }
 .ncm-app .ncm-calls-keys button { height: calc(31px * var(--ncm-text-scale, 1)) !important; }
 .ncm-app .ncm-calls-keys { flex: none; }
 
@@ -552,7 +554,8 @@
 /* ═══ The dial column: no reserved gaps, and the pad takes the spare height ═══ */
 .ncm-app .ncm-calls-xp { min-height: 0; }
 .ncm-app .ncm-calls-xp:empty, .ncm-app .ncm-calls-match:empty { display: none; }
-.ncm-app .ncm-calls-keys { flex: 1 1 auto; grid-auto-rows: minmax(calc(36px * var(--ncm-text-scale, 1)), 1fr); max-height: calc(232px * var(--ncm-text-scale, 1)); }
+/* never shrinks below its rows (it used to slide under the Call button on a 600px window); the dial column scrolls instead */
+.ncm-app .ncm-calls-keys { flex: 1 0 auto; grid-auto-rows: minmax(calc(28px * var(--ncm-text-scale, 1)), 1fr); max-height: calc(232px * var(--ncm-text-scale, 1)); gap: 4px; }
 .ncm-app .ncm-calls-keys button { height: auto !important; min-height: 0 !important; }
 
 /* ═══ The log's tabs + the phone contact list ═══ */

@@ -510,7 +510,7 @@ function dialHint(value, book, ctx) {
     const menu = listed.length ? ` Extensions: ${listed.map((e) => `x${esc(e.x)} ${esc(e.who)}`).join(', ')}.` : '';
     return `<b>${esc(placeOf(p, ctx))}.</b> ${ext ? `Extension ${esc(ext)}.` : `A switchboard.${menu}`} Add x and digits for an extension.`;
   }
-  if (p.empty) return 'Type a number, or use the pad.';
+  if (p.empty) return '';   // the box's own placeholder says it; an empty hint takes no room (the column must fit a 600px window)
   if (p.service) return `<span class="ok">${esc(p.entry?.name || p.service)}.</span> A service line, works from anywhere.`;
   if (!p.done) {
     if (p.ex && !p.bad && p.line !== undefined) { const left = 4 - (p.line || '').length; return `<b>${esc(placeOf(p, ctx))}.</b> ${left} more digit${left === 1 ? '' : 's'}.`; }

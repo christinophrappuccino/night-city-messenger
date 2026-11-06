@@ -36,6 +36,8 @@ That's all the setup there is. NPCs and other players can now message you at tha
 
 **Click your portrait** at the top left of the inbox to open the Identity panel: your address, your aliases, your network, your other characters, and Log Out.
 
+**The buttons at the top right:** **Contacts**; **Compose** writes a new message, and the **▾** beside it starts a conversation; the **gear ▾** holds Settings & theme and this guide.
+
 **Networks** are at the top of the window. You only see networks that reach the scene you're on. A padlock means the network needs a password or a skill check. A network shown as **Jammed** or **Node down** is out on this scene for now. Some messages only open on certain networks.
 
 ---

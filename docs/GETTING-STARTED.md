@@ -143,9 +143,9 @@ Point your players at it on the first night. Two things are worth knowing as the
 
 ## Part 3 — GM: running the mail
 
-<!-- fig: messages-desk.png | Admin → Messages → Needs a reply: the queue, the conversation, and how the NPC talks | 92 -->
+<!-- fig: messages-desk.png | Admin → Messages → Needs a reply: who is waiting, on what, for how long | 92 -->
 
-Admin Panel → **Messages** has four views:
+Admin Panel → **Messages** has four views (five with Conversations switched on — see Part 10):
 
 - **Needs a reply** — every conversation a player is waiting on, one line per NPC and the identity they wrote to, with who is waiting, for how long, and the last thing they wrote. **Reply** opens the composer as that NPC (or the alias they wrote to), addressed to everyone waiting; the inbox button opens the NPC's inbox at the message; **✓** marks it answered without replying. Search it, sort it (longest wait, newest, most waiting, NPC A–Z), group it by NPC or by player; answered lines fold away at the bottom. A wait past a day turns red.
 - **All mail** — every message in the world on a calendar you click into: year, month, week, day. Search, filter by who, and every count follows your filters. Open a message to see **where it went** (sent, delivered, read, replied — and why not, if it didn't), reply as the identity it reached, open the inbox it's in, share it to chat, mark it read or unread, or delete it.
@@ -318,13 +318,15 @@ Before a roll, a small panel shows what is about to be added up, the DV, the cha
 
 Then the roll plays on screen — the stat, the skill, the die, the total against the DV — and posts its chat card when the result lands. If you use **Dice So Nice**, the 3D dice roll first.
 
+**Rolls follow the chat box's roll mode** (public, GM only, blind or self), for both the 3D dice and the chat card. When you decide a roll yourself, players see no DV or chance.
+
 **A roll has to beat the DV.** A tie fails, as in the rulebook. On a forge or an encode, a tie lands on the sloppy rung.
 
 **Interface rolls Rank + 1d10**, also the rulebook's way, and has no stat in it. Interface DVs in the module are set for that: about 9 for a fair lock, up to 15 or so for a nasty one. If your world has DVs from before version 2.1, you are asked once what to do with them. To go back to adding TECH, change **Role Ability Rolls** (Admin → Security → Hacking rules).
 
 ### Trace & heat
 
-Every risky roll reports to Admin → **Security**:
+Every risky roll reports to Admin → **Security**. If your table doesn't want consequences, switch off **Trace Consequences** (Module Settings → Systems): failures are still logged, but add no heat, no GM alert and no player splash. It takes effect at once, no reload.
 
 - **Live** — what needs your call right now.
 - **Activity** — the full record of who did what, drawn as a seismograph (a failure kicks the line, a success is a tick). Click a spike to see what happened.
@@ -440,6 +442,8 @@ These three things cause almost every "it's broken" report. Tell your players up
 1. **A GM has to be online for player actions to count.** When a player claims money, decrypts a file, jacks into a node, or schedules a message, the change goes through the GM's computer. If no GM is connected, nothing happens (the module says so). That's on purpose.
 2. **Check the OPERATOR chip.** It picks which character rolls and gets paid. Wrong chip, wrong wallet.
 3. **"The button does nothing" is usually a setting.** Exfil rules, operator access, who can jack in, network range, resolution mode — check the setting before assuming it's a bug. Turning on **Debug Mode** makes the module explain every decision in the console.
+
+If part of NCM fails to start (another module clashing, a broken world record), you get **one notice** when the world loads that names the part and says what stopped working because of it. Send that notice along with any bug report.
 
 Two more things worth knowing: self-destructing messages never destroy when a GM reads them (so you can check inboxes safely), and GMs skip most login checks — so if you want to see what players see, log in from a player account.
 
