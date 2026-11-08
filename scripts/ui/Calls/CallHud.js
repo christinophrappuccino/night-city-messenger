@@ -22,7 +22,7 @@ import { themedConfirm } from '../../utils/adminTheme.js';
 import { dialogBodyHtml } from '../../utils/dialogBody.js';
 import { savedContactFor } from '../../utils/phoneNumbering.js';
 import { voiceInfo } from '../../utils/identities.js';
-import { TONE_LINE, VOICEMAIL_MAX } from '../../utils/voicemail.js';
+import { TONE_LINE, VOICEMAIL_MAX, greetMs } from '../../utils/voicemail.js';
 import { speak, stopSpeaking } from './speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from './recorder.js';
 import { currentPlace, applyPlace, clampPlace, savePlace } from './hudPlace.js';
@@ -91,7 +91,9 @@ export class CallHud {
     bus.on(EVENTS.VOICEMAIL_LEFT, (e) => { if (e?.vm) this._voicemailNotice(e.vm); });
     bus.on(EVENTS.CALL_GLITCH, (e) => this._glitch(e?.callId));
     bus.on(EVENTS.CALL_TRACED, (e) => {
-      if (e?.from) ncmNotify.info(`Trace complete — the withheld number was ${e.from.name || 'someone'}${e.from.number ? ` (${e.from.number})` : ''}.`, { permanent: true });
+      // not permanent: the whispered Trace result card in chat keeps the answer (a permanent toast queued behind older ones)
+      if (e?.from) ncmNotify.info(`Trace complete: ${[e.from.name, e.from.number].filter(Boolean).join(' · ') || 'nothing more on this line'}.`);
+      else if (e?.dead) ncmNotify.warn('Trace complete: a dead end. Nothing comes back on this line.');
     });
     bus.on(EVENTS.CALL_LINE, (e) => {
       if (!e?.line) return;
@@ -667,8 +669,20 @@ export class CallHud {
     if (vmState && !this._spoke.has(call.id)) {
       this._spoke.add(call.id);
       this._fresh.add(`greet-${call.id}`);
-      if (call.greeting?.readOut) speak(call.greeting.text, { voice: call.greeting.voice, rate: call.greeting.rate, pitch: call.greeting.pitch });
-      if (call.greeting?.kind === 'recorded' && call.greeting.audio) { this._greetAudio?.pause?.(); this._greetAudio = playAudio(call.greeting.audio); }
+      // A greeting that plays out loud holds the tone until it has finished (the service's timer is only a safety
+      // cap); one that cannot play here (sound off) falls back to the on-screen estimate.
+      const g = call.greeting || {}, cid = call.id, t0 = Date.now();
+      const done = (played) => {
+        const left = played ? Math.max(400, 1800 - (Date.now() - t0)) : Math.max(0, greetMs(g.text, { duration: g.kind === 'recorded' ? g.duration : 0 }) - (Date.now() - t0));
+        setTimeout(() => this.service.greetingDone?.(cid), left);
+      };
+      if (g.readOut) speak(g.text, { voice: g.voice, rate: g.rate, pitch: g.pitch }).then(done, () => done(false));
+      if (g.kind === 'recorded' && g.audio) {
+        this._greetAudio?.pause?.();
+        const a = this._greetAudio = playAudio(g.audio);
+        if (!a) done(false);
+        else { let once = false; const fin = (ok) => { if (once) return; once = true; done(ok); }; a.addEventListener('ended', () => fin(true)); a.addEventListener('error', () => fin(false)); a.play?.().catch?.(() => fin(false)); }
+      }
     }
     if (vmLeave && !this._spoke.has(`tone-${call.id}`)) { this._spoke.add(`tone-${call.id}`); stopSpeaking(); this._greetAudio?.pause?.(); this._greetAudio = null; }
     // a call that left the voicemail screen: drop any recording still open

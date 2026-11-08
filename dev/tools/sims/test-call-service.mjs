@@ -491,7 +491,7 @@ let callId;
   ok(evts('u2', 'call:traced').some((e) => e.from?.name === 'Rogue') && !evts('u1', 'call:traced').length, 'only the tracer is told');
   await as('u2', (s) => s.hangup(anon2.call.id)); await flush(); await settle();
   const jp2 = pagesOf('judy').map((p) => p.flags?.[MODULE_ID]?.callLog).find((l) => l?.callId === anon2.call.id);
-  ok(jp2 && !jp2.anonCall && jp2.other.name === 'Rogue', 'a traced call logs the real caller');
+  ok(jp2 && jp2.traced && jp2.other.name === 'Rogue' && jp2.from.name === 'Rogue' && !jp2.from.realName, 'a traced call logs what the trace found (and only that)');
   // a player cannot withhold
   const pa = await as('u1', (s) => s.placeCall(judyNo, { anon: true })); await flush();
   ok(!clients.u1.svc.calls.get(pa.call.id)?.from?.anon && clients.u2.svc.calls.get(pa.call.id)?.from?.name !== 'Unknown caller', 'withholding is the GM’s alone');

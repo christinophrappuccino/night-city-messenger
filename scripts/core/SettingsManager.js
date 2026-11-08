@@ -705,6 +705,9 @@ export class SettingsManager {
     game.settings.register(MODULE_ID, 'phoneEavesdrop', {
       name: 'Eavesdropping rules', hint: 'Who counts as in the room, which gear matters, what the rolls need.', scope: 'world', config: false, type: Object, default: {},
     });
+    game.settings.register(MODULE_ID, 'phoneFlagsOk', {
+      name: 'Number checks marked right', hint: 'Admin → Phone → Numbers warnings the GM answered with Looks right (person|number + check).', scope: 'world', config: false, type: Array, default: [],
+    });
     game.settings.register(MODULE_ID, 'phoneOrgNames', {
       name: 'Organization names and their offices', hint: 'What the GM decided for an Organization that did not match an office.', scope: 'world', config: false, type: Object, default: {},
     });

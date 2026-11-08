@@ -130,6 +130,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!this.#hasRenderedOnce) {
       this.#hasRenderedOnce = true;
       this._wireUiSounds();
+      this._grabResizeHandle();
       this.playSound('open');
       this._setupEventSubscriptions();
       this._onFirstRender(context, options);
@@ -172,6 +173,29 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     };
 
     document.addEventListener('click', this.#uiClickHandler, true);
+  }
+
+  /**
+   * The resize corner holds the mouse from the moment it is pressed (tester 2026-11-07: "the window sticks to the
+   * cursor"). Foundry's ApplicationV2 only captures the pointer on the first MOVE, and listens for the release on
+   * the window element. A quick drag (or a slow frame, which on The Forge is common) puts that first move outside
+   * the small corner, so nothing is captured; the release then lands outside the window, Foundry never hears it, and
+   * its move listener stays attached: the window resizes whenever the mouse crosses it. Capturing on pointerdown
+   * routes every move and the release through the window. If the capture is lost anyway (alt-tab), a synthetic
+   * release ends Foundry's resize; after a normal release Foundry's one-shot listener is already gone, so it is inert.
+   * @private
+   */
+  _grabResizeHandle() {
+    const h = this.element?.querySelector?.(':scope > .window-resize-handle');
+    if (!h || h.dataset.ncmGrab) return;
+    h.dataset.ncmGrab = '1';
+    h.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      try { h.setPointerCapture(e.pointerId); } catch { /* the pointer is already gone */ }
+    });
+    h.addEventListener('lostpointercapture', (e) => {
+      try { h.dispatchEvent(new PointerEvent('pointerup', { pointerId: e.pointerId, bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY })); } catch { /* old browser */ }
+    });
   }
 
   /**

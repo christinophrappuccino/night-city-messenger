@@ -15,6 +15,9 @@ import { beatsDV } from '../utils/rolls.js';
 import { renderTemplate } from '../utils/compat.js';
 import { luckOf, roleItems } from '../utils/cpr.js';
 
+/** CPR Role Abilities by normalised name (rank + d10 under the `roleAbilityRoll` Rank Only setting). */
+const ROLE_ABILITY_NAMES = new Set(['interface', 'charismaticimpact', 'combatawareness', 'backup', 'credibility', 'teamwork', 'maker', 'medicine', 'operator', 'moto']);
+
 export class SkillService {
 
   // ─── Service References ───
@@ -259,6 +262,12 @@ export class SkillService {
           _found = true;
           isRoleAbility = true;
           skillLevel = role.rank;
+          statFromItem = false;
+        } else if (!role.found && ROLE_ABILITY_NAMES.has(wanted) && !(Number(skillLevel) > 0)) {
+          // A Role Ability the character does not have (Interface on a non-Netrunner) is still a Role Ability at
+          // rank 0, so Rank Only keeps the stat off (tester 2026-11-07: a call trace added TECH).
+          isRoleAbility = true;
+          skillLevel = 0;
           statFromItem = false;
         }
       }

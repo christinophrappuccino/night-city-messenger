@@ -17,7 +17,7 @@ import { MODULE_ID } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters } from '../../utils/helpers.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { PLAN_NAMES, holdsItem } from '../../utils/phoneEmergency.js';
-import { splitExtension, officeRowOf, normaliseNumber, parseNumber, seenFrom, fullForm, placeOf, isUnlisted, rowOf, numberAt, asKeys, PICK_STEPS, rowsAtStep, pathOf } from '../../utils/phoneNumbering.js';
+import { splitExtension, savedContactFor, officeRowOf, normaliseNumber, parseNumber, seenFrom, fullForm, placeOf, isUnlisted, rowOf, numberAt, asKeys, PICK_STEPS, rowsAtStep, pathOf } from '../../utils/phoneNumbering.js';
 import { callProfile, signalLine } from '../../utils/callProfile.js';
 import { formatDuration } from '../../utils/callModel.js';
 import { DIAL_SVG } from '../Calls/CallHud.js';
@@ -84,12 +84,27 @@ export function phoneBook(viewer) {
 /** A number the way this table reads it: short from home, as stored when it isn't a whole number. */
 function shortNumber(raw, ctx) { const p = parseNumber(raw, ctx); return p.done ? seenFrom(p, ctx?.regions ? ctx : game.nightcity?.callService?.numberContext) || String(raw ?? '') : String(raw ?? ''); }
 
-function shownOther(row, book, home) {
-  const n = normaliseNumber(row.other?.number, home);
+/**
+ * The other party of a log row as this character may see it — the SAME rule as the call screen (CallHud._other):
+ * a contact in their list (matched by number, or by who it is), else the name the line's type shows everyone, else
+ * the number. `saved` = this number is already in their contacts; otherwise the row offers to save it, pre-filled
+ * with what the call showed (`offerName` / `offerImg`), or to put it on the contact it came from (`addTo`).
+ * (Tester 2026-11-07: a call from a contact showed only a number, with a blank Save as the one way to fix it.)
+ */
+export function shownOther(row, book, home, contacts = []) {
+  const o = row.other || {};
+  const number = o.number || '';
+  const n = normaliseNumber(number, home);
   const hit = n ? book.find((b) => b.normal === n) : null;
-  if (hit) return { name: hit.name, img: hit.img, number: row.other.number, known: true };
-  if (game.user.isGM) return { name: row.other?.name || shortNumber(row.other?.number, home) || 'Unknown', img: '', number: row.other?.number || '', known: true };
-  return { name: shortNumber(row.other?.number, home) || 'Unknown number', img: '', number: row.other?.number || '', known: false };
+  if (hit) return { name: hit.name, img: hit.img, number, known: true, saved: true };
+  if (game.user.isGM) return { name: o.name || shortNumber(number, home) || 'Unknown', img: '', number, known: true, saved: true };
+  const short = shortNumber(number, home) || 'Unknown number';
+  const shownName = o.showOnly === 'name' ? (o.name || '') : '';
+  const shownImg = !o.anon && (o.showOnly === 'name' || o.face) ? (o.img || '') : '';
+  const c = o.anon ? null : savedContactFor(contacts, o, { home });
+  if (c) return { name: c.name || shownName || short, img: c.portrait || c.customImg || shownImg, number, known: true, saved: false, addTo: c.id || '', addToName: c.name || '', replaces: c.phone || '' };
+  if (shownName) return { name: shownName, img: shownImg, number, known: true, saved: false, offerName: shownName, offerImg: shownImg };
+  return { name: short, img: '', number, known: false, saved: false, offerName: '', offerImg: '' };
 }
 
 /** A number as coloured parts, with its place in words on hover. Escaped here, so templates print it raw. */
@@ -119,11 +134,11 @@ const OUTCOME_WORDS = { voicemail: 'voicemail', missed: 'no answer', declined: '
  * Pure: turn log entries into the tab's rows, in date bands, with counts. Search reads only what this character may see:
  * a name from their own contacts, the number, the network, the reason, the words on their own calls.
  */
-export function buildLogRows(log, { book = [], home = '+1', filter = 'all', show = 'all', q = '', now, shut, open, limits = {}, dayLabel = (d) => d } = {}) {
+export function buildLogRows(log, { book = [], contacts = [], home = '+1', filter = 'all', show = 'all', q = '', now, shut, open, limits = {}, dayLabel = (d) => d } = {}) {
   const rows = log.map((l) => {
     const missed = l.direction === 'in' && l.outcome === 'missed';
     const dir = missed ? 'missed' : l.direction === 'out' ? 'out' : 'in';
-    const other = shownOther(l, book, home);
+    const other = shownOther(l, book, home, contacts);
     const talked = l.outcome === 'answered' && l.seconds;
     // the transcript as THIS character may read it: "You" for their side, the other side as the log names them
     const mySide = l.direction === 'out' ? 'caller' : 'callee';
@@ -216,9 +231,10 @@ export async function buildCallsContext(viewer) {
   }
 
   const book = phoneBook(viewer);
+  const myContacts = (viewer.actorId ? game.actors?.get(viewer.actorId)?.getFlag?.(MODULE_ID, 'contacts') : null) || [];
   const log = await s.getLog(ownerId);
   const foldsOf = (k) => (st.folds[k] ??= { shut: new Set(), open: new Set() });
-  const list = buildLogRows(log, { book, home, filter: st.filter, show: st.filter === 'vm' ? 'all' : st.show, q: st.filter === 'vm' ? '' : st.q, now: gameNow(), ...foldsOf(st.filter), limits: st.limits, dayLabel: dayText });
+  const list = buildLogRows(log, { book, contacts: myContacts, home, filter: st.filter, show: st.filter === 'vm' ? 'all' : st.show, q: st.filter === 'vm' ? '' : st.q, now: gameNow(), ...foldsOf(st.filter), limits: st.limits, dayLabel: dayText });
   for (const b of list.bands) for (const d of b.days) for (const r of d.rows) r.time = r.gameTime ? formatCyberDate(r.gameTime, { timeOnly: true }) : '';
   // the card: one line after another, the one calling first in the list only by choice
   if (!st.as || !lines.some((l) => lineValue(l, home) === st.as)) st.as = lineValue(lines[0], home);
@@ -231,7 +247,7 @@ export async function buildCallsContext(viewer) {
   const vms = await s.getVoicemails(ownerId);
   const burnerName = (cid) => lines.find((l) => l.contactId === cid)?.name || '';
   const vmRows = vms.map((v) => {
-    const o = shownOther({ other: v.from }, book, home);
+    const o = shownOther({ other: v.from }, book, home, myContacts);
     return { vmId: v.vmId, ownerId, who: o.name, known: o.known, number: v.from?.number || '', text: v.text, tts: v.kind === 'tts', voice: v.voice || '',
       isAudio: v.kind === 'audio', audio: v.audio || '', purged: !!v.purged, length: v.duration ? formatDuration(v.duration) : '',
       heard: !!v.heard, stamp: v.gameTime || '', when: v.gameTime ? formatCyberDate(v.gameTime, { timeOnly: true }) : '', forLine: v.to?.contactId ? burnerName(v.to.contactId) : '' };
@@ -342,10 +358,24 @@ export async function handleCallsAction(viewer, action, target) {
     }
     case 'calls-savenum': {
       const num = target.dataset.number; if (!num || !own?.actorId) return;
-      const name = await themedPrompt({ title: 'Save this number', label: 'Save', icon: 'fas fa-address-book', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-address-book', title: num, field: { label: 'Name', name: 'name', value: '', placeholder: 'What to call them' } }), read: (root) => root.querySelector('input[name=name]')?.value?.trim() || null });
+      // pre-filled with the name the call showed, and their picture kept (tester 2026-11-07)
+      const shown = target.dataset.name || '', img = target.dataset.img || '';
+      const name = await themedPrompt({ title: 'Save this number', label: 'Save', icon: 'fas fa-address-book', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-address-book', title: num, lead: shown ? 'The name and picture their call showed. Change the name if you like.' : '', field: { label: 'Name', name: 'name', value: shown, placeholder: 'What to call them' } }), read: (root) => root.querySelector('input[name=name]')?.value?.trim() || null });
       if (!name) return;
-      const r = await game.nightcity?.contactRepository?.addContact?.(own.actorId, { name, email: '', phone: num, tags: [] });
+      const r = await game.nightcity?.contactRepository?.addContact?.(own.actorId, { name, email: '', phone: num, tags: [], ...(img ? { portrait: img } : {}) });
       if (r && !r.success) ncmNotify.warn(r.error || 'Could not save it.'); else ncmNotify.info(`${name} saved.`);
+      return rerender();
+    }
+    case 'calls-addnum': {
+      // the call came from someone already in their contacts, without this number on file: put it there
+      const num = target.dataset.number, cid = target.dataset.contact, who = target.dataset.name || 'this contact', was = target.dataset.replaces || '';
+      if (!num || !cid || !own?.actorId) return;
+      if (was) {
+        const yes = await themedConfirm({ title: 'Update their number?', yes: 'Use the new number', yesIcon: 'fas fa-phone', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-address-book', title: who, lead: `${who} is saved with ${was}. This call came from ${num}.` }) });
+        if (!yes) return;
+      }
+      const r = await game.nightcity?.contactRepository?.updateContact?.(own.actorId, cid, { phone: num });
+      if (r && !r.success) ncmNotify.warn(r.error || 'Could not save it.'); else ncmNotify.info(`${num} saved to ${who}.`);
       return rerender();
     }
     case 'calls-addkind': st.addKind = target.dataset.k === 'burner' ? 'burner' : 'extra'; return rerender();

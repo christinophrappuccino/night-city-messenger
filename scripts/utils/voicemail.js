@@ -75,6 +75,14 @@ export function greetMs(text, { perChar = 38, min = 1800, max = 6500, duration =
   return Math.min(max, Math.max(min, String(text ?? '').length * perChar + 900));
 }
 
+/** The longest a greeting that PLAYS (read out, or a recording) may hold the line before the tone comes anyway. */
+export const GREETING_PLAY_CAP_MS = 60000;
+/** Does this greeting play out loud? Then the caller's screen says when it has finished (tester 2026-11-07: a
+ *  read-out greeting was cut at the text estimate's 6.5 s cap), and the timer is only a safety net. */
+export const greetingPlays = (g) => !!(g?.readOut || (g?.kind === 'recorded' && g?.audio));
+/** The tone timer for a greeting: the on-screen estimate, or the safety cap when it plays out loud. */
+export const greetTimerMs = (g) => (greetingPlays(g) ? GREETING_PLAY_CAP_MS : greetMs(g?.text, { duration: g?.kind === 'recorded' ? g?.duration : 0 }));
+
 /** A message as left: text cleaned and capped, the kind checked. Null when there is nothing to leave. */
 export function makeVoicemail({ vmId, callId, from, to, text, kind = 'typed', voice = '', at = Date.now(), gameTime = '', audio = '', duration = 0 } = {}) {
   const t = clean(text, VOICEMAIL_MAX);

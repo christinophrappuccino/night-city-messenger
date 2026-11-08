@@ -30,7 +30,7 @@ import { createCall, createEndedCall, transition, resolveCallee, canCall, allowe
 import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callNet.js';
 import { placeLabel, maskPayphoneSide, payphoneSendGroups } from '../utils/payphones.js';
 import { dictateStatus } from '../utils/dictation.js';
-import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
+import { sanitizeLineSettings, greetingFor, goesToVoicemail, greetTimerMs, makeVoicemail, voicemailOwner, recordingsToPurge, GREETING_RECORD_MS } from '../utils/voicemail.js';
 import { FilePickerClass } from '../utils/compat.js';
 import { realCallAsEntry, sanitizeCall, callToLog, callToVoicemail, voicemailBoxOf, callOwners, partyOwner, legacyCall, writtenCallId, isWrittenCallId } from '../utils/callHistory.js';
 import { isFeatureOn } from '../utils/features.js';
@@ -42,7 +42,7 @@ const AUDIO_MAX_B64 = 3000000;             // ~2.2 MB: the most a recording may 
 const DATA_URL_MAX = 700000;               // a recording kept inside the message when the world cannot take files
 
 /** Every setting the GM's phone setup screens write through saveNumberSetting. A setup screen that saves a new one adds it here (test-phone-setup-saves). */
-export const NUMBER_SETTINGS = Object.freeze(['phoneRules', 'phonePlaces', 'phoneSpecial', 'phoneOrgNames', 'phoneLineTypes', 'phoneOffices']);
+export const NUMBER_SETTINGS = Object.freeze(['phoneRules', 'phonePlaces', 'phoneSpecial', 'phoneOrgNames', 'phoneLineTypes', 'phoneOffices', 'phoneFlagsOk']);
 /** Logs and voicemails newest first by GAME time (a written entry has only that); the real stamp breaks a tie or stands in. */
 const newestFirst = (a, b) => ((Date.parse(b.gameTime) || 0) - (Date.parse(a.gameTime) || 0)) || ((b.startedAt || b.at || 0) - (a.startedAt || a.at || 0));
 const RING_BEAT_MS = 1100;   // one ring — the HUD dial fills on the same beat
@@ -858,7 +858,7 @@ export class CallService {
     try {
       const actor = game.actors?.get(actorId);
       const ids = (game.users?.contents || []).filter((u) => !u.isGM && actor?.testUserPermission?.(u, 'OWNER')).map((u) => u.id);
-      if (ids.length) ChatMessage.create({ content: whisperCardHtml({ tone: 'info', icon: 'fa-sim-card', title: 'Phone', lines: [text] }), whisper: ids });
+      if (ids.length) ChatMessage.create({ content: whisperCardHtml({ tone: 'info', icon: 'fa-sim-card', title: 'Phone', lines: [text], strip: '' }), whisper: ids });
     } catch (err) { log.warn(`Calls: could not tell the player: ${err.message}`); }
   }
 
@@ -985,7 +985,8 @@ export class CallService {
     if (as.payphone) {
       const pp = game.nightcity?.payphoneService?.get?.(as.payphone);
       if (!pp?.number) return null;
-      const actor = as.actorId ? game.actors?.get(as.actorId) : resolveOperator();
+      // the GM calling out from Admin → Payphones (`gm`) is on the booth as themselves, not as their operator character
+      const actor = as.actorId ? game.actors?.get(as.actorId) : (as.gm && isGM() ? null : resolveOperator());
       return { userId: game.user.id, actorId: null, contactId: null, name: placeLabel(pp), number: pp.number, img: '', asLine: true, wired: true,
         payphone: pp.id, realActorId: actor?.id || null, realName: actor?.name || game.user.name, realUserId: game.user.id };
     }
@@ -1076,12 +1077,13 @@ export class CallService {
       }
       return;
     }
-    if (!call.from?.anon || call.traced) { this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: lite, userIds: ids, ...extra }); return; }
+    if (!call.from?.anon) { this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: lite, userIds: ids, ...extra }); return; }
     // a withheld number: the real caller goes to the GMs (and the caller's own client); everyone else gets the mask
     const open = ids.filter((id) => game.users.get(id)?.isGM || id === call.from.userId);
     const masked = ids.filter((id) => !open.includes(id));
     if (open.length) this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: lite, userIds: open, ...extra });
-    if (masked.length) this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: { ...lite, from: maskCaller(call.from) }, userIds: masked, ...extra });
+    // after a trace they see what the trace found (a burner: the number only), never the whole caller record
+    if (masked.length) this.socket.emit(SOCKET_OPS.CALL, { type, callId: call.id, call: { ...lite, from: call.traced && call.tracedFrom ? { ...call.tracedFrom } : maskCaller(call.from) }, userIds: masked, ...extra });
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1449,7 +1451,7 @@ export class CallService {
     if (type === 'traceRequest') { if (this.mayTraceCall(callId, senderId)) this._revealTo(callId, senderId).catch(() => {}); else log.warn('Calls: trace refused — only the callee may trace a withheld caller'); return; }
     if (type === 'reveal') {
       if (mine && data.from) { const next = { ...mine, from: { ...data.from }, traced: true }; this._store(next); this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role: this._role(next) }); }
-      this.eventBus.emit(EVENTS.CALL_TRACED, { callId, from: data.from || null });
+      this.eventBus.emit(EVENTS.CALL_TRACED, { callId, from: data.from || null, dead: !!data.dead });
       return;
     }
     if (type === 'noSignal') {
@@ -1569,7 +1571,7 @@ export class CallService {
     const vm = { ...call, state: 'voicemail', vmStep: 'greet', vmWhy: why, greeting };
     this._store(vm);
     this.eventBus.emit(EVENTS.CALL_STARTED, { call: vm, role: 'caller' });
-    this._timers.set(callId, setTimeout(() => this._vmTone(callId), greetMs(vm.greeting.text, { duration: vm.greeting.kind === 'recorded' ? vm.greeting.duration : 0 })));
+    this._timers.set(callId, setTimeout(() => this._vmTone(callId), greetTimerMs(vm.greeting)));
     return true;
   }
 
@@ -1583,6 +1585,9 @@ export class CallService {
     this.eventBus.emit(EVENTS.CALL_STARTED, { call: next, role: 'caller' });
     this._timers.set(callId, setTimeout(() => { if (this.calls.get(callId)?.state === 'voicemail') this._endLocal(callId, 'missed', { notify: false }); }, VOICEMAIL_OPEN_MS));
   }
+
+  /** The caller's screen finished playing the greeting out loud (CallHud): the tone now. */
+  greetingDone(callId) { this._vmTone(callId); }
 
   /** Skip the rest of the greeting (Enter / the key on the HUD). */
   skipGreeting(callId) { this._vmTone(callId); }
@@ -1907,33 +1912,57 @@ export class CallService {
     return { ok: true, traced: true };
   }
 
-  /** GM: tell one user who a withheld caller really was, and un-mask their log page. */
+  /**
+   * GM: tell one user what a trace on a withheld caller found, and show it on their log page. The trace ALWAYS
+   * answers (tester 2026-11-07: a burner or a nameless line answered nothing): the number, plus a name when the line
+   * type gives one; a burner gives the number only; a dead end only for a special number the GM set to one. The
+   * answer goes as a reveal packet AND a whispered chat card, because a permanent toast can wait in Foundry's
+   * notification queue behind older ones (what read as "the trace came minutes later").
+   */
   async _revealTo(callId, userId) {
     if (!isGM() || game.users.activeGM?.id !== game.user.id) return;
     const live = this.calls.get(callId);
-    const logs = this.allLogs();
-    const out = logs.find((l) => l.callId === callId);   // allLogs prefers the caller's own (unmasked) page
-    const from = live?.from || out?.from;
-    if (!from || (!from.actorId && !from.contactId && !from.number)) return;   // only a mask is left: nothing to reveal
-    const sp = from.special ? specialMap(specialList(this._get('phoneSpecial', null)))[specialKey(from.number)] : null;
-    if (sp?.trace === 'dead') return;
-    let real = { ...from, anon: false, ...(sp ? { name: sp.trace === 'false' ? (sp.falseName || sp.name || sp.num) : (sp.name || sp.num) } : {}) };
-    if (!sp && !from.special) {
-      const ctx = this.numberContext, p = parseNumber(from.number, ctx), line = this.lines()[p.key], row = rowOf(p, ctx), type = lineTypeFor(line, row, this.lineTypes);
-      const found = traceFinds(type, { name: from.realName || from.name, label: line?.label || '', place: row?.District || row?.City || '' });
-      if (!found) return;
-      if (!found.owner) real = { number: from.number, name: found.name, img: '', anon: false, asLine: true, showOnly: 'name' };
-      else real = { ...real, name: found.name, showOnly: 'name' };
-    }
-    if (live) this.calls.set(callId, { ...live, traced: true });   // the GM's own copy: a later log page shows the caller
-    this.socket.emit(SOCKET_OPS.CALL, { type: 'reveal', callId, from: real, userIds: [userId] });
-    // the callee's own log page: show the real caller from now on
+    const out = this.allLogs().find((l) => l.callId === callId);   // allLogs prefers the caller's own (unmasked) page
+    const found = this._traceResult(live?.from || out?.from);
+    if (found && live) this.calls.set(callId, { ...live, traced: true, tracedFrom: { ...found } });   // later packets + the log show this
+    this.socket.emit(SOCKET_OPS.CALL, { type: 'reveal', callId, from: found, dead: !found, userIds: [userId] });
+    this._traceCard(userId, found);
+    if (!found) return;
+    // the callee's own log page: show what the trace found from now on
     for (const j of game.journal ?? []) {
       for (const p of j.pages?.contents ?? []) {
         const l = p.flags?.[MODULE_ID]?.callLog;
-        if (l?.callId === callId && l.direction === 'in' && l.anonCall) await p.update({ [`flags.${MODULE_ID}.callLog`]: { ...l, other: { ...real }, traced: true } });
+        if (l?.callId === callId && l.direction === 'in' && l.anonCall) {
+          await p.update({ name: `[CALL] from ${found.name || found.number || 'unknown'}`, [`flags.${MODULE_ID}.callLog`]: { ...l, other: { ...found }, from: { ...found }, tracedFrom: { ...found }, traced: true } });
+        }
       }
     }
+  }
+
+  /** What a successful trace finds on a caller (GM data): a caller view `{ number, name, … }`, or null for a dead end. */
+  _traceResult(from) {
+    if (!from || (!from.actorId && !from.contactId && !from.number)) return null;   // only a mask is left
+    const line0 = { img: '', anon: false, asLine: true, showOnly: 'name' };
+    const sp = from.special ? specialMap(specialList(this._get('phoneSpecial', null)))[specialKey(from.number)] : null;
+    if (sp) return sp.trace === 'dead' ? null : { ...line0, number: from.number || '', name: sp.trace === 'false' ? (sp.falseName || sp.name || sp.num) : (sp.name || sp.num) };
+    if (from.special) return { ...line0, number: from.number || '', name: from.name || '' };
+    const ctx = this.numberContext, p = parseNumber(from.number, ctx), line = this.lines()[p.key], row = rowOf(p, ctx), type = lineTypeFor(line, row, this.lineTypes);
+    const t = traceFinds(type, { name: from.realName || from.name, label: line?.label || '', place: row?.District || row?.City || '' });
+    if (!t) return null;
+    if (t.numberOnly) return from.number ? { ...line0, number: from.number, name: '', showOnly: 'number' } : null;
+    if (!t.owner) return { ...line0, number: from.number || '', name: t.name };
+    return { number: from.number || '', name: t.name, img: from.img || '', actorId: from.actorId || null, contactId: from.contactId || null, org: from.org || '', anon: false, showOnly: 'name' };
+  }
+
+  /** The trace's answer as a chat card, whispered to the tracer and the GMs. Never throws. */
+  _traceCard(userId, found) {
+    try {
+      const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+      const lines = !found ? ['The trace hit a dead end. Nothing comes back on this line.']
+        : [found.number ? `Number: <b>${esc(found.number)}</b>` : 'No number comes back.', found.name ? `Caller: <b>${esc(found.name)}</b>` : 'No name comes back: a burner, or a line nobody registered.'];
+      const ids = [...new Set([userId, ...game.users.filter((u) => u.isGM).map((u) => u.id)])];
+      ChatMessage.create({ content: whisperCardHtml({ tone: found ? 'ok' : 'warn', icon: 'fa-satellite-dish', title: 'Trace result', lines, strip: '' }), whisper: ids });
+    } catch (err) { log.warn(`Calls: trace card: ${err.message}`); }
   }
 
   // ─── the network drops a live call ───
@@ -1978,8 +2007,11 @@ export class CallService {
 
   _summary(call) {
     const pick = (p) => ({ actorId: p?.actorId || null, contactId: p?.contactId || null, number: p?.number || '', name: p?.name || '', ...(p?.anon ? { anon: true } : {}),
+      // what the call screen showed of them (the log reads the same rule; a picture only when the screen showed one)
+      ...(p?.showOnly ? { showOnly: p.showOnly } : {}), ...(p?.asLine ? { asLine: true } : {}), ...(p?.face ? { face: true } : {}), ...(p?.org ? { org: p.org } : {}),
+      ...(!p?.anon && (p?.showOnly === 'name' || p?.face) && p?.img ? { img: p.img } : {}),
       ...(p?.payphone || p?.payphoneId ? { payphone: p.payphone || p.payphoneId, realActorId: p.realActorId || null, realName: p.realName || '' } : {}) });
-    return { callId: call.id, from: pick(call.from), to: pick(call.to), sceneId: game.scenes?.viewed?.id || '', dropReason: call.dropReason || '', traced: !!call.traced, startedAt: call.startedAt, answeredAt: call.answeredAt, endedAt: call.endedAt,
+    return { callId: call.id, from: pick(call.from), to: pick(call.to), sceneId: game.scenes?.viewed?.id || '', dropReason: call.dropReason || '', traced: !!call.traced, ...(call.tracedFrom ? { tracedFrom: { ...call.tracedFrom } } : {}), startedAt: call.startedAt, answeredAt: call.answeredAt, endedAt: call.endedAt,
       outcome: call.outcome, mode: (call.lines?.length ? 'type' : call.mode), seconds: callSeconds(call), net: call.net ? { id: call.net.id, name: call.net.name } : null,
       lines: transcriptOf(call),
       gameTime: game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString(), scene: game.scenes?.viewed?.name || '' };
@@ -2073,7 +2105,9 @@ export class CallService {
     summary = { ...summary, heardBy: await this._intercept(summary) };
     this._activityRow(summary);
     try { await game.nightcity?.terminalService?.mirrorCallToAccounts?.(summary); } catch (err) { log.warn(`Calls: terminal mirror: ${err.message}`); }
-    const hide = !!summary.from?.anon && !summary.traced;   // a withheld caller stays hidden on the callee's page until traced
+    // a withheld caller stays hidden on the callee's page until traced, and then shows only what the trace found
+    const hide = !!summary.from?.anon && (!summary.traced || !!summary.tracedFrom);
+    const shownCaller = (f) => (summary.traced && summary.tracedFrom ? { ...summary.tracedFrom } : maskCaller(f));
     const sides = [['out', summary.from, summary.to], ['in', summary.to, summary.from]];
     const done = new Set();
     for (const [direction, me, other] of sides) {
@@ -2089,11 +2123,11 @@ export class CallService {
         // the callee of a call that only rang sees it as missed
         const outcome = direction === 'in' && ['missed', 'busy'].includes(summary.outcome) ? 'missed' : summary.outcome;
         await journal.createEmbeddedDocuments('JournalEntryPage', [{
-          name: `[CALL] ${direction === 'out' ? 'to' : 'from'} ${other?.name || other?.number || 'unknown'}`,
+          name: `[CALL] ${direction === 'out' ? 'to' : 'from'} ${(direction === 'in' && hide ? shownCaller(other) : other)?.name || (direction === 'in' && hide ? shownCaller(other) : other)?.number || 'unknown'}`,   // a withheld caller's name never reaches the page title
           type: 'text', text: { content: '' },
-          flags: { [MODULE_ID]: { callLog: { ...summary, direction, me, other: direction === 'in' && hide ? maskCaller(other) : (booth ? other : maskPayphoneSide(other)),
+          flags: { [MODULE_ID]: { callLog: { ...summary, direction, me, other: direction === 'in' && hide ? shownCaller(other) : (booth ? other : maskPayphoneSide(other)),
             ...(booth ? { boothPage: true, from: viaName(summary.from), to: viaName(summary.to) } : { from: maskPayphoneSide(summary.from), to: maskPayphoneSide(summary.to) }),
-            ...(direction === 'in' && hide ? { anonCall: true, from: maskCaller(summary.from) } : {}), outcome, seen: direction === 'out',
+            ...(direction === 'in' && hide ? { anonCall: true, from: shownCaller(summary.from) } : {}), outcome, seen: direction === 'out',
             // who listened in is the GM's business: the callee's page never says
             heardBy: game.actors?.get(me?.actorId)?.hasPlayerOwner ? [] : summary.heardBy } } },
         }]);

@@ -18,6 +18,7 @@ import { dialogBodyHtml } from '../../../utils/dialogBody.js';
 import { showNamePicker } from '../../../utils/namePicker.js';
 import { openPayphonePlaceDialog, payphoneAccessEntries, showEntriesMenu } from '../../../integrations/AccessPoints.js';
 import { FilePickerClass } from '../../../utils/compat.js';
+import { parseNumber, rowOf, numberAt, normaliseNumber } from '../../../utils/phoneNumbering.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const svc = () => game.nightcity?.payphoneService;
@@ -51,7 +52,7 @@ function editorHtml(pp) {
   return `<div class="ncm-pph-ed">
     ${sec('fa-location-dot', 'Where', `${row('Place', `<input type="text" data-pph-in="name" value="${esc(pp.name)}" maxlength="60" placeholder="Kabuki, Night Market">`)}
       <div class="ncm-pph-hint">The screen and a trace show <b>${esc(placeLabel(pp))}</b>.</div>
-      ${row('Number', `<div class="ncm-pph-num"><span class="ncm-addr">${esc(pp.number)}</span><button type="button" class="ncm-pph-btn" data-pph="newNumber" data-tooltip="Give it another free number"><i class="fas fa-dice"></i> Another</button></div>`)}
+      ${row('Number', `<div class="ncm-pph-num"><span class="ncm-addr">${esc(pp.number)}</span><button type="button" class="ncm-pph-btn" data-pph="setNumber" data-tooltip="Pick the city and district, and the number"><i class="fas fa-pen"></i> Change…</button><button type="button" class="ncm-pph-btn" data-pph="newNumber" data-tooltip="Another free number in the same district"><i class="fas fa-dice"></i> Another</button></div>`)}
       ${row('Reach', `<div class="ncm-pph-num"><input type="number" min="0" max="20" data-pph-ch="range" value="${pp.range}"><span class="ncm-pph-hint">squares from a pin. 0 = anywhere on the scene.</span></div>`)}`)}
     ${sec('fa-swatchbook', 'Style', `<div class="ncm-pph-presets">${styles}</div>${savedHtml}
       <div class="ncm-pph-acts"><button type="button" class="ncm-pph-btn" data-pph="saveLook"><i class="fas fa-floppy-disk"></i> Save this look</button></div>`)}
@@ -109,6 +110,7 @@ export function payphonesHtml(tab) {
       <div class="ncm-pph-acts">
         <button type="button" class="ncm-pph-btn is-primary" data-pph="place"><i class="fas fa-map-pin"></i> Place on a scene…</button>
         <button type="button" class="ncm-pph-btn" data-pph="ring" data-tooltip="Ring it as one of your NPCs"><i class="fas fa-phone-volume"></i> Ring it as…</button>
+        <button type="button" class="ncm-pph-btn" data-pph="callOut" data-tooltip="Call someone from this payphone: characters, NPCs, other payphones, any number"><i class="fas fa-phone-flip"></i> Call from it…</button>
         <button type="button" class="ncm-pph-btn" data-pph="open"><i class="fas fa-phone"></i> Open it</button>
         ${scene ? '<button type="button" class="ncm-pph-btn" data-pph="scene"><i class="fas fa-map"></i> Go to scene</button>' : ''}
         <button type="button" class="ncm-pph-btn" data-pph="access" data-tooltip="Hotbar, chat card, journal link, macro"><i class="fas fa-ellipsis"></i></button>
@@ -185,7 +187,14 @@ export function wirePayphones(tab, root) {
           if (name) { await s.save(draft); await s.saveStyle(name, draft.look); tab.app.render(); }
           return;
         }
-        case 'newNumber': { const n = game.nightcity?.callService?.suggestNumbers?.({ count: 1 })?.[0]?.number; return n ? saveNow({ number: n }) : ncmNotify.warn('No free number.'); }
+        case 'newNumber': {
+          // another free number in the booth's own district (it used to draw from the campaign's start row, anywhere)
+          const cs = game.nightcity?.callService, here = cs ? rowOf(parseNumber(draft.number, cs.numberContext), cs.numberContext) : null;
+          const n = cs?.suggestNumbers?.({ row: here || null, count: 1 })?.[0]?.number;
+          return n ? saveNow({ number: n }) : ncmNotify.warn('No free number.');
+        }
+        case 'setNumber': { const n = await askBoothNumber(draft); return n ? saveNow({ number: n }) : undefined; }
+        case 'callOut': await s.save(draft); return callFrom(draft);
         case 'place': await s.save(draft); return openPayphonePlaceDialog(draft.id);
         case 'open': await s.save(draft); return s.open(draft.id, { skipReach: true });
         case 'scene': return game.scenes.get(draft.sceneId)?.view();
@@ -210,6 +219,83 @@ export function wirePayphones(tab, root) {
     } catch (err) { console.error('NCM | Payphones:', err); ncmNotify.error(`Payphones: ${err.message}`); }
   });
 }
+
+/**
+ * GM: choose a booth's number — city and district from the number table, then the last four digits (blank = a free
+ * one). The district whose name the booth's scene carries is offered first. (Tester 2026-11-07: a booth could only
+ * draw another random number, often from the wrong district or city.) Resolves the number, or null.
+ */
+async function askBoothNumber(pp) {
+  const cs = game.nightcity?.callService;
+  if (!cs) return null;
+  const ctx = cs.numberContext, rows = (ctx.rows || []).filter((r) => r.Status !== 'dead' && r.Code);
+  if (!rows.length) { ncmNotify.warn('The number table has no districts. Add some in Admin → Phone → Number setup.'); return null; }
+  const cur = rowOf(parseNumber(pp.number, ctx), ctx);
+  const sceneName = String(game.scenes.get(pp.sceneId)?.name || '').toLowerCase();
+  const byScene = sceneName ? rows.find((r) => r.District && sceneName.includes(String(r.District).toLowerCase())) : null;
+  const pick = byScene || cur || rows[0];
+  const cities = new Map();
+  rows.forEach((r, i) => { const k = `${r.City || r['City code']}`; if (!cities.has(k)) cities.set(k, []); cities.get(k).push([r, i]); });
+  const opts = [...cities.entries()].map(([city, list]) => `<optgroup label="${esc(city)}">${list.map(([r, i]) => `<option value="${i}"${r === pick ? ' selected' : ''}>${esc(r.District || r.Code)} (${esc(r.Code)})${r === byScene && r !== cur ? ' · this scene' : ''}</option>`).join('')}</optgroup>`).join('');
+  const body = dialogBodyHtml({ tone: 'act', icon: 'fas fa-phone', title: placeLabel(pp), kind: 'Payphone number', lead: `Now ${pp.number}. Pick where the number is from.`, extraHtml: `<div class="ncm-pph-numdlg"><label class="ncm-dlgb__field"><span class="ncm-dlgb__fk">District</span><select name="ncm-pp-row">${opts}</select></label>`
+    + `<label class="ncm-dlgb__field"><span class="ncm-dlgb__fk">Last four digits</span><input type="text" name="ncm-pp-line" inputmode="numeric" maxlength="4" placeholder="Blank = a free one" autocomplete="off"></label></div>` });
+  const got = await themedPrompt({ title: 'Payphone number', label: 'Use this number', icon: 'fas fa-phone', content: body,
+    read: (root) => ({ i: Number(root.querySelector('[name=ncm-pp-row]')?.value), line: String(root.querySelector('[name=ncm-pp-line]')?.value || '').trim() }) }).catch(() => null);
+  if (!got || !rows[got.i]) return null;
+  const row = rows[got.i];
+  let number;
+  if (got.line) {
+    if (!/^\d{4}$/.test(got.line)) { ncmNotify.warn('The last part is four digits.'); return null; }
+    number = numberAt(row, got.line);
+  } else {
+    number = cs.suggestNumbers({ row, count: 1 })?.[0]?.number;
+    if (!number) { ncmNotify.warn(`No free number left in ${row.District || row.Code}.`); return null; }
+  }
+  const home = cs.homeCode;
+  if (normaliseNumber(number, home) === normaliseNumber(pp.number, home)) return null;   // unchanged
+  if (cs.retired?.().some((r) => r?.key === normaliseNumber(number, home))) { ncmNotify.warn('That number is retired. Pick another.'); return null; }
+  if (!cs.isFree(number, {})) { ncmNotify.warn(`${number} already belongs to someone.`); return null; }
+  return number;
+}
+
+/**
+ * GM: call out FROM a booth — the whole directory (characters, NPCs, other payphones, offices), or any typed number.
+ * The far end sees the payphone; the GM's log keeps that it was the GM. (Tester 2026-11-07.)
+ */
+async function callFrom(pp) {
+  const cs = game.nightcity?.callService, pps = svc();
+  if (!cs) return;
+  const home = cs.homeCode, own = normaliseNumber(pp.number, home);
+  const GROUP = { player: 'Characters', npc: 'NPCs', payphone: 'Payphones', other: 'Other lines' };
+  const entries = [];
+  for (const [k, l] of Object.entries(cs.lines())) {
+    if (!l?.number || k === own) continue;
+    let name, img = '', group;
+    if (l.kind === 'payphone') {
+      const b = pps?.get?.(l.payphoneId);
+      name = b ? placeLabel(b) : (l.label || l.number); group = GROUP.payphone;
+    } else {
+      const o = l.owner || {};
+      name = l.label && ['extra', 'burner', 'shared', 'terminal', 'office'].includes(l.kind) ? `${l.label}${o.name && o.name !== l.label ? ` (${o.name})` : ''}` : (o.name || l.label || l.number);
+      img = o.actorId ? (game.actors?.get(o.actorId)?.img || '') : o.contactId ? (resolveContactImg(o.contactId) || '') : '';
+      group = o.kind === 'player' ? GROUP.player : o.kind === 'npc' ? GROUP.npc : GROUP.other;
+    }
+    entries.push({ id: l.number, name, img: img || 'icons/svg/mystery-man.svg', sub: l.number, group });
+  }
+  entries.sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
+  const pick = await showNamePicker({ title: `Call from ${placeLabel(pp)}`, hint: 'Whoever you call sees the payphone, not you.', entries, allowNone: 'Type a number…', placeholder: 'find a name or number…', width: 480 });
+  if (!pick) return;
+  let number = pick.id;
+  if (pick.none) {
+    number = await themedPrompt({ title: 'Call a number', label: 'Call', icon: 'fas fa-phone', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-phone', title: placeLabel(pp), kind: 'Payphone', field: { label: 'Number', name: 'ncm-pp-dial', value: '', placeholder: 'WAT-4471, #TRAUMA…' } }),
+      read: (root) => root.querySelector('[name=ncm-pp-dial]')?.value?.trim() || null }).catch(() => null);
+    if (!number) return;
+  }
+  const res = await cs.placeCall(number, { payphone: pp.id, gm: true });
+  if (res && !res.ok) ncmNotify.warn(res.error || 'The call could not be placed.');
+}
+
+const resolveContactImg = (id) => { try { return game.nightcity?.masterContactService?.getContact?.(id)?.portrait || ''; } catch { return ''; } };
 
 /** Ring a booth as an NPC from the directory (the call comes from that NPC's number). */
 async function ringAs(pp) {

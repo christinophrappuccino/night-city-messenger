@@ -879,18 +879,19 @@ export function netVerbFor(action) {
  * @param {string} [o.tone]  'info' | 'warn' | 'danger' | 'ok' | 'purple'
  * @param {string} [o.icon]  FA glyph class ('fa-fire')
  * @param {string} [o.title] header line (small caps)
+ * @param {string} [o.strip] the whisper strip's words ('GM only'); '' = none, for a card whispered to a player
  * @param {string[]} [o.lines] body lines — RAW HTML; escape user text with
  *   Handlebars.escapeExpression before interpolating.
  * @returns {string} HTML
  */
-export function whisperCardHtml({ tone = 'info', icon = 'fa-shield-halved', title = 'NCM', lines = [] } = {}) {
+export function whisperCardHtml({ tone = 'info', icon = 'fa-shield-halved', title = 'NCM', lines = [], strip = 'GM only' } = {}) {
   // The Esper-readout family (styles/chat/chat-cards.css): a record line, a
   // "// GM only" strip, then the lines. Tones map onto the family's colours.
   const mod = { warn: 'ncm-cc--gm', danger: 'ncm-cc--fail', ok: 'ncm-cc--ok', purple: 'ncm-cc--mal' }[tone] || '';
   const body = lines.filter(Boolean).map(l => `<div class="ncm-cc__line">${l}</div>`).join('');
   return `<div class="ncm-cc ${mod}">`
     + `<div class="ncm-cc__rec"><span class="ncm-cc__kind"><i class="fas ${icon}"></i> ${title}</span><span class="ncm-cc__time">${chatCardTime()}</span></div>`
-    + `<div class="ncm-cc__whisper">GM only</div>`
+    + (strip ? `<div class="ncm-cc__whisper">${strip}</div>` : '')
     + body
     + `</div>`;
 }

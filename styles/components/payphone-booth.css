@@ -417,3 +417,6 @@
 .ncm-admin-panel .ncm-pph input[type=checkbox] { width: 14px; height: 14px; margin: 0; }
 .ncm-pph :is(h2, h3, h5) { text-shadow: none !important; }
 .ncm-pph label.ncm-pph-chk { text-transform: none; letter-spacing: 0; font: 12px var(--ncm-font-body); color: var(--ncm-text-primary); }
+
+/* Admin → Payphones → Number → Change… (payphonesView.askBoothNumber): two fields in one dialog body */
+.ncm-dlgb .ncm-pph-numdlg { display: grid; gap: 10px; margin-top: 4px; }

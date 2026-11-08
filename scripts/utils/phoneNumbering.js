@@ -169,7 +169,9 @@ export function savedContactFor(contacts, other, { home = null, email = '' } = {
 
 /** What a Trace on this line finds: a name, or null for a dead end. The owner only when the type says so. */
 export function traceFinds(type, { name = '', label = '', place = '' } = {}) {
-  if (type.trace === 'dead') return null;
+  // 'dead' (a burner): the trace still recovers the NUMBER, never who holds it (tester 2026-11-07). A true dead
+  // end is only a special number the GM set to one.
+  if (type.trace === 'dead') return { name: '', owner: false, numberOnly: true };
   if (type.trace === 'place') return { name: place ? `${type.name}, ${place}` : type.name, owner: false };
   if (type.trace === 'label') return { name: label || type.label || type.name, owner: false };
   return { name, owner: true };

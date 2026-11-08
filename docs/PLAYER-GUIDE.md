@@ -170,6 +170,10 @@ Open **Calls** in your inbox. The dialer is on the left, and your calls are on t
 
 **Finding old calls.** The tabs are **Calls**, **Missed**, **Voicemail** and **Contacts**. Calls are folded by date, with today open. Search finds names, numbers, networks and words said on a call, and **Show** narrows the list to one kind. The up-and-down arrow opens or closes every date.
 
+**Saving a caller.** A call from a number you have not saved has a contact button. If the call came from someone already in your contacts, it adds this number to them. Otherwise it saves a new contact, already filled in with the name and picture their call showed.
+
+**Withheld numbers.** Press the crosshair on a withheld call, live or in the log, to trace it. It is a skill check. When it works, a **Trace result** card in chat gives you the number, and the name when the line has one. A burner gives you the number only.
+
 **Sharing your number.** Use the share button on My line to give your number to another character. A contact shows only what you were given, so you might have someone's address and not their number.
 
 **Payphones.** Some places have a payphone pin on the map. Stand at it and double-click it: lift the handset, punch the number on the little screen (or press **Book** for your contacts) and press **OK**. Whoever you call sees the payphone, not you, and the call stays out of your own call log. Payphones are wired, so they work where your Agent has no signal. **SPKR** lets everyone standing there follow the call; without it, they only see that you're on the phone. When a payphone rings near you, a prompt offers **Pick up** if you're standing at it.

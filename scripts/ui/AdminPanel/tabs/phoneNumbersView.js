@@ -81,6 +81,7 @@ function load(tab) {
   S.list = ['2045', '2077', 'blank'].includes(stored.list) ? stored.list : '2045'; S.custom = placesEdited(stored);
   const R = SVC.rules; LIMITS = { scope: R.reach === 'home' ? 'city' : R.reach, ownDigits: R.ownDigits, extra: R.extraLines, changeNeedsGm: R.changeNeedsGm };
   ORG_MAP = SVC._get('phoneOrgNames', {}) || {};
+  { const ok = SVC._get('phoneFlagsOk', []); S.okFlags = new Set(Array.isArray(ok) ? ok : []); }   // Looks right is remembered (tester 2026-11-07)
   SPECIAL = specialList(SVC._get('phoneSpecial', null));
   for (const k of Object.keys(SERVICE)) delete SERVICE[k];
   for (const x of SPECIAL) if (normSp(x.num)) SERVICE['#' + normSp(x.num)] = x.name || x.num;
@@ -795,7 +796,7 @@ const subTabs = (act, cur, tabs) => `<div class="ncm-r3-subt" role="tablist">${t
 const COLORS = [['var(--ncm-act)', 'Cyan'], ['var(--ncm-hue-5)', 'Periwinkle'], ['var(--ncm-attn)', 'Amber'], ['var(--ncm-hue-3)', 'Blue'], ['var(--ncm-hue-1)', 'Pink'], ['var(--ncm-good)', 'Green'], ['var(--ncm-secret)', 'Violet'], ['var(--ncm-money)', 'Gold']];
 const RINGS = { steady: ['Steady', 'The usual ring'], slow: ['Slow', 'A slow, unhurried ring'], fast: ['Fast', 'Quick and insistent'], flicker: ['Flicker', 'The dial stutters, like a cheap line'] };
 const SHOWS = { ownerOrg: ['The person, then where they work', 'Their name first, then the organization from their contact details, like John Anderson, Militech'], owner: ['The holder', 'The name of whoever holds the line'], label: ['A name you set', 'The same name, whoever holds it'], number: ['Only the number', 'No name, even if they know who it is'], place: ['Where it is', 'Type name and district, like Payphone, Kabuki'], none: ['Nothing', 'Number withheld'] };
-const TRACES = { owner: ['The holder', 'A Trace names whoever holds it'], label: ['The name you set', 'A Trace stops at the line\'s name'], place: ['Where it is', 'A Trace finds the place, not the person'], dead: ['A dead end', 'A Trace finds nothing'] };
+const TRACES = { owner: ['The holder', 'A Trace names whoever holds it'], label: ['The name you set', 'A Trace stops at the line\'s name'], place: ['Where it is', 'A Trace finds the place, not the person'], dead: ['The number only', 'A Trace gets the number, never who holds it'] };
 const orgMark = (name, art) => `<span class="ncm-r3-org">${art ? `<img src="${esc(art)}" alt="">` : ''}${esc(name)}</span>`;
 const callerName = (t) => (t.shows === 'ownerOrg' ? 'John Anderson' : t.shows === 'owner' ? 'Judy Alvarez' : t.shows === 'label' ? (t.label || t.name) : t.shows === 'number' ? 'Unknown caller' : t.shows === 'place' ? t.name + ', Kabuki' : 'Unknown caller');
 const typeMark = (t) => `<span class="ncm-r3-ty" style="--tc:${t.color}" data-tooltip="${tipText(t.name)} line">${esc(t.name)}</span>`;
@@ -1295,7 +1296,7 @@ const ACT = {
   sel: (el) => { S.sel = el.dataset.id; S.change = null; S.addLine = null; },
   fold: (el) => { const k = el.dataset.k; if (S.shut.has(k)) S.shut.delete(k); else S.shut.add(k); },
   showFlag: () => { S.show = S.show === 'flag' ? 'all' : 'flag'; },
-  okFlag: (el) => { S.okFlags.add(el.dataset.k); },
+  okFlag: async (el) => { S.okFlags.add(el.dataset.k); await saveSetting('phoneFlagsOk', [...S.okFlags].slice(-2000)); },
   walk: (el) => { const p = byId(el.dataset.id), target = el.dataset.target || 'give'; if (target === 'bulk') S.f = 'numbers'; openWalk(p, target); },
   wkLevel: (el) => { S.walk.level = el.dataset.k; S.walk.q = ''; },
   wkPick: (el) => { const w = S.walk, i = WK.findIndex((x) => x.key === w.level); w.path[w.level] = el.dataset.v; WK.slice(i + 1).forEach((x) => { w.path[x.key] = null; }); w.q = ''; let n = i + 1; /* a level with one choice still shows, unless nothing is left to choose */ w.level = n < WK.length ? WK[n].key : null; if (!w.level) wkRoll(w); },
