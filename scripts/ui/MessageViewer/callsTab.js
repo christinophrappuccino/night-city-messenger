@@ -103,8 +103,12 @@ export function shownOther(row, book, home, contacts = []) {
   const shownImg = !o.anon && (o.showOnly === 'name' || o.face) ? (o.img || '') : '';
   const c = o.anon ? null : savedContactFor(contacts, o, { home });
   if (c) return { name: c.name || shownName || short, img: c.portrait || c.customImg || shownImg, number, known: true, saved: false, addTo: c.id || '', addToName: c.name || '', replaces: c.phone || '' };
-  if (shownName) return { name: shownName, img: shownImg, number, known: true, saved: false, offerName: shownName, offerImg: shownImg };
-  return { name: short, img: '', number, known: false, saved: false, offerName: '', offerImg: '' };
+  // who the number belongs to, kept on a contact saved from here so their mail later finds it (tester 2026-11-08: Save
+  // from a call, then Add from their mail, made two contacts). Never for a masked caller, or a line that stands for
+  // something other than its holder (a burner, a business, a payphone).
+  const link = !o.anon && !o.asLine ? { linkContact: o.contactId || '', linkActor: o.contactId ? '' : (o.actorId || '') } : { linkContact: '', linkActor: '' };
+  if (shownName) return { name: shownName, img: shownImg, number, known: true, saved: false, offerName: shownName, offerImg: shownImg, ...link };
+  return { name: short, img: '', number, known: false, saved: false, offerName: '', offerImg: '', ...link };
 }
 
 /** A number as coloured parts, with its place in words on hover. Escaped here, so templates print it raw. */
@@ -362,7 +366,8 @@ export async function handleCallsAction(viewer, action, target) {
       const shown = target.dataset.name || '', img = target.dataset.img || '';
       const name = await themedPrompt({ title: 'Save this number', label: 'Save', icon: 'fas fa-address-book', content: dialogBodyHtml({ tone: 'act', icon: 'fas fa-address-book', title: num, lead: shown ? 'The name and picture their call showed. Change the name if you like.' : '', field: { label: 'Name', name: 'name', value: shown, placeholder: 'What to call them' } }), read: (root) => root.querySelector('input[name=name]')?.value?.trim() || null });
       if (!name) return;
-      const r = await game.nightcity?.contactRepository?.addContact?.(own.actorId, { name, email: '', phone: num, tags: [], ...(img ? { portrait: img } : {}) });
+      const link = { masterContactId: target.dataset.linkContact || null, actorId: target.dataset.linkActor || null };
+      const r = await game.nightcity?.contactRepository?.addContact?.(own.actorId, { name, email: '', phone: num, tags: [], ...link, ...(img ? { portrait: img } : {}) });
       if (r && !r.success) ncmNotify.warn(r.error || 'Could not save it.'); else ncmNotify.info(`${name} saved.`);
       return rerender();
     }

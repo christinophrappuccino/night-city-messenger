@@ -155,7 +155,7 @@ export class ContactRepository {
       if (updates.email && updates.email !== contacts[index].email) {
         const verification = this.verifyContact(updates.email);
         updates.verified = verification.verified;
-        updates.masterContactId = verification.masterContactId || null;
+        updates.masterContactId = verification.masterContactId || updates.masterContactId || null;   // a caller may name who it is (Add on mail to a contact saved from a call)
         updates.linkedActorId = verification.actorId || updates.actorId || contacts[index].linkedActorId || null;
         // Clear GM override when email changes — new address needs fresh verification
         if (!game.user.isGM) {

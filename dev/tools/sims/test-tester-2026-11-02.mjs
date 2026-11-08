@@ -80,6 +80,7 @@ const grab = (name) => {
 const Body = new Function('directoryEntryFor', `return class V {
   _findContact(a) { const n = String(a || '').toLowerCase(); return this._cachedContacts.find(c => c.email?.toLowerCase() === n) || null; }
   ${grab('_findSenderContact')}
+  ${grab('_phoneOnlyContactFor')}
   ${grab('_senderToAdd')}
 }`)(directoryEntryFor);
 const v = new Body();

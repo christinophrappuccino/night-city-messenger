@@ -47,7 +47,7 @@ import { pickSenderChoice } from '../../utils/identities.js';
 import { openGuide } from '../../utils/guides.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { cleanHtml } from '../../utils/richText.js';
-import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter, getSetting } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient, resolveDisplayName, resolveDisplayPortrait, directoryEntryFor, canEncode as canEncodeShard, chatCardTime, isHiddenCharacter, isSelectableCharacter, getSetting, log } from '../../utils/helpers.js';
 import { adjustWealth } from '../../utils/wealth.js';
 import { playerConfirm, playerDialog } from '../../utils/adminTheme.js';
 import { selfKeys } from '../../utils/participants.js';
@@ -363,11 +363,32 @@ export class MessageViewerApp extends BaseApplication {
       const byId = this._cachedContacts.find(c => c.masterContactId === entry.id);
       if (byId) return byId;
     }
+    const byPhone = this._phoneOnlyContactFor(msg, entry);
+    if (byPhone) return byPhone;
     // Each identity is its own contact: holding the main does not make an alias's mail "from a contact".
     if (entry && mcs?.identityRoleOf?.(entry)?.isAlias) return null;
     return this._cachedContacts.find(c =>
       msg.fromActorId && c.actorId === msg.fromActorId && (!c.masterContactId || !entry || c.masterContactId === entry.id)
     ) || null;
+  }
+
+  /**
+   * A contact saved from a call (a number, no email) whose number is the sender's own line — so Add fills in their
+   * email instead of making a second contact (tester 2026-11-08). Covers contacts saved before the call Save kept the
+   * link. Only the identity's own line: an extra line or a burner never ties a number to a name.
+   * @param {Object} msg @param {Object|null} entry - the sender's directory entry
+   * @returns {Object|null}
+   */
+  _phoneOnlyContactFor(msg, entry) {
+    const cs = game.nightcity?.callService;
+    if (!cs?.line) return null;
+    return this._cachedContacts.find((c) => {
+      if (c.email || !c.phone) return false;
+      const owner = cs.line(c.phone)?.owner, kind = cs.line(c.phone)?.kind;
+      if (!owner || ['extra', 'burner'].includes(kind)) return false;
+      if (entry?.id && owner.contactId === entry.id) return true;
+      return !!msg.fromActorId && !owner.contactId && owner.actorId === msg.fromActorId && (!entry?.id || entry.actorId === msg.fromActorId);
+    }) || null;
   }
 
   /**
@@ -2906,6 +2927,7 @@ export class MessageViewerApp extends BaseApplication {
     if (!msg?.from || !this.actorId) return;
 
     const existing = this._findSenderContact(msg);
+    if (existing && !existing.email) return this._addEmailToContact(existing, msg);
     if (existing) {
       ncmNotify.info(`NCM | ${msg.from} is already in your contacts.`);
       return;
@@ -2954,6 +2976,37 @@ export class MessageViewerApp extends BaseApplication {
     } catch (error) {
       console.error('NCM | Failed to add contact:', error);
       ncmNotify.error('NCM | Failed to add contact.');
+    }
+  }
+
+  /**
+   * Add on mail from someone saved from a call (a number, no email): put the address on that contact instead of
+   * making a second one (tester 2026-11-08). Keeps the player's name for them; fills only what is missing.
+   * @param {Object} contact @param {Object} msg
+   */
+  async _addEmailToContact(contact, msg) {
+    const { entry, email, isAlias } = this._senderToAdd(msg);
+    if (email !== msg.from && this._findContact(email)) {
+      ncmNotify.info(`NCM | ${email} is already in your contacts.`);
+      return;
+    }
+    const ids = { contactId: msg.fromContactId, actorId: msg.fromActorId, email: msg.from, storedName: msg.fromName };
+    const updates = { email, network: msg.network || contact.network || 'CITINET' };
+    // passed every time: an email change re-verifies, and would otherwise drop the link the call Save kept
+    const link = contact.masterContactId || entry?.id;
+    if (link) updates.masterContactId = link;
+    if (!contact.actorId && !isAlias && (msg.fromActorId || entry?.actorId)) updates.actorId = msg.fromActorId || entry.actorId;
+    if (!contact.portrait && !contact.customImg) { const img = resolveDisplayPortrait(ids); if (img) updates.portrait = img; }
+    try {
+      const result = await this.contactRepository?.updateContact?.(this.actorId, contact.id, updates);
+      if (result && !result.success) { ncmNotify.warn(`NCM | ${result.error || 'Could not update the contact.'}`); return; }
+      ncmNotify.info(`NCM | Added ${email} to ${contact.name || 'your contact'}.`);
+      this.soundService?.play?.('receive');
+      await this._refreshContactCache();
+      this.render(true);
+    } catch (error) {
+      log.error('Failed to add the email to a contact:', error);
+      ncmNotify.error('NCM | Could not update the contact.');
     }
   }
 
@@ -4157,7 +4210,8 @@ export class MessageViewerApp extends BaseApplication {
     const classified = classifyAttachments(nonMediaAttachments);
 
     // ── Quick win: sender contact check for "Add to Contacts" button ──
-    const senderIsContact = !!contact;
+    // A contact saved from a call has no email yet: Add stays, and fills it in on that contact.
+    const senderIsContact = !!contact && !!contact.email;
     // Send-only system address (master-directory flag): players can never
     // add the sender or reply — the composer/service also hard-block it.
     // A FILE (#37) blocks the same affordances for the same reason: an

@@ -66,3 +66,24 @@ Sim `dev/tools/sims/test-tester-round-2026-11-07.mjs`; macro `dev/tools/test-tes
 - **Resize corner**: `BaseApplication._grabResizeHandle` captures the pointer on pointerdown (Foundry only captures on the first move, so a quick drag ending outside the window left its move listener attached).
 - **Payphones**: Number → Change… (`askBoothNumber`: district select + 4 digits, the scene-named district first); Another stays in the booth's district; Call from it… (`callFrom`: the directory from `lines()`, or a typed number) places `{ payphone, gm: true }`, so `_caller` puts the GM on the booth as themselves.
 - **Interface on a non-Netrunner** is still a Role Ability (`ROLE_ABILITY_NAMES` in SkillService): Rank Only = rank 0, no TECH.
+
+## Tester round 2026-11-08 (Aegaeon; built, not live-tested)
+
+Sim `dev/tools/sims/test-tester-round-2026-11-08.mjs`; macro `dev/tools/test-tester-2026-11-08.macro.js`.
+- **Caller ID for strangers stays as designed** (dev decision): a Standard line shows the holder's name only to people
+  who saved them. The editor said "The holder: the name of whoever holds the line", which read as everyone. The
+  `shows` options are now labelled by WHO sees the name: `owner` = **Their name, only if saved**, `ownerOrg` = **Their
+  name, to everyone** (organization, or the number's district when there is none, under it); the trace options read
+  **Who holds it / The name you set / Where it is / The number only**, each tooltip saying what a trace finds. The
+  Getting Started guide has a Tip with the real-phone setup (Standard to everyone; Burner = A name you set, Name
+  "Unknown", trace The name you set). Labels only: the stored values did not change.
+- **Save from a call, then Add from their mail, made two contacts.** Save (`calls-savenum`) now stores the caller's
+  link (`masterContactId` / `actorId`, from `shownOther`'s `linkContact` / `linkActor`), never for a masked caller or an
+  `asLine` line (burner, business, payphone). The viewer's `_findSenderContact` also matches a number-only contact by
+  that link or by the sender's OWN line (`_phoneOnlyContactFor`: not an extra line, not a burner; covers contacts saved
+  before the fix). Such a contact has no email, so Add stays (`senderIsContact` needs an email) and fills the address
+  into it (`_addEmailToContact`), keeping the player's name for them. `ContactRepository.updateContact` keeps a
+  `masterContactId` the caller passes beside a new email.
+- **Parked:** a Merge-two-contacts tool; burner lines showing their own label; a trace run by another character
+  ("give me your phone": a picker of characters in the scene, the roll prompted on that player's client, the result to
+  both).
