@@ -3,6 +3,15 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.3.3] — 2026-11-08
+
+### Fixed
+- **Saving a caller from a call and adding them from mail made two contacts.** Save from a call now links the contact to the caller, and Add from mail adds the email to a contact who already has that number.
+
+### Changed
+- **Clearer caller ID choices (Phone → Numbers → Line types).** "Their screen shows" now reads Their name, to everyone / Their name, only if saved / A name you set / Only the number / Where it is / Nothing. "A trace finds" reads Who holds it / The name you set / Where it is / The number only. Nothing about how calls behave changed.
+- **The GM guide has a tip** for setting up line types like real phones (a standard line shows its name to everyone; a burner shows "Unknown").
+
 ## [2.3.2] — 2026-11-07
 
 ### Added
