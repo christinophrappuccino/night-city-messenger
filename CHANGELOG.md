@@ -3,6 +3,22 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.3.2] — 2026-11-07
+
+### Added
+- **Payphones: Call from it…** The GM can call out from a payphone to any character, NPC or other payphone, or type a number. The other end sees the payphone.
+- **Payphones: Number → Change…** Pick the district and the last four digits of a booth's number. Another now keeps the booth's own district.
+- **Call log: Add number.** When a call comes from someone who is already a contact, one button adds the number to that contact. Otherwise Save comes filled in with the name and picture from the call.
+
+### Fixed
+- **A trace added TECH with Role Ability set to Rank Only.** Interface now counts as a Role Ability for everyone, rank 0 for a non-Netrunner.
+- **A successful trace on a withheld call showed nothing, or showed it late.** A trace now always answers, with a "Trace result" card in chat: a regular line gives the name and number, a burner the number only. Only a special number set to a dead end gives nothing.
+- **A traced burner still showed the caller's name** in the call and the log. They now show only what the trace found.
+- **The call log showed only the number after an NPC call.** It shows the name and picture the call screen showed.
+- **Voicemail greetings were cut off** for the caller. A read-out or recorded greeting plays to the end before the tone.
+- **"Looks right" on Phone → Numbers → Needs you came back** after a reload. It is saved now.
+- **A window could stay stuck to the cursor after a resize.**
+
 ## [2.3.1] — 2026-11-06
 
 ### Changed
