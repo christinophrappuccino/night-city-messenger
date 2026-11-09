@@ -208,7 +208,7 @@ const setOffice = (o) => { worldSettings.phoneOffices = { [KEY]: o }; };
   ok(hbs.includes('data-calls-ml-url') && ct.includes('greetingLink(url)') && pt.includes('name="url"') && pt.includes('data-gr-browse') && pt.includes("newFilePicker({ type: 'audio'"), 'both greeting editors take a sound file (the GM can browse for one)');
   ok(hbs.includes('Voices belong to each computer'), 'the player editor says a read-out voice is each computer\'s own');
   const comp = read('scripts/ui/MessageComposer/MessageComposerApp.js');
-  ok(comp.includes("recipientLocked: this.mode === 'reply' && this.recipients.length > 0 && (!!this.anonReplyTo || !this._replyAll)") && comp.includes('this._replyAll = true;') && comp.includes('this._replyAll = false;'), 'Reply All keeps the To field open; a plain or anonymous reply stays locked');
+  ok(comp.includes("recipientLocked: this.mode === 'reply' && !!this.anonReplyTo,") && !comp.includes('_replyAll'), 'every reply keeps the To field open; only an anonymous reply is locked');
 }
 {
   // the messenger's opening size, the real methods lifted out of the class

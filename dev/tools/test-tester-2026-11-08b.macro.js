@@ -47,7 +47,7 @@
 
     // 6. Reply All, the messenger's size
     const comp = await text('scripts/ui/MessageComposer/MessageComposerApp.js');
-    check('Reply All keeps the To field open', comp.includes('!this._replyAll)'));
+    check('Every reply keeps the To field open (an anonymous one stays locked)', comp.includes("recipientLocked: this.mode === 'reply' && !!this.anonReplyTo,"));
     const { MessageViewerApp } = await import(`${base}/ui/MessageViewer/MessageViewerApp.js`);
     check('The messenger remembers its size', typeof MessageViewerApp._openingSize === 'function' && typeof MessageViewerApp.prototype._rememberSize === 'function');
   } catch (err) {
@@ -62,6 +62,6 @@
     4. After each call, the player's Calls log (Outgoing) AND Admin → Phone → Call log show it. Also dial a number nobody has: "Not in service" is logged.<br>
     5. Give an NPC a second (office) line. Numbers → that line → Dial: the choice names the office number, and the player's screen shows that number.<br>
     6. Player: Calls → My line → Greeting → Audio → paste a sound-file link → Play → Save. Call them from another client and don't answer: that file plays. As GM, the line's greeting dialog has the same field and a folder button.<br>
-    7. Reply All to a mail with two people: the To field says "Add someone…" and Cc is there. A plain Reply still has no To field.<br>
+    7. Reply, and Reply All: the To field says "Add someone…" and Cc is there; the sender's chip has a lock. Reply to an anonymous mail: no To field.<br>
     8. Player with Text Size 120%: open the messenger (bigger than before), resize it, close, reopen: it opens at the size you left it.</p>` });
 })();
