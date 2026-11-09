@@ -314,8 +314,9 @@ export class PayphoneService {
     this.setSpeaker(call.id, speakerOn(pp.hear, chosen));
   }
 
-  _onEnded({ call }) {
-    if (!call) return;
+  _onEnded({ call, transfer }) {
+    // a switchboard handing over to the real call: the booth is still in use
+    if (!call || transfer) return;
     this._stopRing(call.id);
     const b = this._boothOfCall(call);
     const u = b ? this.inUse.get(b.id) : null;

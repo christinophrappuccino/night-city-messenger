@@ -145,7 +145,7 @@ export class CallHud {
     const ringingIn = list.filter((v) => v.call.state === 'ringing' && v.role === 'callee');
     const dialing = list.filter((v) => (v.call.state === 'dialing' || v.call.state === 'ringing') && v.role === 'caller');
     const ended = list.filter((v) => v.call.state === 'ended').sort((a, b) => b.endedAt - a.endedAt);
-    const vmc = list.filter((v) => v.call.state === 'voicemail');
+    const vmc = list.filter((v) => v.call.state === 'voicemail' || v.call.state === 'board');
     const onCall = active.length || held.length;
     const main = active[0] || (onCall ? held[0] : null) || vmc[0] || dialing[0] || ringingIn[0] || ended[0] || null;
     const waiting = onCall ? ringingIn[0] || null : null;
@@ -164,6 +164,12 @@ export class CallHud {
     this.root.innerHTML = '<div class="ncm-ch-stage"></div><div class="ncm-ch-missedwrap"></div><div class="ncm-ch-subs" hidden></div>';
     document.body.appendChild(this.root);
     this.root.addEventListener('click', (e) => this._onClick(e));
+    this.root.addEventListener('keydown', (e) => {
+      const box = e.target.closest?.('[data-board-ext]');
+      if (!box) return;
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); this._boardPick(box.dataset.boardExt, { ext: box.value }); }
+    });
     this.root.addEventListener('pointerdown', (e) => this._onGripDown(e));
     this.root.addEventListener('dblclick', (e) => { if (e.target.closest('[data-grip]')) { savePlace(null); applyPlace(currentPlace()); } });
     applyPlace(currentPlace());
@@ -261,6 +267,10 @@ export class CallHud {
       const leaving = call.vmStep === 'leave';
       kind = leaving ? 'Leave a message' : 'Voicemail'; tone = 'vm'; sigState = 'vm';
       keys = leaving ? [['hangup', 'N', 'Hang up', 'bad']] : [['skip', '⏎', 'Skip greeting', ''], ['hangup', 'N', 'Hang up', 'bad']];
+    } else if (st === 'board') {
+      // a corporate switchboard: the greeting, the listed extensions, the operator (CallService.boardPick)
+      kind = 'Switchboard'; tone = 'live'; sigState = 'live';
+      keys = [...(call.board?.operator ? [['operator', '0', 'Operator', '']] : []), ['hangup', 'N', 'Hang up', 'bad']];
     } else if (st === 'held') {
       kind = 'On hold'; tone = 'held'; sigState = 'live'; keys = [['resume', 'H', 'Back to this call', ''], ['hangup', 'N', 'Hang up', 'bad']];
     } else {
@@ -278,6 +288,7 @@ export class CallHud {
     const pic = showPic ? `<div class="ncm-ch-pic"><div class="ncm-ch-feed">${face}<span class="ncm-ch-sweep"></span></div>${FRAME(st === 'ended' ? 'ENDED' : st === 'held' ? 'HOLD' : '● LIVE')}</div>` : '';
     const orgHtml = other.org ? `<span class="ncm-ch-org">${other.orgArt ? `<img src="${esc(other.orgArt)}" alt="">` : ''}${esc(other.org)}</span>` : '';
     const voice = gmCallee ? this._voiceNote(call.to?.contactId) : '';
+    const boardHtml = st === 'board' ? this._boardHtml(call) : '';
     const alias = gmCallee && call.to?.contactId ? this._aliasNote(call.to.contactId) : '';
     const meta = st === 'live' || st === 'held'
       ? `${this._netHtml(net)}<span class="ncm-ch-sep">·</span><span class="ncm-ch-time" data-timer>${formatDuration(callSeconds(call))}</span>`
@@ -303,7 +314,16 @@ export class CallHud {
     const grip = !withGrip ? '' : '<span class="ncm-ch-grip" data-grip data-tooltip="Drag to move the call · double-click to put it back" data-tooltip-direction="RIGHT"><i class="fas fa-grip-vertical"></i></span>';
     return `<div class="ncm-ch-call is-${tone}" data-call="${esc(call.id)}"${st === 'ringing' && role === 'callee' && call.from?.ring ? ` data-ring="${esc(call.from.ring)}"` : ''}>${grip}${pic}<div class="ncm-ch-txt">
       ${this._badgeHtml({ kind, name: chipName, tone, sigState, profile, callId: call.id, icon: st === 'voicemail' ? (call.vmStep === 'leave' ? 'fa-keyboard' : 'fa-voicemail') : undefined })}
-      ${alias}${anonHtml}${orgHtml}<span class="ncm-ch-meta">${meta}</span>${whyHtml}${voice}${modesHtml}${keysHtml}${heldHtml}${waitHtml}</div></div>`;
+      ${alias}${anonHtml}${orgHtml}<span class="ncm-ch-meta">${meta}</span>${whyHtml}${voice}${boardHtml}${modesHtml}${keysHtml}${heldHtml}${waitHtml}</div></div>`;
+  }
+
+  /** The switchboard's face: what the office says, its listed extensions, and a box for one you know. */
+  _boardHtml(call) {
+    const b = call.board || {}, id = esc(call.id);
+    const say = b.greet ? `<div class="ncm-ch-bsay"><i class="fas fa-comment"></i> ${esc(b.greet)}</div>` : '';
+    const exts = (b.exts || []).length ? `<div class="ncm-ch-bexts">${b.exts.map((e) => `<span class="ncm-ch-bext" data-act="ext" data-x="${esc(e.x)}" data-id="${id}" data-tooltip="Connect to ${tipText(e.who)}"><kbd>x${esc(e.x)}</kbd>${esc(e.who)}</span>`).join('')}</div>` : '';
+    const box = `<label class="ncm-ch-bdial"><span>Extension</span><input type="text" inputmode="numeric" maxlength="6" autocomplete="off" data-board-ext="${id}" placeholder="${esc(b.exts?.[0]?.x || '17')}" aria-label="Dial an extension"><span class="ncm-ch-key" data-act="extgo" data-id="${id}"><kbd>⏎</kbd>Connect</span></label>`;
+    return `<div class="ncm-ch-board">${say}${exts}${box}</div>`;
   }
 
   _waitingHtml(w) {
@@ -362,6 +382,8 @@ export class CallHud {
     if (dict) { this._dictAct(dict.dataset.dict, dict.dataset.id); return; }
     const el = e.target.closest('[data-act]');
     if (!el) return;
+    if (el.dataset.act === 'ext') { this._boardPick(el.dataset.id, { ext: el.dataset.x }); return; }
+    if (el.dataset.act === 'extgo') { this._boardPick(el.dataset.id, { ext: this.root?.querySelector(`[data-board-ext="${CSS.escape(el.dataset.id)}"]`)?.value || '' }); return; }
     this.act(el.dataset.act, el.dataset.id);
   }
 
@@ -453,6 +475,12 @@ export class CallHud {
     this._paintDict();
   }
 
+  /** Leave the switchboard for an extension or the operator; a refusal (no such extension) says why and keeps the board. */
+  async _boardPick(callId, pick) {
+    const r = await this.service.boardPick?.(callId, pick);
+    if (r && !r.ok && r.error) ncmNotify.warn(r.error);
+  }
+
   /** Run a prompt: answer | decline | cancel | hangup | resume — also what the key bindings call. */
   act(act, id) {
     const s = this.service;
@@ -464,6 +492,7 @@ export class CallHud {
     else if (act === 'resume') s.resume(id);
     else if (act === 'skip') s.skipGreeting?.(id);
     else if (act === 'trace') s.traceCall?.(id);
+    else if (act === 'operator') this._boardPick(id, { operator: true });
   }
 
   /** A key binding: the call it applies to, by what is on screen. */
@@ -475,7 +504,7 @@ export class CallHud {
     if (which === 'decline') {
       if (c.state === 'ringing' && main.role === 'callee') this.act('decline', c.id);
       else if (c.state === 'dialing' || (c.state === 'ringing' && main.role === 'caller')) this.act('cancel', c.id);
-      else if (c.state === 'live' || c.state === 'held') this.act('hangup', c.id);
+      else if (c.state === 'live' || c.state === 'held' || c.state === 'board') this.act('hangup', c.id);
       else return false;
       return true;
     }

@@ -160,7 +160,7 @@ ok(cs.includes('allCalls()') && cs.includes('allLogs()') && cs.includes('noSigna
     ok(!/data-owner="rogue"/.test(html), 'the owner id never reuses data-owner (that is the tab routing key)');
     if (process.env.NCM_DUMP) fs.writeFileSync(path.join(process.env.NCM_DUMP, 'phone-vm.html'), html);
   }
-  ok(js.includes("case 'greeting'") && read('scripts/ui/AdminPanel/tabs/phoneNumbersView.js').includes('data-do="lineGreeting"') && js.includes('saveLineSettings(number, out)'), 'Numbers: the greeting & voicemail button');
+  ok(js.includes("case 'greeting'") && read('scripts/ui/AdminPanel/tabs/phoneNumbersView.js').includes('data-do="lineGreeting"') && js.includes('saveLineSettings(number, settings)'), 'Numbers: the greeting & voicemail button');
   ok(/setVoicemailHeard\(d\.ownerId/.test(js) && /deleteVoicemail\(d\.ownerId/.test(js), 'the handlers read the owner id');
 }
 

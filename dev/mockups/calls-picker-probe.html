@@ -5,7 +5,7 @@
 <title>Calls picker probe</title>
 <!--
   The REAL Calls tab picker: the real partial, the real buildCallsContext over the real number rules, the real stylesheet.
-  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/calls-picker-probe.html?level=rc|area|code&s=130&view=main&lines=2
+  Serve: node dev/tools/serve-mockups.cjs, then http://127.0.0.1:8123/dev/mockups/calls-picker-probe.html?level=rc|area|code&s=130&view=main&lines=2  (&myline=recorded|tts: the My line editor)
 -->
 <link rel="stylesheet" href="/_vendor/foundry2.css">
 <link rel="stylesheet" href="/_vendor/cpr.css">
@@ -45,6 +45,8 @@
   const v = { actorId: 'v', render() {} };
   await T.buildCallsContext(v);
   const st = T.callsState(v);
+  // ?view=main&myline=recorded|tts — the My line editor (a linked sound file on Audio)
+  if (q.get('myline')) { st.view = 'myline'; svc.recordingOn = true; svc.lineSettings = () => ({ greeting: { kind: q.get('myline'), text: '', voice: '', audio: 'https://cdn.example.com/greetings/hello.mp3', duration: 0 }, voicemail: { on: true, dnd: false } }); }
   if (q.get('level')) st.level = q.get('level');
   if (q.get('filter')) st.filter = q.get('filter');
   if (q.get('audit')) { svc.getVoicemails = async () => [{ vmId: 'v1', from: { number: '+72 NC WAT-2210', name: '' }, text: 'Bring the shard and come alone.', gameTime: '2045-03-03T12:00:00Z', heard: false, kind: 'typed' }, { vmId: 'v2', from: { number: '+72 NC WAT-3313' }, text: 'Older one', gameTime: '2045-01-03T12:00:00Z', heard: true, kind: 'tts' }]; }

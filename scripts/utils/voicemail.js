@@ -10,7 +10,7 @@
  */
 
 export const GREETING_KINDS = Object.freeze(['default', 'typed', 'tts', 'recorded']);
-export const GREETING_LABELS = Object.freeze({ default: 'Default', typed: 'Typed', tts: 'Read out', recorded: 'Recorded' });
+export const GREETING_LABELS = Object.freeze({ default: 'Default', typed: 'Typed', tts: 'Read out', recorded: 'Audio' });
 /** A recorded greeting is short; a message is up to the GM's limit. A stored audio reference (a path, or a data URL
  *  when the world cannot take files) is capped so a page flag never balloons. */
 export const GREETING_RECORD_MS = 20000;
@@ -21,6 +21,14 @@ const cleanAudio = (v) => {
   if (/^[a-z][\w+.-]*:/i.test(v)) return /^https?:\/\//i.test(v) ? v : '';   // a scheme: only http(s)
   return v;                                                                  // a plain path (the world's ncm-voicemail folder)
 };
+/**
+ * A sound file for a greeting, as typed into the editor: an https link or a path in the world's files. '' when it is
+ * neither (a data URL, a script scheme, quotes). An audio greeting plays the same file for every caller, which a
+ * read-out greeting cannot (each computer reads it in its own voice — tester 2026-11-08).
+ */
+export const greetingLink = (v) => { const a = cleanAudio(String(v ?? '').trim()); return /^data:/i.test(a) ? '' : a; };
+/** Is this stored greeting audio a file someone linked (not one recorded here, which lives in ncm-voicemail)? */
+export const isLinkedGreeting = (a) => !!a && !/^data:/i.test(a) && !/(^|\/)ncm-voicemail\//.test(a);
 export const DEFAULT_GREETING = 'The person you are calling is not available.';
 export const TONE_LINE = 'Leave a message after the tone.';
 export const GREETING_MAX = 300;

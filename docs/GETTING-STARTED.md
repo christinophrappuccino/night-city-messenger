@@ -385,7 +385,9 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 
 **Answering.** When someone calls an NPC, it rings for you on the **Live** tab, longest wait first. Answer as who they asked for, or as someone else, or send it to voicemail. A call nobody answers goes to voicemail by itself.
 
-**Corporations.** An office has a main number with a switchboard, and extensions (`MIL-0100 x17`). Choose whether you answer, a recording plays, or it goes to voicemail. Voicemail lands with a mailbox made for that office the first time someone leaves a message, or with a contact you pick. **New corporation** (on Numbers → Corporations, or Places → Add → A corporation) makes one in a step.
+**Greetings.** Every number has its own greeting: the default, typed words, words read out, or **Audio** (record one, or paste a link or browse for a sound file in your world). Read out uses each listener's own computer voice, so it can sound different for each player; Audio sounds the same for everyone. Players set their own greeting from **Greeting** on their My line card.
+
+**Corporations.** An office has a main number with a switchboard, and extensions (`MIL-0100 x17`). Choose whether you answer, a recording plays, or it goes to voicemail. When you answer or a recording plays, a caller first gets the switchboard: the greeting, the listed extensions, a box for an unlisted one and (when you answer) the operator. If you don't pick up as the operator, the call goes to the office's voicemail with its greeting. Voicemail lands with a mailbox made for that office the first time someone leaves a message, or with a contact you pick. **New corporation** (on Numbers → Corporations, or Places → Add → A corporation) makes one in a step.
 
 **Special numbers.** A number that follows its own rules: a hidden line, a hotline, a recording, a macro. Each can have a name and a picture.
 

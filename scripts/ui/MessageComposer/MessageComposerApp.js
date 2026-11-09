@@ -391,7 +391,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           this.inReplyTo = reply.inReplyTo;
         } else if (reply.recipients?.length) {
           // Reply All — every participant but me. Chips stay removable so the
-          // player can drop someone from the answer.
+          // player can drop someone from the answer, and the To field stays open
+          // to add more (tester 2026-11-08).
+          this._replyAll = true;
           for (const r of reply.recipients) {
             if (r.actorId) this._addRecipient(r.actorId, false);
             else if (r.contactId || r.email) this._addContactRecipient({ contactId: r.contactId || null, email: r.email || '', name: r.name || r.email });
@@ -700,7 +702,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
       // Fields — every chip carries its name's hue
       recipients: this.recipients.map(r => ({ ...r, hue: hueVar(r.name || r.email || '?') })),
-      recipientLocked: this.mode === 'reply' && this.recipients.length > 0,
+      // a reply goes back to its sender; a Reply All can take more people (an anonymous reply never can)
+      recipientLocked: this.mode === 'reply' && this.recipients.length > 0 && (!!this.anonReplyTo || !this._replyAll),
       subject: this.subject,
       body: this.body,
 
@@ -2041,6 +2044,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.threadId = null;
     this.inReplyTo = null;
     this.anonReplyTo = null;
+    this._replyAll = false;
     this.attachments = [];
     this.eddiesAmount = 0;
     this._drawer = null;

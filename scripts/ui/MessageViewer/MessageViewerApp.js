@@ -204,7 +204,43 @@ export class MessageViewerApp extends BaseApplication {
   setPosition(position = {}) {
     if (typeof position.width === 'number') position.width = Math.max(360, position.width);
     if (typeof position.height === 'number') position.height = Math.max(400, position.height);
-    return super.setPosition(position);
+    const out = super.setPosition(position);
+    // a size the player chose (a resize, not the opening size) is kept for the next time it opens
+    if (this.rendered && !this.minimized && (typeof position.width === 'number' || typeof position.height === 'number')) this._rememberSize();
+    return out;
+  }
+
+  /** Where this browser keeps the messenger's size, per user (localStorage: a per-player convenience). */
+  static _sizeKey() { return `ncm-viewer-size:${game.user?.id || ''}`; }
+
+  /**
+   * The size the messenger opens at: the one the player last left it at; else, with Text Size above 100%, the default
+   * grown by the same amount, so the header's controls are not cut off (tester 2026-11-08: it opened at 880×600 every
+   * time and had to be resized after each close). Always fits the screen.
+   * @returns {{width: number, height: number}|null}
+   */
+  static _openingSize() {
+    const fit = ({ width, height }) => ({ width: Math.max(360, Math.min(Math.round(width), (globalThis.innerWidth || 1920) - 20)), height: Math.max(400, Math.min(Math.round(height), (globalThis.innerHeight || 1080) - 20)) });
+    try {
+      const saved = JSON.parse(globalThis.localStorage?.getItem(this._sizeKey()) || 'null');
+      if (Number(saved?.width) > 0 && Number(saved?.height) > 0) return fit(saved);
+    } catch { /* storage blocked: fall through */ }
+    let scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ncm-text-scale-base'));
+    if (!(scale > 0)) scale = (Number(getSetting('playerTheme', {})?.textScale) || 100) / 100;
+    if (!(scale > 1)) return null;
+    const { width, height } = this.DEFAULT_OPTIONS.position;
+    return fit({ width: width * scale, height: height * scale });
+  }
+
+  /** @private Keep the size the player resized to (only when it differs from the size it opened at). */
+  _rememberSize() {
+    const { width, height } = this.position || {};
+    if (!(width > 0 && height > 0)) return;
+    if (this._openedAt && Math.abs(this._openedAt.width - width) < 2 && Math.abs(this._openedAt.height - height) < 2) return;
+    clearTimeout(this._sizeTimer);
+    this._sizeTimer = setTimeout(() => {
+      try { globalThis.localStorage?.setItem(MessageViewerApp._sizeKey(), JSON.stringify({ width: Math.round(width), height: Math.round(height) })); } catch { /* storage blocked */ }
+    }, 400);
   }
 
   // ─────────────── Instance State (per-window, not global) ───────────────
@@ -297,7 +333,9 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   constructor(options = {}) {
-    super(options);
+    const size = options.position?.width ? null : MessageViewerApp._openingSize();
+    super(size ? { ...options, position: { ...(options.position || {}), ...size } } : options);
+    this._openedAt = size || { ...MessageViewerApp.DEFAULT_OPTIONS.position };
     this.actorId = options.actorId || game.user?.character?.id || null;
     this._loadPreferences();
     this._setupEventSubscriptions();

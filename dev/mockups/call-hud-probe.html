@@ -5,13 +5,16 @@
 <title>Call HUD — probe</title>
 <!--
   Renders the REAL scripts/ui/Calls/CallHud.js + styles/components/call-hud.css over a stand-in scene.
-  ?s=ringing|dialing|live|typed|hangup|vm-greet|vm-leave|vm-rec|vm-sent|voicemail-note|held|ended|waiting|gm|missed|drop-why|anon|glitch|dictate|dictate-off|dictate-err   ?still=1   ?scheme=ncm|2077|theme
+  ?s=ringing|board|dialing|live|typed|hangup|vm-greet|vm-leave|vm-rec|vm-sent|voicemail-note|held|ended|waiting|gm|missed|drop-why|anon|glitch|dictate|dictate-off|dictate-err   ?still=1   ?scheme=ncm|2077|theme
   Open with --allow-file-access-from-files, or through node dev/tools/serve-mockups.cjs.
 -->
-<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
-<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
-<link rel="stylesheet" href="../../styles/night-city-messenger.css">
-<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css">
+<script>
+  // off disk: Foundry's own files; over http (serve-mockups.cjs): its /_vendor/ mirror (an http page may not load file://)
+  { const web = location.protocol.startsWith('http');
+    const css = web ? ['/_vendor/foundry2.css', '/_vendor/cpr.css'] : ['file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css', '../../../../systems/cyberpunk-red-core/main.css'];
+    css.push('../../styles/night-city-messenger.css', web ? '/_vendor/fa/css/all.min.css' : 'file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/fonts/fontawesome/css/all.min.css');
+    for (const href of css) document.write('<link rel="stylesheet" href="' + href + '">'); }
+</script>
 <style>
   body { margin: 0; width: 1240px; height: 620px; overflow: hidden; background: #111 url('../../../../systems/cyberpunk-red-core/maps/S0L-DCStreets-NOGRID1080.jpg') center / cover; }
   .still *, .still *::before, .still *::after { animation: none !important; transition: none !important; }
@@ -26,6 +29,7 @@
   const IMG = '../../../../worlds/ncmessenger/thephanthasy_An_illustrative_portrait_of_Kai_Meng_known_as_Verd_fdcb5e3a-adc5-4dc8-8720-e7f92f008405.png';
   const listeners = {};
   const isGM = Q.get('s') === 'gm';
+  globalThis.Hooks = globalThis.Hooks || { on() {}, once() {} };
   globalThis.game = {
     user: { id: isGM ? 'gm' : 'u1', isGM },
     users: { activeGM: { id: 'gm' } },
@@ -55,6 +59,7 @@
   const emit = (e, d) => game.nightcity.eventBus.emit(e, d);
   const s = Q.get('s') || 'ringing';
   if (s === 'ringing') emit('call:ringing', { call: mk({}), role: 'callee' });
+  if (s === 'board') emit('call:started', { call: mk({ from: v, to: { kind: 'unowned', number: 'ARA-0100', name: 'Arasaka', img: '', showOnly: 'name' }, state: 'board', unrung: true, board: { greet: 'Arasaka Tower, Night City. If you know the extension, dial it now.', operator: true, exts: [{ x: '17', who: 'Mr. Smith' }, { x: '204', who: 'Corporate Security' }, { x: '310', who: 'Public Relations' }], dialled: 'ARA-0100', as: {} } }), role: 'caller' });
   if (s === 'dialing') emit('call:ringing', { call: mk({ from: v, to: { ...rogue, kind: 'npc' }, state: 'dialing' }), role: 'caller' });
   if (s === 'live') emit('call:started', { call: mk({ state: 'live', answeredAt: now - 128000 }), role: 'callee' });
   if (s === 'typed') {

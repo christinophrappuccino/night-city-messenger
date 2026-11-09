@@ -27,7 +27,8 @@ import { PHONE_VIEWS, NAV_PARENT, logLanding, LOG_FILTERS, LOG_GROUPS, VM_SHOW, 
 import { PLAN_NAMES } from '../../../utils/phoneEmergency.js';
 import { numbersHtml, wireNumbers, closeNumbers, newNumberState, syncFrame, requestCount } from './phoneNumbersView.js';
 import { payphonesHtml, wirePayphones, newPayphoneState } from './payphonesView.js';
-import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX } from '../../../utils/voicemail.js';
+import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX, greetingLink, isLinkedGreeting } from '../../../utils/voicemail.js';
+import { newFilePicker } from '../../../utils/compat.js';
 import { speak, voices, canSpeak } from '../../Calls/speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from '../../Calls/recorder.js';
 import { adminDialog } from '../../../utils/adminTheme.js';
@@ -418,7 +419,8 @@ export class PhoneTab extends BaseTab {
       extraHtml: `<div class="ncm-ph2-gr" data-kind="${g.kind}">
         <label class="ncm-ph2-gr__row"><span>Greeting</span><select name="kind">${GREETING_KINDS.map((k) => `<option value="${k}"${k === g.kind ? ' selected' : ''}>${GREETING_LABELS[k]}</option>`).join('')}</select></label>
         <div class="ncm-ph2-gr__rec">${this.calls.recordingOn && micStatus().ok ? '<button type="button" data-gr-rec><i class="fas fa-circle"></i> Record</button>' : `<span class="hint">${esc(!this.calls.recordingOn ? 'Recordings are switched off (Settings).' : micStatus().reason)}</span>`}
-          <button type="button" data-gr-play><i class="fas fa-play"></i> Play</button><span class="hint" data-gr-rect>${g.audio ? 'A recording is saved.' : 'Up to 20 seconds.'}</span></div>
+          <button type="button" data-gr-play><i class="fas fa-play"></i> Play</button><span class="hint" data-gr-rect>${isLinkedGreeting(g.audio) ? 'A sound file is set.' : g.audio ? 'A recording is saved.' : 'Up to 20 seconds.'}</span>
+          <label class="ncm-ph2-gr__row ncm-ph2-gr__url" data-tooltip="An https:// link, or a file in your world. Every caller hears this same sound."><span>Or a file</span><input type="text" name="url" value="${esc(isLinkedGreeting(g.audio) ? g.audio : '')}" placeholder="https://…/greeting.mp3" autocomplete="off" spellcheck="false"><button type="button" data-gr-browse data-tooltip="Pick a sound file from your world"><i class="fas fa-folder-open"></i></button></label></div>
         <textarea name="text" rows="3" maxlength="${GREETING_MAX}" placeholder="${esc(DEFAULT_GREETING)}">${esc(g.text)}</textarea>
         ${canSpeak() ? `<label class="ncm-ph2-gr__row ncm-ph2-gr__voice"><span>Voice</span><select name="voice"><option value="">This browser's default voice</option></select></label>` : ''}
         <div class="ncm-ph2-gr__row"><button type="button" data-gr-preview><i class="fas fa-play"></i> Preview</button><span class="hint">Voices are this computer's; another computer may read it in its own default voice.</span></div>
@@ -434,7 +436,7 @@ export class PhoneTab extends BaseTab {
           no: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel' },
           yes: { icon: '<i class="fas fa-check"></i>', label: 'Save', callback: (html) => {
             const root = html[0] ?? html;
-            out = { greeting: { kind: root.querySelector('[name=kind]').value, text: root.querySelector('[name=text]').value, voice: root.querySelector('[name=voice]')?.value || '' },
+            out = { greeting: { kind: root.querySelector('[name=kind]').value, text: root.querySelector('[name=text]').value, voice: root.querySelector('[name=voice]')?.value || '' }, url: root.querySelector('[name=url]')?.value.trim() || '',
               voicemail: { on: root.querySelector('[name=on]').checked, dnd: root.querySelector('[name=dnd]').checked } };
           } },
         },
@@ -453,7 +455,16 @@ export class PhoneTab extends BaseTab {
             try { await rec.start({ maxMs: 20000, onTick: (ms) => { if (rect) rect.textContent = `${formatDuration(ms / 1000)} / 0:20`; }, onLimit: () => btn.click() }); btn.innerHTML = '<i class="fas fa-square"></i> Stop'; }
             catch (err) { ncmNotify.warn(err.message); rec = null; }
           });
-          root.querySelector('[data-gr-play]')?.addEventListener('click', () => { const src = clip?.blob ? URL.createObjectURL(clip.blob) : g.audio; if (src) playAudio(src); else ncmNotify.info('Nothing recorded yet.'); });
+          const urlIn = root.querySelector('[name=url]');
+          root.querySelector('[data-gr-browse]')?.addEventListener('click', () => {
+            try { newFilePicker({ type: 'audio', current: urlIn?.value || '', callback: (path) => { if (urlIn) urlIn.value = path; } }).render(true); } catch (err) { ncmNotify.warn(err.message); }
+          });
+          root.querySelector('[data-gr-play]')?.addEventListener('click', () => {
+            const typed = urlIn?.value.trim() || '';
+            const src = clip?.blob ? URL.createObjectURL(clip.blob) : (typed ? greetingLink(typed) : g.audio);
+            if (typed && !src) { ncmNotify.warn('Use an https:// link, or the path of a sound file in your world.'); return; }
+            if (src) playAudio(src); else ncmNotify.info('Nothing recorded yet.');
+          });
           root.querySelector('[data-gr-preview]')?.addEventListener('click', () => {
             const kind = root.querySelector('[name=kind]').value;
             const text = kind === 'default' ? DEFAULT_GREETING : (root.querySelector('[name=text]').value || DEFAULT_GREETING);
@@ -466,11 +477,17 @@ export class PhoneTab extends BaseTab {
     });
     if (!out) return;
     let r;
-    if (out.greeting.kind === 'recorded') {
-      if (clip?.blob?.size) r = await s.saveRecordedGreeting(number, out, { base64: await blobToBase64(clip.blob), mime: clip.mime, ms: clip.ms });
-      else if (g.audio) r = await s.saveLineSettings(number, { ...out, greeting: { ...out.greeting, audio: g.audio, duration: g.duration } });
-      else { ncmNotify.warn('Record a greeting first.'); return; }
-    } else r = await s.saveLineSettings(number, out);
+    const { url, ...settings } = out;
+    if (settings.greeting.kind === 'recorded') {
+      if (clip?.blob?.size) r = await s.saveRecordedGreeting(number, settings, { base64: await blobToBase64(clip.blob), mime: clip.mime, ms: clip.ms });
+      else if (url) {
+        // a sound file: every caller plays the same one (tester 2026-11-08)
+        const link = greetingLink(url);
+        if (!link) { ncmNotify.warn('Use an https:// link, or the path of a sound file in your world.'); return; }
+        r = await s.saveLineSettings(number, { ...settings, greeting: { ...settings.greeting, audio: link, duration: 0 } });
+      } else if (g.audio && !isLinkedGreeting(g.audio)) r = await s.saveLineSettings(number, { ...settings, greeting: { ...settings.greeting, audio: g.audio, duration: g.duration } });
+      else { ncmNotify.warn('Record a greeting, or give a sound file.'); return; }
+    } else r = await s.saveLineSettings(number, settings);
     if (!r.ok) ncmNotify.warn(r.error); else ncmNotify.info(`${name || number}: greeting saved.`);
     return this.app.render();
   }
@@ -512,7 +529,7 @@ export class PhoneTab extends BaseTab {
   }
 
   /** Call a player's character (or anyone with a number) as an NPC identity. */
-  async _callAs(contactId = null) {
+  async _callAs(contactId = null, fromNumber = null) {
     const s = this.calls; const mcs = game.nightcity?.masterContactService;
     if (!s) return;
     let id = contactId;
@@ -525,16 +542,20 @@ export class PhoneTab extends BaseTab {
       id = pick.id;
     }
     if (!s.numberOfContact(id)) { ncmNotify.warn('That contact has no number — give them one first.'); return; }
+    // the line it comes from (tester 2026-11-08: Dial on an office line offered only the main number)
+    const ownLine = fromNumber ? s.line(fromNumber) : null;
+    const fromNum = ownLine?.owner?.contactId === id ? ownLine.number : s.numberOfContact(id);
+    const lineName = ownLine?.owner?.contactId === id && ownLine.label ? ` (${ownLine.label})` : '';
     const targets = getPlayerCharacters().map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '', sub: s.numberOf(p.actorId) || 'no number', group: 'Players' }))
       .filter((t) => t.sub !== 'no number');
     if (!targets.length) { ncmNotify.warn("No player's character has a number yet."); return; }
     const who = await showNamePicker({ title: `Call as ${mcs?.getContact?.(id)?.name || 'NPC'}…`, hint: 'Who to ring.', placeholder: 'search characters…', entries: targets });
     if (!who?.id) return;
     const how = await showNamePicker({ title: 'Their screen shows…', hint: 'A withheld number shows as Unknown caller; they can try to trace it.',
-      entries: [{ id: 'show', name: `${mcs?.getContact?.(id)?.name || 'The NPC'} — ${s.numberOfContact(id)}`, icon: 'fas fa-id-badge' },
+      entries: [{ id: 'show', name: `${mcs?.getContact?.(id)?.name || 'The NPC'} — ${fromNum}${lineName}`, icon: 'fas fa-id-badge' },
         { id: 'anon', name: 'Number withheld', icon: 'fas fa-user-secret' }] });
     if (!how?.id) return;
-    const r = await s.placeCall(s.numberOf(who.id), { contactId: id, anon: how.id === 'anon' });
+    const r = await s.placeCall(s.numberOf(who.id), { contactId: id, anon: how.id === 'anon', line: fromNum !== s.numberOfContact(id) ? fromNum : null });
     if (r && !r.ok && r.error) ncmNotify.warn(r.error);
     this._view = 'live';
     return this.app.render();

@@ -244,6 +244,11 @@
 .ncm-app .ncm-calls-mlrec { display: none; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ncm-app .ncm-calls-ml[data-kind="recorded"] .ncm-calls-mlrec { display: flex; }
 .ncm-app .ncm-calls-mlrec .t { font: calc(11px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-secondary); }
+/* an audio greeting from a sound file (a link or a world path) instead of a recording */
+.ncm-app .ncm-calls-mlurl { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; margin: 0; }
+.ncm-app .ncm-calls-mlurl .lbl { flex: none; font: 700 calc(10px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-calls-mlurl input { flex: 1; min-width: 0; height: calc(28px * var(--ncm-text-scale, 1)); padding: 0 8px; background: var(--ncm-bg-elevated); color: var(--ncm-text-primary); border: 1px solid var(--ncm-border); border-radius: 2px; font: calc(12px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); }
+.ncm-app .ncm-calls-mlrec .ncm-calls-mlurl input:focus { outline: none; border-color: var(--ncm-secondary); box-shadow: none; }
 .ncm-app .ncm-calls-ml.is-recording [data-calls-ml-rec] { color: #fff !important; background: #ff4b4b !important; border-color: #ff4b4b !important; }
 .ncm-app .ncm-calls-ml[data-kind="recorded"] .ncm-calls-mltext { opacity: .8; }
 

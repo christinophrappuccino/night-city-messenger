@@ -40,7 +40,7 @@ export class PayphoneBooth {
     const bus = game.nightcity?.eventBus;
     bus?.on(EVENTS.PAYPHONE_STATE, ({ id } = {}) => { if (this.pp?.id === id) this._refreshBusy(); });
     // a call that ends while the booth is open puts the handset back and the booth goes (it does not linger)
-    bus?.on(EVENTS.CALL_ENDED, ({ call } = {}) => { if (this.st?.callId && call?.id === this.st.callId) { this._putBack(); this.close(); } });
+    bus?.on(EVENTS.CALL_ENDED, ({ call, transfer } = {}) => { if (!transfer && this.st?.callId && call?.id === this.st.callId) { this._putBack(); this.close(); } });
     // the booth's own record changed (the GM restyled it): reopen in place
     Hooks.on('updateSetting', (s) => { if (s?.key === `${MODULE_ID}.payphones` && this.pp) { const fresh = this.svc.get(this.pp.id); if (!fresh) this.close(); else if (this.st?.at === 'idle') this.open(fresh); } });
   }

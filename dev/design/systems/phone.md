@@ -87,3 +87,26 @@ Sim `dev/tools/sims/test-tester-round-2026-11-08.mjs`; macro `dev/tools/test-tes
 - **Parked:** a Merge-two-contacts tool; burner lines showing their own label; a trace run by another character
   ("give me your phone": a picker of characters in the scene, the roll prompted on that player's client, the result to
   both).
+
+## Tester round 2026-11-08, second batch (switchboard, calls that never rang, greeting files)
+
+- **A call that never rings carries `unrung: true`** (a switchboard, a recording / special number, not in service, no
+  signal, straight to voicemail / Do Not Disturb). Only the caller's client ever held it, so the GM's log check
+  (`checkLogRequest`, audit SEC-22: "a call this GM never saw") refused every one of them and nothing reached either
+  log. Now the GM rebuilds the row in `_unrungSummary`: the caller must be the sender's own character on one of its
+  own numbers (or a booth, or a GM's NPC), the other end is only a number (never a person, so nobody else's log is
+  written), no words, no length, no tap intercept, logged once per id. A new no-ring path sets `unrung` or its call
+  goes unlogged. Sim `test-tester-round-2026-11-08b`.
+- **The corporate switchboard is a caller-only call state `board`** (`placeCall` → `call.board = { greet, exts (listed
+  only), operator, dialled, as }`). Offices answered by the GM or a recording show it on a main-number dial with no
+  extension; voicemail offices go straight to voicemail as before; `MIL-0100 x17` skips it. `boardPick(callId, { ext |
+  operator })` places the real call with `as.viaBoard`; the board leaves with `CALL_ENDED { role:'watch', quiet,
+  transfer }` (no log, the HUD drops it, the payphone listeners ignore `transfer`); a refused extension puts it back.
+  It never appears in `allCalls()`. Hang up = `answered` (they heard the recording), 2 min alone = the same.
+  An operator (GM) office that rings out goes to the office voicemail with its greeting (`to.office` is set on that
+  path too; `_toVoicemail` treats an office as an NPC line and needs a GM online).
+- **Call as from a contact's own line**: `_caller({ contactId, line })` uses that number when the line's owner is the
+  contact; the Numbers line's Dial passes `data-n`.
+- **Greeting sound files**: the `recorded` kind (labelled **Audio**) also takes an https link or a world path
+  (`greetingLink`; `isLinkedGreeting` tells a link from a recording made here). Both editors (player My line, GM
+  greeting dialog with a file picker). A read-out greeting uses each listener's own voices — said in both editors.
