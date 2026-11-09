@@ -3,6 +3,20 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.3.4] — 2026-11-08
+
+### Added
+- **Company switchboards.** Calling a company's main number now gives the caller its switchboard: the greeting, the listed extensions, a box to type one that is not listed, and Operator when the GM answers for that office. A wrong extension says so and stays on the switchboard. Dialling the extension with the number (`MIL-0100 x17`) still goes straight through.
+- **Voicemail greetings can be a sound file.** The Audio greeting (was Recorded) takes a recording, an https link or a file in your world (the GM can browse for one). Everyone hears the same sound; a read-out greeting uses each computer's own voice, and both greeting editors now say so.
+- **Replies can add people.** Reply and Reply All keep the To field and Cc open. The person you reply to stays locked; an anonymous reply stays as it was. Someone added who was not on the original gets a quoted copy of it (never an encrypted or self-destructing one), and the composer says so.
+
+### Fixed
+- **Calls that never rang were missing from both call logs** (a switchboard, a recording, a number not in service, no signal, a line set to go straight to voicemail). They are logged now.
+- **A company operator who didn't pick up just ended the call.** It now goes to the office's voicemail with its greeting.
+- **Dial on a contact's office line called from their main number.** It calls from that line, and the "Their screen shows" choice names it.
+- **The messenger opened at its default size every time**, cutting off the header controls at larger Text Size. It now opens at the size it was left at, and bigger at larger Text Size.
+- **Phone → Numbers → Walk through it: the district list was squashed** in areas with many districts. The rows keep their height and the list scrolls.
+
 ## [2.3.3] — 2026-11-08
 
 ### Fixed
