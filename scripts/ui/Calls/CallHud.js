@@ -195,7 +195,14 @@ export class CallHud {
     this._rendered = key; this._mainId = main.call.id; this._wasState = main.call.state;
     // a new call: measure again (a module may have put something down the left since the last one)
     if (fresh && !this._dragging) applyPlace(currentPlace());
+    // a switchboard's half-typed extension survives the redraw (another call's ring would otherwise empty it)
+    const ext = this.stage.querySelector('[data-board-ext]');
+    const kept = ext ? { id: ext.dataset.boardExt, value: ext.value, focused: document.activeElement === ext } : null;
     this.stage.innerHTML = this._callHtml(main, { waiting, heldOther, grip: true });
+    if (kept) {
+      const again = this.stage.querySelector(`[data-board-ext="${CSS.escape(kept.id)}"]`);
+      if (again) { again.value = kept.value; if (kept.focused) { again.focus(); again.setSelectionRange?.(kept.value.length, kept.value.length); } }
+    }
     if (fresh && !this.reduced) this._playIn(this.stage.querySelector('.ncm-ch-call'));
     this._startTick();
   }

@@ -26,7 +26,10 @@ const cleanAudio = (v) => {
  * neither (a data URL, a script scheme, quotes). An audio greeting plays the same file for every caller, which a
  * read-out greeting cannot (each computer reads it in its own voice — tester 2026-11-08).
  */
-export const greetingLink = (v) => { const a = cleanAudio(String(v ?? '').trim()); return /^data:/i.test(a) ? '' : a; };
+export const greetingLink = (v) => { const a = cleanAudio(String(v ?? '').trim()); return /^data:/i.test(a) || /^http:\/\//i.test(a) ? '' : a; };
+/** What the editors say when a typed sound file is refused. A plain http:// link is refused because a browser on an
+ *  https server (The Forge, most hosts) blocks it, so it would never play. */
+export const GREETING_LINK_HELP = 'Use an https:// link (http:// will not play on a secure server), or the path of a sound file in your world.';
 /** Is this stored greeting audio a file someone linked (not one recorded here, which lives in ncm-voicemail)? */
 export const isLinkedGreeting = (a) => !!a && !/^data:/i.test(a) && !/(^|\/)ncm-voicemail\//.test(a);
 export const DEFAULT_GREETING = 'The person you are calling is not available.';

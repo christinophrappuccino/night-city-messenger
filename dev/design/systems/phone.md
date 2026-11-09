@@ -110,3 +110,6 @@ Sim `dev/tools/sims/test-tester-round-2026-11-08.mjs`; macro `dev/tools/test-tes
 - **Greeting sound files**: the `recorded` kind (labelled **Audio**) also takes an https link or a world path
   (`greetingLink`; `isLinkedGreeting` tells a link from a recording made here). Both editors (player My line, GM
   greeting dialog with a file picker). A read-out greeting uses each listener's own voices — said in both editors.
+- **Follow-up (same day):** a half-typed switchboard extension (and its focus) survives a HUD redraw; `greetingLink`
+  refuses `http://` (an https server blocks it, so it would never play) and both editors say so with
+  `GREETING_LINK_HELP`; the link field's tooltip says each caller's browser fetches it from that site.

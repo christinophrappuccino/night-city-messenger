@@ -64,7 +64,7 @@
       {{else}}<span class="ncm-calls-hint"><i class="fas fa-microphone-slash"></i> {{myline.recReason}}</span>{{/if}}
       <button type="button" class="ncm-calls-btn" data-calls-ml-play data-src="{{myline.audio}}"><i class="fas fa-play"></i> Play</button>
       <span class="t" data-calls-ml-rect>{{#if myline.url}}A sound file{{else if myline.audio}}Your greeting · {{myline.length}}{{else}}Up to 20 seconds.{{/if}}</span>
-      <label class="ncm-calls-mlurl" data-tooltip="An https:// link, or a file in your world. Everyone who calls hears this same sound."><span class="lbl">Or a sound file</span><input type="text" data-calls-ml-url value="{{myline.url}}" placeholder="https://…/greeting.mp3" autocomplete="off" spellcheck="false"></label>
+      <label class="ncm-calls-mlurl" data-tooltip="An https:// link, or a file in your world. Everyone who calls hears this same sound. A link is fetched by each caller's browser from that site."><span class="lbl">Or a sound file</span><input type="text" data-calls-ml-url value="{{myline.url}}" placeholder="https://…/greeting.mp3" autocomplete="off" spellcheck="false"></label>
     </div>
     <textarea class="ncm-calls-mltext" data-calls-ml-text maxlength="{{myline.max}}" rows="2" placeholder="{{myline.defaultText}}">{{myline.text}}</textarea>
     {{#if myline.canSpeak}}<label class="ncm-calls-mlvoice"><span class="lbl">Voice</span><select data-calls-ml-voice data-current="{{myline.voice}}"><option value="">This browser's default voice</option></select></label>

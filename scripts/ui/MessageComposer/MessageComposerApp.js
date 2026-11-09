@@ -29,6 +29,7 @@ import { tagHueIndex } from '../../utils/tagHue.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { DRAFTS_FLAG, newDraftId, readDrafts, pruneDrafts, draftRecipientName, draftLabel, draftKind, draftHasContent, relativeAge } from '../../utils/drafts.js';
 import { buildPreview } from './previewModel.js';
+import { newcomers, quoteBlockedWhy, quoteHtml } from '../../utils/replyQuote.js';
 import { newFilePicker, htmlOf } from '../../utils/compat.js';
 import { wealthBalance } from '../../utils/cpr.js';
 
@@ -468,6 +469,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
   }
 
+  /**
+   * A reply that reaches someone who was not on the original carries a quoted copy of it (utils/replyQuote.js), so they
+   * know what it answers. Null when nobody is new, or for an anonymous reply.
+   * @returns {{names: string, why: string, tip: string, html: string}|null}
+   */
+  _replyQuote() {
+    const orig = this.originalMessage;
+    if (this.mode !== 'reply' || !orig || this.anonReplyTo) return null;
+    const names = newcomers(orig, this.recipients);
+    if (!names.length) return null;
+    const why = quoteBlockedWhy(orig);
+    const who = names.join(', ');
+    if (why) return { names: who, why, tip: `${who} did not get the message you are replying to. ${why}`, html: '' };
+    const ids = { contactId: orig.fromContactId, actorId: orig.fromActorId, email: orig.from, storedName: orig.fromName };
+    const sender = resolveDisplayName(ids, game.actors?.get(orig.fromActorId)?.name || orig.from || 'Unknown');
+    return { names: who, why: '', tip: `${who} did not get the message you are replying to, so it is copied into your reply. Everyone on the reply sees the copy.`, html: quoteHtml({ sender, email: orig.from || '', when: orig.timestamp ? formatCyberDate(orig.timestamp) : '',
+      subject: orig.subject || '', body: cleanHtml(orig.body || '', { mode: 'mail' }) }) };
+  }
+
   /** Forward setup — subject + quoted body from the service. */
   _initForward() {
     const fwd = this.messageService?.buildForward(this.originalMessage, this.fromActorId, '', '');
@@ -742,6 +762,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
       // Conversation context
       originalMessageCard,
+      replyQuote: this._replyQuote(),
 
       // Alerts
       isDarknet,
@@ -2297,7 +2318,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         from: this.fromContact?.email || undefined,
         fromName: this.fromContact?.name || this._mainSenderName() || undefined,
         subject: this.subject,
-        body: this.body,
+        body: this.body + (this._replyQuote()?.html || ''),
         priority: this.priority,
         threadId: this.threadId,
         inReplyTo: this.inReplyTo,

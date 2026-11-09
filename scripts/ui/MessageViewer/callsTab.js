@@ -22,7 +22,7 @@ import { callProfile, signalLine } from '../../utils/callProfile.js';
 import { formatDuration } from '../../utils/callModel.js';
 import { DIAL_SVG } from '../Calls/CallHud.js';
 import { dateBands, searchSnippet, markHit, BAND_PAGE } from '../../utils/logFolds.js';
-import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX, greetingFor, greetingLink, isLinkedGreeting } from '../../utils/voicemail.js';
+import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX, greetingFor, greetingLink, isLinkedGreeting, GREETING_LINK_HELP } from '../../utils/voicemail.js';
 import { speak, voices, canSpeak } from '../Calls/speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from '../Calls/recorder.js';
 import { themedConfirm, themedPrompt } from '../../utils/adminTheme.js';
@@ -479,7 +479,7 @@ export async function handleCallsAction(viewer, action, target) {
         else if (url) {
           // a sound file: every caller plays the same one (tester 2026-11-08)
           const link = greetingLink(url);
-          if (!link) { ncmNotify.warn('Use an https:// link, or the path of a sound file in your world.'); return; }
+          if (!link) { ncmNotify.warn(GREETING_LINK_HELP); return; }
           r = await s.saveLineSettings(number, { ...settings, greeting: { ...settings.greeting, audio: link, duration: 0 } });
         } else {
           if (!cur.audio || isLinkedGreeting(cur.audio)) { ncmNotify.warn('Record a greeting, or give a sound file.'); return; }
@@ -768,7 +768,7 @@ export function wireCallsTab(viewer, html) {
     playBtn?.addEventListener('click', () => {
       const typed = ml.querySelector('[data-calls-ml-url]')?.value.trim() || '';
       const src = st.mlClip?.blob ? URL.createObjectURL(st.mlClip.blob) : (typed ? greetingLink(typed) : playBtn.dataset.src);
-      if (typed && !src) { ncmNotify.warn('Use an https:// link, or the path of a sound file in your world.'); return; }
+      if (typed && !src) { ncmNotify.warn(GREETING_LINK_HELP); return; }
       if (src) playAudio(src); else ncmNotify.info('Nothing recorded yet.');
     });
     const sel = ml.querySelector('[data-calls-ml-voice]');

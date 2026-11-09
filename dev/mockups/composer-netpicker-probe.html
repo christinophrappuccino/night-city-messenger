@@ -171,7 +171,7 @@ window.addEventListener('load', async () => {
       header: isGM ? 'Send this message via' : 'Available networks',
       footer: dead ? 'Dead zone — all signals jammed' : isGM ? 'This message only — you stay on CitiNet' : 'Switches your connection — your inbox follows' },
     sendBackdated: isGM && sp.get('dated') === '1', sendTimestampFormatted: '03 Aug 2045 09:15', currentGameTime: '14 Aug 2045 20:40',
-    recipients, recipientLocked: mode === 'reply', subject: mode === 'reply' ? '' : (sp.get('err') === '1' ? '' : 'About the Konpeki job'), body,
+    recipients, recipientLocked: mode === 'reply' && anon, subject: mode === 'reply' ? '' : (sp.get('err') === '1' ? '' : 'About the Konpeki job'), body,
     drawer, priorities: Object.entries(PL).map(([id, label]) => ({ id, label, active: id === priority })),
     priorityLabel: PL[priority], priorityTone: PT[priority], priorityOn: priority !== 'normal',
     encryptionEnabled: enc, encryptionDV: 18, encryptionType: enc ? 'BLACK_ICE' : 'ICE', encryptionFailureMode: 'damage', isLethalICE: enc,
@@ -182,6 +182,8 @@ window.addEventListener('load', async () => {
     selfDestructOptions: [['after_read', 'after reading'], ['1h', 'in 1 h'], ['6h', 'in 6 h'], ['24h', 'in 24 h']].map(([id, label]) => ({ id, label, active: id === 'after_read' })),
     scheduleEnabled: sched, scheduledTime: sched ? '2045-08-15T08:00:00Z' : '', scheduledTimeFormatted: sched ? '15 Aug 2045 08:00' : '',
     charCount: body.replace(/<[^>]+>/g, '').length, originalMessageCard: original,
+    // ?quote=1 — someone new is on the reply: the earlier mail is copied in; ?quote=lock — it was encrypted, so not
+    replyQuote: sp.get('quote') === 'lock' ? { why: 'x', tip: 'Dex did not get the message you are replying to. It was encrypted, so it is not copied in.' } : sp.get('quote') ? { why: '', tip: 'Dex did not get the message you are replying to, so it is copied into your reply. Everyone on the reply sees the copy.' } : null,
     isDarknet: darknet, degradedSignal: true, reliabilityFailChance: 12,
     attachments, hasAttachments: attachments.length > 0, errors, sending: false,
     autoSaveTime: sp.get('drafts') ? '20:38' : null, draftCount: Number(sp.get('drafts') || 0), templateCount: 4,

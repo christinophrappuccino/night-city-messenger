@@ -234,5 +234,27 @@ const setOffice = (o) => { worldSettings.phoneOffices = { [KEY]: o }; };
   ok(back.width === 1000 && back.height === 700, 'a size the player left it at wins');
 }
 
+// ═══ 5. follow-up: the quote for new people, the extension box, http links ═══
+{
+  const Q = await imp('scripts/utils/replyQuote.js');
+  const orig = { messageId: 'm1', from: 'rogue@afterlife.nc', fromActorId: null, fromContactId: 'rogue', to: 'v@nc.net', toActorId: 'v', subject: 'Shipment <moved>', body: '<p>Pier four.</p>', timestamp: '2045-08-15T22:41:00Z',
+    participants: [{ email: 'rogue@afterlife.nc', hint: { contactId: 'rogue' } }, { email: 'v@nc.net', hint: { actorId: 'v' } }, { email: 'judy@nc.net', hint: { actorId: 'judy' } }] };
+  ok(Q.newcomers(orig, [{ contactId: 'rogue', email: 'rogue@afterlife.nc', name: 'Rogue' }]).length === 0, 'a plain reply to the sender: nobody new');
+  ok(Q.newcomers(orig, [{ actorId: 'judy', email: 'JUDY@nc.net', name: 'Judy' }]).length === 0, 'someone already on it (any casing) is not new');
+  ok(Q.newcomers(orig, [{ contactId: 'rogue', name: 'Rogue' }, { actorId: 'dex', email: 'dex@nc.net', name: 'Dex' }]).join() === 'Dex', 'Dex added: Dex is new');
+  ok(Q.newcomers(orig, [{ isGroup: true, members: [{ actorId: 'judy', name: 'Judy' }, { email: 'kerry@nc.net', name: 'Kerry' }] }]).join() === 'Kerry', 'a group counts by its members');
+  ok(Q.newcomers({ from: 'a@x', to: 'b@x' }, [{ email: 'b@x' }, { email: 'c@x', name: 'C' }]).join() === 'C', 'old mail with no participants list: its from and to');
+  ok(Q.quoteBlockedWhy({ encryption: { type: 'ICE' } }).includes('encrypted') && Q.quoteBlockedWhy({ selfDestruct: { mode: 'after_read' } }).includes('self-destructs') && Q.quoteBlockedWhy(orig) === '', 'never a locked or self-destructing original');
+  const h = Q.quoteHtml({ sender: 'Rogue <x>', email: 'r@x', when: '15 Aug', subject: 'Shipment <moved>', body: '<p>Pier four.</p>' });
+  ok(h.includes('<blockquote class="ncm-reply-quote">') && h.includes('Rogue &lt;x&gt;') && h.includes('Shipment &lt;moved&gt;') && h.includes('<p>Pier four.</p>'), 'the quote escapes the header, keeps the cleaned body');
+  const comp = read('scripts/ui/MessageComposer/MessageComposerApp.js'), chbs = read('templates/message-composer/message-composer.hbs');
+  ok(comp.includes("body: this.body + (this._replyQuote()?.html || ''),") && comp.includes("if (this.mode !== 'reply' || !orig || this.anonReplyTo) return null;"), 'the send adds the quote; never on an anonymous reply');
+  ok(chbs.includes('ncm-composer__quote-new') && chbs.includes('replyQuote.tip'), 'the composer says it is copied in (or why not)');
+  const hud = read('scripts/ui/Calls/CallHud.js');
+  ok(hud.includes('const kept = ext ? { id: ext.dataset.boardExt, value: ext.value') && hud.includes('again.value = kept.value'), 'a half-typed extension survives a redraw');
+  const V = await imp('scripts/utils/voicemail.js');
+  ok(V.greetingLink('http://x.test/a.mp3') === '' && V.greetingLink('https://x.test/a.mp3') && V.GREETING_LINK_HELP.includes('http://'), 'a plain http link is refused, and the editors say why');
+}
+
 console.log(`test-tester-round-2026-11-08b: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

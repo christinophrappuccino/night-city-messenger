@@ -212,6 +212,7 @@
       <div class="ncm-composer__quote-lbl">
         <i class="fas {{#if isForward}}fa-share{{else}}fa-reply{{/if}}"></i>
         {{#if isForward}}Forwarding this message{{else}}Replying to{{/if}}
+        {{#if replyQuote}}<span class="ncm-composer__quote-new" data-tooltip="{{ncm-tip replyQuote.tip}}"><i class="fas {{#if replyQuote.why}}fa-lock{{else}}fa-quote-left{{/if}}"></i> {{#if replyQuote.why}}Not copied in{{else}}Copied in for new people{{/if}}</span>{{/if}}
         {{#if originalMessageCard.encrypted}}<span class="ncm-composer__quote-ice"><i class="fas fa-shield-halved"></i> ICE{{#if originalMessageCard.encDV}} · DV {{originalMessageCard.encDV}}{{/if}}</span>{{/if}}
       </div>
       <div class="ncm-composer__quote-hd">

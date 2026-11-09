@@ -384,6 +384,10 @@
 }
 .ncm-composer__quote-ice { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0; font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: color-mix(in oklab, var(--ncm-secret, var(--ncm-purple)) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); }
 .ncm-composer__quote-ice i { color: var(--ncm-secret, var(--ncm-purple)); }
+/* someone on the reply was not on the original: it is copied in for them (or says why not) — utils/replyQuote.js */
+.ncm-composer__quote-new { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0; font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: color-mix(in oklab, var(--ncm-secondary) 75%, var(--ncm-text-heading, var(--ncm-text-primary))); }
+.ncm-composer__quote-new i { color: var(--ncm-secondary); }
+.ncm-composer__quote-new + .ncm-composer__quote-ice { margin-left: 8px; }
 .ncm-composer__quote-hd { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; align-items: center; }
 .ncm-composer__quote-sender { font-family: var(--ncm-font-display); font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-heading, var(--ncm-text-primary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ncm-composer__quote-sender span { margin-left: 6px; font-family: var(--ncm-font-mono); font-weight: 400; font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-addr, var(--ncm-text-muted)); }

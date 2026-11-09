@@ -27,7 +27,7 @@ import { PHONE_VIEWS, NAV_PARENT, logLanding, LOG_FILTERS, LOG_GROUPS, VM_SHOW, 
 import { PLAN_NAMES } from '../../../utils/phoneEmergency.js';
 import { numbersHtml, wireNumbers, closeNumbers, newNumberState, syncFrame, requestCount } from './phoneNumbersView.js';
 import { payphonesHtml, wirePayphones, newPayphoneState } from './payphonesView.js';
-import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX, greetingLink, isLinkedGreeting } from '../../../utils/voicemail.js';
+import { GREETING_KINDS, GREETING_LABELS, DEFAULT_GREETING, GREETING_MAX, greetingLink, isLinkedGreeting, GREETING_LINK_HELP } from '../../../utils/voicemail.js';
 import { newFilePicker } from '../../../utils/compat.js';
 import { speak, voices, canSpeak } from '../../Calls/speech.js';
 import { VoiceRecorder, micStatus, blobToBase64, playAudio } from '../../Calls/recorder.js';
@@ -420,7 +420,7 @@ export class PhoneTab extends BaseTab {
         <label class="ncm-ph2-gr__row"><span>Greeting</span><select name="kind">${GREETING_KINDS.map((k) => `<option value="${k}"${k === g.kind ? ' selected' : ''}>${GREETING_LABELS[k]}</option>`).join('')}</select></label>
         <div class="ncm-ph2-gr__rec">${this.calls.recordingOn && micStatus().ok ? '<button type="button" data-gr-rec><i class="fas fa-circle"></i> Record</button>' : `<span class="hint">${esc(!this.calls.recordingOn ? 'Recordings are switched off (Settings).' : micStatus().reason)}</span>`}
           <button type="button" data-gr-play><i class="fas fa-play"></i> Play</button><span class="hint" data-gr-rect>${isLinkedGreeting(g.audio) ? 'A sound file is set.' : g.audio ? 'A recording is saved.' : 'Up to 20 seconds.'}</span>
-          <label class="ncm-ph2-gr__row ncm-ph2-gr__url" data-tooltip="An https:// link, or a file in your world. Every caller hears this same sound."><span>Or a file</span><input type="text" name="url" value="${esc(isLinkedGreeting(g.audio) ? g.audio : '')}" placeholder="https://…/greeting.mp3" autocomplete="off" spellcheck="false"><button type="button" data-gr-browse data-tooltip="Pick a sound file from your world"><i class="fas fa-folder-open"></i></button></label></div>
+          <label class="ncm-ph2-gr__row ncm-ph2-gr__url" data-tooltip="An https:// link, or a file in your world. Every caller hears this same sound. A link is fetched by each caller's browser from that site."><span>Or a file</span><input type="text" name="url" value="${esc(isLinkedGreeting(g.audio) ? g.audio : '')}" placeholder="https://…/greeting.mp3" autocomplete="off" spellcheck="false"><button type="button" data-gr-browse data-tooltip="Pick a sound file from your world"><i class="fas fa-folder-open"></i></button></label></div>
         <textarea name="text" rows="3" maxlength="${GREETING_MAX}" placeholder="${esc(DEFAULT_GREETING)}">${esc(g.text)}</textarea>
         ${canSpeak() ? `<label class="ncm-ph2-gr__row ncm-ph2-gr__voice"><span>Voice</span><select name="voice"><option value="">This browser's default voice</option></select></label>` : ''}
         <div class="ncm-ph2-gr__row"><button type="button" data-gr-preview><i class="fas fa-play"></i> Preview</button><span class="hint">Voices are this computer's; another computer may read it in its own default voice.</span></div>
@@ -462,7 +462,7 @@ export class PhoneTab extends BaseTab {
           root.querySelector('[data-gr-play]')?.addEventListener('click', () => {
             const typed = urlIn?.value.trim() || '';
             const src = clip?.blob ? URL.createObjectURL(clip.blob) : (typed ? greetingLink(typed) : g.audio);
-            if (typed && !src) { ncmNotify.warn('Use an https:// link, or the path of a sound file in your world.'); return; }
+            if (typed && !src) { ncmNotify.warn(GREETING_LINK_HELP); return; }
             if (src) playAudio(src); else ncmNotify.info('Nothing recorded yet.');
           });
           root.querySelector('[data-gr-preview]')?.addEventListener('click', () => {
@@ -483,7 +483,7 @@ export class PhoneTab extends BaseTab {
       else if (url) {
         // a sound file: every caller plays the same one (tester 2026-11-08)
         const link = greetingLink(url);
-        if (!link) { ncmNotify.warn('Use an https:// link, or the path of a sound file in your world.'); return; }
+        if (!link) { ncmNotify.warn(GREETING_LINK_HELP); return; }
         r = await s.saveLineSettings(number, { ...settings, greeting: { ...settings.greeting, audio: link, duration: 0 } });
       } else if (g.audio && !isLinkedGreeting(g.audio)) r = await s.saveLineSettings(number, { ...settings, greeting: { ...settings.greeting, audio: g.audio, duration: g.duration } });
       else { ncmNotify.warn('Record a greeting, or give a sound file.'); return; }

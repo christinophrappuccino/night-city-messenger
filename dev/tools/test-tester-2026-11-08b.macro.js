@@ -42,12 +42,18 @@
 
     // 5. greeting sound files
     const V = await import(`${base}/utils/voicemail.js`);
-    check('A greeting takes a link or a world path, never a script', V.greetingLink('https://x.test/a.mp3') && V.greetingLink('worlds/w/a.ogg') && !V.greetingLink('javascript:alert(1)'));
+    check('A greeting takes an https link or a world path, never http:// or a script', V.greetingLink('https://x.test/a.mp3') && V.greetingLink('worlds/w/a.ogg') && !V.greetingLink('http://x.test/a.mp3') && !V.greetingLink('javascript:alert(1)'));
     check('The greeting kind reads Audio', V.GREETING_LABELS.recorded === 'Audio');
 
     // 6. Reply All, the messenger's size
     const comp = await text('scripts/ui/MessageComposer/MessageComposerApp.js');
     check('Every reply keeps the To field open (an anonymous one stays locked)', comp.includes("recipientLocked: this.mode === 'reply' && !!this.anonReplyTo,"));
+    const Q = await import(`${base}/utils/replyQuote.js`);
+    const orig = { from: 'a@x.net', to: 'b@x.net', participants: [{ email: 'a@x.net' }, { email: 'b@x.net' }] };
+    check('A reply quotes the earlier mail only when someone new is on it', Q.newcomers(orig, [{ email: 'a@x.net' }]).length === 0 && Q.newcomers(orig, [{ email: 'c@x.net', name: 'C' }]).join() === 'C');
+    check('Never a locked or self-destructing original', !!Q.quoteBlockedWhy({ encryption: { type: 'ICE' } }) && !!Q.quoteBlockedWhy({ selfDestruct: { mode: 'after_read' } }));
+    const hudSrc = await text('scripts/ui/Calls/CallHud.js');
+    check('A half-typed extension survives a redraw', hudSrc.includes('again.value = kept.value'));
     const { MessageViewerApp } = await import(`${base}/ui/MessageViewer/MessageViewerApp.js`);
     check('The messenger remembers its size', typeof MessageViewerApp._openingSize === 'function' && typeof MessageViewerApp.prototype._rememberSize === 'function');
   } catch (err) {
@@ -63,5 +69,8 @@
     5. Give an NPC a second (office) line. Numbers → that line → Dial: the choice names the office number, and the player's screen shows that number.<br>
     6. Player: Calls → My line → Greeting → Audio → paste a sound-file link → Play → Save. Call them from another client and don't answer: that file plays. As GM, the line's greeting dialog has the same field and a folder button.<br>
     7. Reply, and Reply All: the To field says "Add someone…" and Cc is there; the sender's chip has a lock. Reply to an anonymous mail: no To field.<br>
+    7b. Reply and add someone who was not on the mail: "Copied in for new people" shows by Replying to. Send: the new person's copy ends with the quoted earlier mail. On an encrypted mail it says "Not copied in" instead.<br>
+    7c. On the switchboard, type part of an extension, then ring that player from another client: the typed digits stay.<br>
+    7d. My line → Audio → paste an http:// (not https) link → Save: refused with a message saying why.<br>
     8. Player with Text Size 120%: open the messenger (bigger than before), resize it, close, reopen: it opens at the size you left it.</p>` });
 })();
