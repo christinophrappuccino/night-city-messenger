@@ -3,6 +3,24 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.3.5] — 2026-11-10
+
+### Added
+- **Inspect Node: delete a log line, or clear the log.** Hover a line for its delete button; Clear empties the whole log after a confirm. An eye marks the lines the console's ticker shows right now. Clearing Admin → Networks → Activity log never touched a node's own log; they are two records.
+- **Tick a group.** Sharing a phone number (Admin → Phone) and Push to players (Admin → Contacts → Groups) can tick a whole contact group in one click.
+
+### Changed
+- **A company on Voicemail now opens its switchboard** when it has a greeting or a listed extension; 0 leaves a message. With nothing to show it still goes straight to the tone. The Greeting box shows for every "Who answers" choice, and the player's dial hint says what will really happen.
+- **Lines the GM makes as GM ("GM — switched off", "GM — jacked out") stay off the node's ticker.** Inspect Node marks them GM only.
+- **The node ticker scrolls at a steady speed and every line comes round again.** It no longer restarts each time the node changes.
+- **A pushed group carries player characters' phone numbers too**, as it already did for directory contacts.
+
+### Fixed
+- **A pushed contact group gave each character themselves as a contact** when their directory entry wasn't linked to their sheet. Nobody gets themselves now, their copy of the group leaves them out, and a re-push removes the self-contact an earlier push left.
+- **Calls that rang out into voicemail were missing from the call logs.** They are logged, as Voicemail. Calls to a player who is offline are logged too.
+- **Pressing N on the voicemail screen did nothing**, so hanging up took two tries.
+- **A company's main number held by a contact rang them instead of the switchboard** with no warning. Admin → Corporations now says so, and the dial hint stops promising a switchboard.
+
 ## [2.3.4] — 2026-11-08
 
 ### Added
