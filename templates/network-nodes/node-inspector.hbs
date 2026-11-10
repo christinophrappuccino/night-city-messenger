@@ -181,8 +181,8 @@
       {{/if}}
 
       <div class="ncm-nin__logwrap">
-        <span class="ncm-nin__k">Log — players see the lines that aren't wiped</span>
-        <div class="ncm-nin__log">{{#each log}}<div class="{{#if wiped}}is-wiped{{/if}}"><span class="m">{{t}}</span><span>{{#if who}}{{who}} — {{/if}}{{what}}{{#if wiped}} <em>wiped</em>{{/if}}</span></div>{{else}}<div class="is-empty">Nothing yet.</div>{{/each}}</div>
+        <div class="ncm-nin__loghd"><span class="ncm-nin__k" data-tooltip="Players read the lines with an eye on the console's ticker: the newest five that aren't wiped. Lines you wrote as GM stay with you." data-tooltip-direction="UP">Log — <i class="fas fa-eye"></i> on the ticker</span>{{#if log.length}}<button type="button" class="ncm-nin__b sm" data-action="logClear" data-tooltip="Remove every line. Admin → Networks → Activity log keeps its rows"><i class="fas fa-broom"></i>Clear</button>{{/if}}</div>
+        <div class="ncm-nin__log">{{#each log}}<div class="{{#if wiped}}is-wiped{{/if}}{{#if gm}} is-gm{{/if}}{{#if ticker}} is-ticker{{/if}}"><span class="m">{{t}}</span><span class="ln">{{#if ticker}}<i class="fas fa-eye" data-tooltip="On the ticker now"></i> {{/if}}{{#if who}}{{who}} — {{/if}}{{what}}{{#if wiped}} <em>wiped</em>{{/if}}{{#if gm}} <em data-tooltip="You wrote this as GM. Players never see it">GM only</em>{{/if}}</span><button type="button" class="ncm-nin__logdel" data-action="logDel" data-i="{{i}}" data-ts="{{ts}}" data-tooltip="Delete this line" aria-label="Delete this line"><i class="fas fa-xmark"></i></button></div>{{else}}<div class="is-empty">Nothing yet.</div>{{/each}}</div>
       </div>
     </aside>
   </div>

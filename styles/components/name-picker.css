@@ -73,6 +73,10 @@
 .ncm-pkr__chip b { font: 400 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace); color: var(--ncm-text-muted); }
 .ncm-pkr__chip:hover { border-color: var(--ncm-border-active, var(--ncm-secondary)); color: var(--ncm-text-primary); }
 .ncm-pkr__chip.is-on { color: var(--ncm-bg-deep); background: var(--ncm-secondary); border-color: var(--ncm-secondary); }
+/* sets: one click ticks a whole group (multi mode) */
+.ncm-pkr__sets { align-items: center; }
+.ncm-pkr__setlbl { flex: 0 0 auto; font: 700 calc(9.5px * var(--ncm-text-scale, 1)) var(--ncm-font-display, sans-serif); letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-label); margin-right: 2px; }
+.ncm-pkr__set i { font-size: .9em; color: var(--ncm-secondary); }
 .ncm-pkr__chip.is-on b { color: color-mix(in srgb, var(--ncm-bg-deep) 70%, transparent); }
 
 /* the list is THE scroller */

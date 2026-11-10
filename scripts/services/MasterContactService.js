@@ -608,6 +608,10 @@ export class MasterContactService {
         pc.actorId === actorId || pc.linkedActorId === actorId ||
         (emailLc && (pc.email || '').toLowerCase().trim() === emailLc)
       );
+      // their number rides along, as it does for a directory contact (pushToPlayer): a group push hands out the
+      // party's numbers too (tester 2026-11-09: sharing numbers one character at a time)
+      const number = game.nightcity?.callService?.numberOf?.(actorId) || '';
+      if (dupe && number && !dupe.phone) await contactRepo.updateContact?.(targetActorId, dupe.id, { phone: number });
       if (dupe) return { success: true, existing: true, contact: dupe };
 
       const roleItem = firstRole(actor);
@@ -616,6 +620,7 @@ export class MasterContactService {
         name: actor.name,
         email,
         customImg: img,
+        phone: number,
         actorId,
         type: 'player',
         role: roleItem?.name || '',

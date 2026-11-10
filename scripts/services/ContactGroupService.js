@@ -303,9 +303,13 @@ export class ContactGroupService {
     const world = worldAdapter();
     let shared = 0;
     const failed = [];
+    // A character never receives itself. A member is read through the directory first, and a character's directory
+    // entry need not be linked to the sheet (made by hand, imported), so "itself" is also any of its addresses or
+    // identities (tester 2026-11-09: everyone in a party group got themselves as a contact).
+    const isSelf = this.selfTest(targetActorId, world);
+    const selfMembers = [];
     for (const { member, resolved } of this.resolveMembers(group, world)) {
-      // A character never receives itself.
-      if (resolved.actorId && resolved.actorId === targetActorId) continue;
+      if (isSelf(member, resolved)) { selfMembers.push({ member, resolved }); continue; }
       try {
         let r = null;
         if (resolved.contactId) r = await master?.pushToPlayer?.(resolved.contactId, targetActorId);
@@ -317,7 +321,9 @@ export class ContactGroupService {
         log.warn('pushGroupToPlayer member failed', err);
       }
     }
-    const copy = sanitizeGroup({ ...group, id: undefined, sharedFrom: { groupId: group.id, at: now() } });
+    // an earlier push (before this rule) may have added them to their own list: take that contact out again
+    if (selfMembers.length) await this._removeSelfContacts(targetActorId, selfMembers);
+    const copy = sanitizeGroup({ ...this.copyFor(group, targetActorId, world), id: undefined, sharedFrom: { groupId: group.id, at: now() } });
     const list = this.getActorGroups(targetActorId).filter(g => g.sharedFrom?.groupId !== group.id);
     list.push(copy);
     try {
@@ -327,6 +333,57 @@ export class ContactGroupService {
     }
     this._emit(EVENTS.GROUP_PUSHED, { groupId, targetActorId, shared, failed: [...failed] });
     return { success: true, shared, failed };
+  }
+
+  /**
+   * "Is this member the character itself?" for one character: its sheet, its own address, or one of its directory
+   * identities (main or alias). Read once per push.
+   * @returns {(member: object, resolved: object) => boolean}
+   */
+  selfTest(actorId, world = worldAdapter()) {
+    const actor = world.getActor?.(actorId);
+    const ids = game.nightcity?.masterContactService?.identitiesFor?.(actorId) || [];
+    const emails = new Set([actor?.email, ...ids.map((c) => c.email)].map(normalizeEmail).filter(Boolean));
+    const contactIds = new Set(ids.map((c) => c.id));
+    return (member, resolved = {}) => (!!resolved.actorId && resolved.actorId === actorId)
+      || (!!resolved.contactId && contactIds.has(resolved.contactId))
+      || [resolved.email, member?.email].map(normalizeEmail).some((e) => e && emails.has(e));
+  }
+
+  /**
+   * What a character's copy of a GM group holds: the whole group (picture included) less the character itself —
+   * their own chip in the tray, or themselves on a group mail, is never wanted. The push writes it, and "Out of date"
+   * compares a held copy with it (never with the raw group, which would always differ for a member).
+   */
+  copyFor(group, actorId, world = worldAdapter()) {
+    if (!group) return group;
+    const isSelf = this.selfTest(actorId, world);
+    return { ...group, members: (group.members || []).filter((m) => !isSelf(m, resolveMember(m, world))) };
+  }
+
+  /** The characters a group reaches (sheet links, else a character whose address a member carries) — for "tick a group". */
+  characterIdsOf(group, world = worldAdapter()) {
+    const out = new Set();
+    for (const { member, resolved } of this.resolveMembers(group, world)) {
+      const id = resolved.actorId || world.actorByEmail?.(resolved.email || member.email)?.id || '';
+      if (id) out.add(id);
+    }
+    return [...out];
+  }
+
+  /** @private Take out of a character's contacts any entry that stands for one of its own self-members. */
+  async _removeSelfContacts(actorId, selfMembers) {
+    const repo = game.nightcity?.contactRepository;
+    if (!repo?.getContacts || !repo?.removeContact) return;
+    const emails = new Set(selfMembers.flatMap(({ member, resolved }) => [member.email, resolved.email]).map(normalizeEmail).filter(Boolean));
+    const contactIds = new Set(selfMembers.map(({ resolved }) => resolved.contactId).filter(Boolean));
+    try {
+      const mine = await repo.getContacts(actorId);
+      for (const c of mine || []) {
+        const self = c.actorId === actorId || (c.masterContactId && contactIds.has(c.masterContactId)) || (normalizeEmail(c.email) && emails.has(normalizeEmail(c.email)));
+        if (self) await repo.removeContact(actorId, c.id);
+      }
+    } catch (err) { log.warn('pushGroupToPlayer: could not tidy a self-contact', err); }
   }
 
   // ─── Export / import (GM groups travel with the master contacts) ───

@@ -977,7 +977,7 @@ export class ContactsTab extends BaseTab {
         knownN: known.length,
         kn: this._knownContext(all, known, p.actorId, mail),
         own: p.list.filter((e) => !all.some((c) => playerEntryMatches(e, c))).map((e) => ({ name: e.name || e.email || '?', email: e.email || '', initials: getInitials(e.name || e.email || '?') })),
-        ...this._heldGroupsContext(all, held, svc),
+        ...this._heldGroupsContext(all, held, svc, p.actorId),
         rack: this._groupRackContext(all, held, svc, groups),
         groupsN: held.length,
         canPush: groups.length > 0,
@@ -1226,13 +1226,14 @@ export class ContactsTab extends BaseTab {
   }
 
   /** Players → Groups they hold: copies you pushed (with an out-of-date check) and their own. */
-  _heldGroupsContext(all, held, svc) {
+  _heldGroupsContext(all, held, svc, actorId = null) {
     const row = (g) => {
       const master = g.sharedFrom?.groupId ? svc?.getMasterGroup?.(g.sharedFrom.groupId) : null;
       const at = g.sharedFrom?.at || '';
       // Out of date = the group's CONTENT differs (name, colour, members) — not a timestamp,
       // since the master group is re-saved for bookkeeping that changes nothing a player holds.
-      const stale = !!(master && groupSig(master) !== groupSig(g));
+      // (against what THEIR copy holds: a push leaves the character out of its own copy)
+      const stale = !!(master && groupSig(svc?.copyFor?.(master, actorId) ?? master) !== groupSig(g));
       const members = (g.members || []).map((m) => this._memberView(all, m));
       return {
         id: g.id, name: g.name, color: g.color || 'var(--ncm-secondary)', img: g.img || '', n: members.length,
@@ -1260,8 +1261,8 @@ export class ContactsTab extends BaseTab {
     const allRows = groups.map((g) => {
       const to = svc?.sharedWith?.(g.id) ?? [];
       // Out of date = a pushed copy's CONTENT differs from this group (the Players tab's rule, groupSig).
-      const mine = groupSig(g);
-      const stale = to.some((s) => (svc?.getActorGroups?.(s.actorId) ?? []).some((c) => c.sharedFrom?.groupId === g.id && groupSig(c) !== mine));
+      // each copy is compared with what that character's copy holds (a push leaves them out of their own)
+      const stale = to.some((s) => { const mine = groupSig(svc?.copyFor?.(g, s.actorId) ?? g); return (svc?.getActorGroups?.(s.actorId) ?? []).some((c) => c.sharedFrom?.groupId === g.id && groupSig(c) !== mine); });
       const members = (g.members || []).map((m) => this._memberView(all, m));
       return {
         id: g.id, name: g.name, color: g.color || 'var(--ncm-secondary)', img: g.img || '', n: (g.members || []).length,
@@ -2719,9 +2720,11 @@ export class ContactsTab extends BaseTab {
     const already = new Set(svc.sharedWith(id).map((s) => s.actorId));
     const picks = await showNamePicker({
       title: `Push "${group.name}" to…`,
-      hint: 'Members the player lacks are shared first, then the group. Re-pushing refreshes their copy.',
+      hint: 'Members the player lacks are shared first, with their phone numbers, then the group. Nobody gets themselves. Re-pushing refreshes their copy.',
       entries: pcs.map((pc) => ({ id: pc.actorId, name: pc.actorName, img: pc.actor?.img || '', sub: already.has(pc.actorId) ? 'has this group' : (pc.playerName || ''), note: 'player' })),
       multi: true,
+      // the group's own characters in one click (a party group pushed to the party)
+      sets: [{ label: group.name, icon: 'fas fa-users', ids: svc.characterIdsOf?.(group) || [], tip: `Tick the characters in ${group.name}` }],
       placeholder: 'search characters…',
     });
     if (!Array.isArray(picks) || !picks.length) return;

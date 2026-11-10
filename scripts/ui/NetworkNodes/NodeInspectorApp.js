@@ -12,13 +12,13 @@
  * update does not re-render the window (it would wipe what is being typed) — it re-renders when the form closes.
  */
 
-import { ncmNotify } from '../../utils/notify.js';
+import { ncmNotify, escapeHtml } from '../../utils/notify.js';
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
 import { isGM, formatCyberDate, isSelectableCharacter } from '../../utils/helpers.js';
-import { adminWait } from '../../utils/adminTheme.js';
+import { adminWait, adminConfirm } from '../../utils/adminTheme.js';
 import { showNamePicker, documentEntries } from '../../utils/namePicker.js';
 import { BaseApplication } from '../BaseApplication.js';
-import { NODE_KINDS, ALERT_LEVELS, NODE_EFFECTS, NODE_PROGRAMS, nodeStateAt, nodeHex, activeEffects, familyNodes } from '../../utils/networkNodes.js';
+import { NODE_KINDS, ALERT_LEVELS, NODE_EFFECTS, NODE_PROGRAMS, nodeStateAt, nodeHex, activeEffects, familyNodes, tickerLogLines, isGmLine } from '../../utils/networkNodes.js';
 import { resolveJackIn, jackKey, jackLock } from '../../utils/jackIn.js';
 import { editNodeDialog } from './NodeDialogs.js';
 
@@ -51,7 +51,7 @@ export class NodeInspectorApp extends BaseApplication {
       unjam: NodeInspectorApp._act, jamMore: NodeInspectorApp._act, infEdit: NodeInspectorApp._act, infClean: NodeInspectorApp._act,
       infRecall: NodeInspectorApp._act, infLoot: NodeInspectorApp._act, fxDel: NodeInspectorApp._act, runMove: NodeInspectorApp._act,
       runKick: NodeInspectorApp._act, runReset: NodeInspectorApp._act, lockClear: NodeInspectorApp._act, console: NodeInspectorApp._act,
-      edit: NodeInspectorApp._act,
+      edit: NodeInspectorApp._act, logDel: NodeInspectorApp._act, logClear: NodeInspectorApp._act,
     },
   }, { inplace: false });
 
@@ -161,7 +161,8 @@ export class NodeInspectorApp extends BaseApplication {
       add: this._add, addInf: this._add === 'infection', addFx: this._add === 'taps' || this._add === 'backdoors', addFxTap: this._add === 'taps',
       addJam: this._add === 'jam', addLog: this._add === 'log', addDamage: this._add === 'damage',
       plants: PLANT.map((k) => ({ k, icon: NODE_PROGRAMS[k].icon, label: NODE_PROGRAMS[k].label, on: k === 'worm', blurb: NODE_PROGRAMS[k].blurb })),
-      log: [...(node.log || [])].reverse().map((e) => ({ t: time(e.ts), who: e.who, what: e.what, wiped: !!e.wiped })),
+      // newest first; each line knows its place in the stored log (to remove it), and the few on the ticker are marked
+      log: (() => { const onTicker = new Set(tickerLogLines(node)); return (node.log || []).map((e, i) => ({ i, ts: e.ts, t: time(e.ts), who: e.who, what: e.what, wiped: !!e.wiped, gm: isGmLine(e), ticker: onTicker.has(e) })).reverse(); })(),
     };
   }
 
@@ -261,6 +262,14 @@ export class NodeInspectorApp extends BaseApplication {
       case 'runReset': return done(await ns.clearRun(node.id, ds.actorId), 'Session reset — their next jack-in starts fresh.');
       case 'lockClear': sec?.clearFor?.(ds.actorId, [jackKey(node)]); ncmNotify.info('Lockout cleared.'); return this.render();
       case 'console': return game.nightcity?.openNode?.(node.id);
+      // a GM delete, not a wipe: the line is gone from the log and the ticker (tester 2026-11-09)
+      case 'logDel': return done(await ns.removeNodeLogLine(node.id, Number(ds.i), Number(ds.ts)));
+      case 'logClear': {
+        if (!node.log.length) return;
+        const yes = await adminConfirm({ title: 'Clear the log', content: `<p>Remove all ${node.log.length} line${node.log.length === 1 ? '' : 's'} from ${escapeHtml(node.name)}'s log? Its ticker empties too. Admin → Networks → Activity log keeps its rows.</p>`, defaultYes: false });
+        if (!yes) return;
+        return done(await ns.clearNodeLog(node.id), 'Log cleared.');
+      }
       case 'edit': {
         const edited = await editNodeDialog(node, net);
         if (edited) await ns.saveNode({ ...edited, id: node.id, networkId: node.networkId });

@@ -45,6 +45,7 @@
  */
 
 import { adminDialog, playerDialog } from './adminTheme.js';
+import { tipText } from './notify.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -216,7 +217,7 @@ export function matchesPicker(e, q, group) {
 export function showNamePicker({
   title, hint = '', entries = [], chips = true, chipAll = 'All', allowNone = false, selected = '',
   placeholder = 'search…', taken, takenLabel = 'added', multi = false, preselected = null, doneLabel = 'Add selected',
-  emptyText = 'nothing found in this world', closeLabel = 'Cancel', onPick, admin = true, width = 440,
+  emptyText = 'nothing found in this world', closeLabel = 'Cancel', onPick, admin = true, width = 440, sets = [],
 } = {}) {
   const takenSet = taken instanceof Set ? taken : new Set(taken || []);
   const startTicked = new Set(preselected || []);
@@ -242,6 +243,14 @@ export function showNamePicker({
     <div class="ncm-pkr__chips" role="tablist">
       <span class="ncm-pkr__chip is-on" role="tab" data-group="">${esc(chipAll)} <b>${entries.length}</b></span>
       ${groups.map((g) => `<span class="ncm-pkr__chip" role="tab" data-group="${esc(g)}">${esc(g)} <b>${counts.get(g)}</b></span>`).join('')}
+    </div>` : '';
+
+  // multi only: named sets of ids ticked in one click (the GM's contact groups in Share a number — tester 2026-11-09).
+  // They look like the filter chips but tick rows; a second click unticks the set.
+  const setList = multi ? (sets || []).filter((x) => x?.label && (x.ids || []).some((id) => entries.some((e) => e.id === id))) : [];
+  const setsHtml = setList.length ? `
+    <div class="ncm-pkr__chips ncm-pkr__sets"><span class="ncm-pkr__setlbl">Tick a group</span>
+      ${setList.map((x, i) => `<span class="ncm-pkr__chip ncm-pkr__set" data-set="${i}" data-tooltip="${tipText(x.tip || `Tick everyone in ${x.label}`)}">${x.icon ? `<i class="${esc(x.icon)}"></i>` : ''}${esc(x.label)} <b>${x.ids.filter((id) => entries.some((e) => e.id === id)).length}</b></span>`).join('')}
     </div>` : '';
 
   const selIc = multi ? '' : '<i class="fas fa-check ncm-pkr__sel-ic"></i>';
@@ -281,7 +290,7 @@ export function showNamePicker({
         <div class="ncm-pkr${multi ? ' ncm-pkr--multi' : ''}">
           ${hint ? `<div class="ncm-pkr__hint">${esc(hint)}</div>` : ''}
           <div class="ncm-pkr__bar"><i class="fas fa-magnifying-glass"></i><input type="text" class="ncm-pkr__q" placeholder="${esc(placeholder)}" autocomplete="off"><span class="ncm-pkr__count">${entries.length}</span><span class="ncm-pkr__clear" title="clear"><i class="fas fa-xmark"></i></span></div>
-          ${chipsHtml}
+          ${chipsHtml}${setsHtml}
           <div class="ncm-pkr__list">${noneRow}${rows || `<div class="ncm-pkr__hint ncm-pkr__hint--empty">${esc(emptyText)}</div>`}</div>
           <div class="ncm-pkr__empty"></div>
           <div class="ncm-pkr__foot"><span class="ncm-pkr__status"></span><span class="ncm-pkr__keys"><kbd>↑↓</kbd> move <kbd>⏎</kbd> ${multi ? 'toggle' : 'pick'} <kbd>esc</kbd> close</span></div>
@@ -360,7 +369,7 @@ export function showNamePicker({
         };
         const setGroup = (g) => {
           activeGroup = g || '';
-          root.querySelectorAll('.ncm-pkr__chip').forEach((c) => c.classList.toggle('is-on', (c.dataset.group || '') === activeGroup));
+          root.querySelectorAll('.ncm-pkr__chip:not(.ncm-pkr__set)').forEach((c) => c.classList.toggle('is-on', (c.dataset.group || '') === activeGroup));
           applyFilter();
           search?.focus();
         };
@@ -390,7 +399,15 @@ export function showNamePicker({
           else if (ev.key === 'Enter') { ev.preventDefault(); const live = liveRows(); choose(live[cursor >= 0 ? cursor : 0]); }
         });
         root.querySelector('.ncm-pkr__clear')?.addEventListener('click', () => { if (search) search.value = ''; applyFilter(); search?.focus(); });
-        root.querySelectorAll('.ncm-pkr__chip').forEach((c) => c.addEventListener('click', () => setGroup(c.dataset.group)));
+        root.querySelectorAll('.ncm-pkr__chip:not(.ncm-pkr__set)').forEach((c) => c.addEventListener('click', () => setGroup(c.dataset.group)));
+        // a set: tick all of its rows, or untick them when every one is already ticked
+        root.querySelectorAll('.ncm-pkr__set').forEach((c) => c.addEventListener('click', () => {
+          const ids = new Set(setList[Number(c.dataset.set)]?.ids || []);
+          const rowsOf = allRows().filter((r) => r.dataset.id && ids.has(r.dataset.id) && !r.classList.contains('is-taken'));
+          const allOn = rowsOf.length && rowsOf.every((r) => r.classList.contains('is-picked'));
+          rowsOf.forEach((r) => r.classList.toggle('is-picked', !allOn));
+          status();
+        }));
         list?.addEventListener('click', (ev) => choose(ev.target.closest('.ncm-pkr__row')));
         emptyEl?.addEventListener('click', (ev) => {
           const act = ev.target.closest('[data-act]')?.dataset.act;

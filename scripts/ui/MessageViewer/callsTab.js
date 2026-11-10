@@ -17,7 +17,7 @@ import { MODULE_ID } from '../../utils/constants.js';
 import { formatCyberDate, getPlayerCharacters } from '../../utils/helpers.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { PLAN_NAMES, holdsItem } from '../../utils/phoneEmergency.js';
-import { splitExtension, savedContactFor, officeRowOf, normaliseNumber, parseNumber, seenFrom, fullForm, placeOf, isUnlisted, rowOf, numberAt, asKeys, PICK_STEPS, rowsAtStep, pathOf } from '../../utils/phoneNumbering.js';
+import { splitExtension, savedContactFor, officeRowOf, officeShowsBoard,normaliseNumber, parseNumber, seenFrom, fullForm, placeOf, isUnlisted, rowOf, numberAt, asKeys, PICK_STEPS, rowsAtStep, pathOf } from '../../utils/phoneNumbering.js';
 import { callProfile, signalLine } from '../../utils/callProfile.js';
 import { formatDuration } from '../../utils/callModel.js';
 import { DIAL_SVG } from '../Calls/CallHud.js';
@@ -545,11 +545,16 @@ function armState(value, book, home) {
 function dialHint(value, book, ctx) {
   const { number: bare, ext } = splitExtension(value);
   const p = parseNumber(bare, ctx);
+  // a corporate main number says what the call will really do: a number someone holds rings them, not the office
+  // (the call itself reads the same two things — CallService.placeCall), and Voicemail with nothing to show takes a message
+  const s = game.nightcity?.callService;
   const officeRow = officeRowOf(p, ctx);
-  if (officeRow && !book.find((b) => b.normal === p.key)) {
-    const o = game.nightcity?.callService?.office?.(officeRow), listed = (o?.exts || []).filter((e) => e.listed);
+  const owned = officeRow && s?.resolve ? s.resolve(bare).kind !== 'unowned' : false;
+  if (officeRow && !owned && !book.find((b) => b.normal === p.key)) {
+    const o = s?.office?.(officeRow), listed = (o?.exts || []).filter((e) => e.listed);
     const menu = listed.length ? ` Extensions: ${listed.map((e) => `x${esc(e.x)} ${esc(e.who)}`).join(', ')}.` : '';
-    return `<b>${esc(placeOf(p, ctx))}.</b> ${ext ? `Extension ${esc(ext)}.` : `A switchboard.${menu}`} Add x and digits for an extension.`;
+    const first = !o || officeShowsBoard(o) ? `A switchboard.${menu}` : 'It takes a message.';
+    return `<b>${esc(placeOf(p, ctx))}.</b> ${ext ? `Extension ${esc(ext)}.` : first} Add x and digits for an extension.`;
   }
   if (p.empty) return '';   // the box's own placeholder says it; an empty hint takes no room (the column must fit a 600px window)
   if (p.service) return `<span class="ok">${esc(p.entry?.name || p.service)}.</span> A service line, works from anywhere.`;

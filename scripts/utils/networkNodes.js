@@ -48,7 +48,7 @@ export function sanitizeNode(raw = {}) {
   const kind = NODE_KINDS[r.kind] ? r.kind : 'relay';
   const state = NODE_STATES[r.state] ? r.state : 'on';
   const log = Array.isArray(r.log) ? r.log.filter((e) => e && typeof e === 'object').slice(-NODE_LOG_CAP).map((e) => ({
-    ts: Number(e.ts) || 0, who: str(e.who, 80), what: str(e.what, 160), wiped: !!e.wiped,
+    ts: Number(e.ts) || 0, who: str(e.who, 80), what: str(e.what, 160), wiped: !!e.wiped, gm: isGmLine(e),
   })) : [];
   return {
     id: str(r.id, 64),
@@ -133,9 +133,41 @@ export function nodeFirmware(node) {
   return `${k.firmware} ${1 + (s % 6)}.${s % 10}`;
 }
 
+/** The name a GM acting as themselves writes into a node log ("GM — switched off"). */
+export const GM_LOG_WHO = 'GM';
+/**
+ * A line the GM wrote as themselves stays with the GM: it never reaches the ticker players read (tester 2026-11-09:
+ * "GM — switched off / jacked out" filled every player's ticker). Lines stored before the flag read the same by name.
+ */
+export function isGmLine(e) { return !!e?.gm || String(e?.who || '').trim() === GM_LOG_WHO; }
+
 /** Append a log line (pure — returns the new array, capped). */
 export function appendLog(log, entry) {
-  return [...(Array.isArray(log) ? log : []), { ts: Number(entry.ts) || 0, who: str(entry.who, 80), what: str(entry.what, 160), wiped: false }].slice(-NODE_LOG_CAP);
+  const line = { ts: Number(entry.ts) || 0, who: str(entry.who, 80), what: str(entry.what, 160), wiped: false };
+  return [...(Array.isArray(log) ? log : []), { ...line, gm: isGmLine({ ...line, gm: entry.gm }) }].slice(-NODE_LOG_CAP);
+}
+
+/** How many of the newest lines the ticker shows. */
+export const TICKER_LOG_LINES = 5;
+/** The log lines a player reads on the ticker, oldest first: the newest few that are not wiped and not the GM's own. */
+export function tickerLogLines(node) {
+  return (node?.log || []).filter((x) => !x.wiped && !isGmLine(x)).slice(-TICKER_LOG_LINES);
+}
+
+/**
+ * One lap of the ticker, in seconds: a steady reading speed whatever the length (a fixed 26 s raced a long ticker past
+ * and crawled a short one). About 7 characters a second at 11px mono, never under 12 s.
+ */
+export function tickerSeconds(text) {
+  return Math.max(12, Math.round(String(text || '').length / 7));
+}
+
+/** Remove one log line outright (GM): matched by its place AND its stamp, so a line written meanwhile is never hit. */
+export function removeLogLine(log, index, ts) {
+  const list = Array.isArray(log) ? log : [];
+  const i = Number(index);
+  if (!Number.isInteger(i) || i < 0 || i >= list.length || (Number(list[i]?.ts) || 0) !== (Number(ts) || 0)) return null;
+  return list.filter((_, j) => j !== i);
 }
 
 /**
@@ -178,7 +210,7 @@ export function tickerLines(node, network = {}, { now = 0, fmt = () => '', sympt
   if (st === 'jammed') return [`${hex} !! carrier noise !! retry · retry`, `${hex} !! sync lost — retrying`, '░▒▓ ░▒▓ ░▒▓'];
   const tag = String(network?.name || 'net').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 16) || 'net';
   const out = [];
-  for (const e of (node.log || []).filter((x) => !x.wiped).slice(-5).reverse()) out.push(`${fmt(e.ts)} ${e.who ? e.who + ' — ' : ''}${e.what}`.trim());
+  for (const e of tickerLogLines(node).reverse()) out.push(`${fmt(e.ts)} ${e.who ? e.who + ' — ' : ''}${e.what}`.trim());
   for (const f of node.flavour || []) out.push(`${hex} ${f}`);
   if (symptoms) out.push(...symptomLines(node));
   if (node.showTraffic !== false) {

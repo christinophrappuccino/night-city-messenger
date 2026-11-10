@@ -166,7 +166,7 @@ Open **Calls** in your inbox. The dialer is on the left, and your calls are on t
 
 **Your greeting.** Click **Greeting** on the My line card to choose what callers hear when you don't pick up: the default, your own words, your words read out, or **Audio** (record up to 20 seconds, or give a link to a sound file). Read out uses each caller's own computer voice, so it sounds different for everyone. Audio sounds the same for everyone. Each of your numbers has its own greeting.
 
-**Making a call.** Type a number or a contact's name, or tap the pad, then press Call. Letters work on the keypad, so 9-2-8 spells WAT. Calling a company's main number reaches its switchboard: you hear its greeting, and you can pick a listed extension, type one you know, or ask for the operator. To skip the switchboard, add the extension when you dial: `MIL-0100 x17`.
+**Making a call.** Type a number or a contact's name, or tap the pad, then press Call. Letters work on the keypad, so 9-2-8 spells WAT. Calling a company's main number reaches its switchboard: you hear its greeting, and you can pick a listed extension, type one you know, or press 0 for the operator or to leave a message. To skip the switchboard, add the extension when you dial: `MIL-0100 x17`.
 
 **During a call.** You can talk out loud at the table, type, or dictate if your browser allows it. Your GM chooses which of these are available. Calls need signal, so a dead zone or a downed node can cut you off. If the call covers something on your screen, drag it by its picture, its name or the grip at its left edge; double-click the grip to put it back.
 

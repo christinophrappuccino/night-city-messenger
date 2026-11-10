@@ -21,7 +21,8 @@ ok(G.sanitizeGroupImg('data:image/png;base64,AA') !== '' && G.sanitizeGroupImg('
 const a = { name: 'Crew', color: '#fff', members: [] };
 ok(M.groupSig(a) !== M.groupSig({ ...a, img: 'x.png' }), 'changing the picture makes a pushed copy "out of date"');
 const svc = read('scripts/services/ContactGroupService.js');
-ok(/sanitizeGroup\(\{ \.\.\.group, id: undefined, sharedFrom/.test(svc), 'a pushed copy is the whole group (picture included)');
+// (2026-11-09: less the character itself — copyFor spreads the whole group, then filters only its members)
+ok(/sanitizeGroup\(\{ \.\.\.this\.copyFor\(group, targetActorId, world\), id: undefined, sharedFrom/.test(svc) && /return \{ \.\.\.group, members: /.test(svc), 'a pushed copy is the whole group (picture included), less the character itself');
 
 const ed = read('scripts/ui/ContactGroups/GroupEditorDialog.js');
 ok(ed.includes('class="ncm-cge__img"') && ed.includes('data-browse-img') && ed.includes("draft.img = root.querySelector('.ncm-cge__img')"), 'the editor has a picture row (path + Browse + preview) and saves it');

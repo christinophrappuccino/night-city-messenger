@@ -21,7 +21,7 @@ import { JACK_ACTIONS, JACK_BUILT, resolveJackIn, jackInDV, movesFor, actionView
 import { runJackIn } from './JackInLock.js';
 import { requestNetAdjudication, postNetActionCard } from '../content/NetResolve.js';
 import { BaseApplication } from '../BaseApplication.js';
-import { liveRun, NODE_KINDS, ALERT_LEVELS, NODE_EFFECTS, NODE_PROGRAMS, nodeStateAt, stateLabel, nodeHex, nodeFirmware, tickerLines, activeEffects, nodeProgramKind, familyNodes, CUSTOM_FIRE_ON } from '../../utils/networkNodes.js';
+import { liveRun, tickerSeconds, NODE_KINDS, ALERT_LEVELS, NODE_EFFECTS, NODE_PROGRAMS, nodeStateAt, stateLabel, nodeHex, nodeFirmware, tickerLines, activeEffects, nodeProgramKind, familyNodes, CUSTOM_FIRE_ON } from '../../utils/networkNodes.js';
 import { showNamePicker } from '../../utils/namePicker.js';
 import { editNodeDialog } from './NodeDialogs.js';
 
@@ -133,7 +133,7 @@ export class NodeConsoleApp extends BaseApplication {
           : st === 'damaged' ? 'It is damaged — someone has to repair it'
             : st === 'jammed' ? 'Jammed — it comes back by itself'
               : up ? `${net?.name || 'The network'} goes dark here` : 'Bring it back up',
-      ticker: tickerLines(node, net || {}, { now, fmt, symptoms: this._rules().infection.symptoms || isGM() }).join('     ·     '),
+      ...(() => { const ticker = tickerLines(node, net || {}, { now, fmt, symptoms: this._rules().infection.symptoms || isGM() }).join('     ·     '); return { ticker, tickerSeconds: tickerSeconds(ticker) }; })(),
       ...this._jackContext(node, net, st, sameScene),
       operator: this._operatorContext(),
       ...this._nodeFlags(node, now),
@@ -536,6 +536,14 @@ export class NodeConsoleApp extends BaseApplication {
     }
     this._lastState = context.state;
     this._startWave(root, context.state);
+    // the ticker carries on where it was: a redraw (any node write) used to restart it, so the same first lines showed
+    // and the rest rarely came round (tester 2026-11-09). One clock per window; the phase is that clock modulo the lap.
+    const tick = root.querySelector('[data-ndc-tick]');
+    if (tick) {
+      this._tickT0 ??= performance.now();
+      const lap = Number(context.tickerSeconds) || 26;
+      tick.style.animationDelay = `-${(((performance.now() - this._tickT0) / 1000) % lap).toFixed(2)}s`;
+    }
     // live: the node or the network changed (the networkNodes hook, a switch)
     if (!this._subbed) {
       this._subbed = true;

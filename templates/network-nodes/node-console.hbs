@@ -100,5 +100,6 @@
 
   {{/if}}
 
-  <div class="ncm-ndc__ticker" aria-label="Node traffic"><span data-ndc-tick>{{ticker}}</span></div>
+  {{!-- two copies in one strip, moved by half its width: a seamless loop, so every line comes round again (tester 2026-11-09) --}}
+  <div class="ncm-ndc__ticker" aria-label="Node traffic"><span data-ndc-tick style="--ndc-tick-s: {{tickerSeconds}}s"><span class="ncm-ndc__tick-txt">{{ticker}}</span><span class="ncm-ndc__tick-dup" aria-hidden="true">{{ticker}}</span></span></div>
 </div>

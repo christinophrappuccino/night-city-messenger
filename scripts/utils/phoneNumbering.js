@@ -204,6 +204,15 @@ export function sanitizeOffice(o = {}) {
   return { answers: ['gm', 'recording', 'vm'].includes(v.answers) ? v.answers : 'vm', greet: String(v.greet ?? '').slice(0, 300), art: String(v.art ?? ''), mailbox: String(v.mailbox ?? ''),
     exts: (Array.isArray(v.exts) ? v.exts : []).filter((e) => /^\d+$/.test(String(e?.x ?? ''))).map((e) => ({ x: String(e.x), who: String(e.who ?? '').slice(0, 60), contactId: e.contactId || null, listed: e.listed !== false })) };
 }
+/**
+ * Does the main number open on the switchboard screen? Always when someone or a recording answers; with Voicemail
+ * only when there is something to show first, a greeting or a listed extension (tester 2026-11-09: Voicemail, the
+ * default, went straight to the tone while the dial hint promised a switchboard).
+ */
+export function officeShowsBoard(o) {
+  const v = sanitizeOffice(o);
+  return v.answers !== 'vm' || !!v.greet || v.exts.some((e) => e.listed);
+}
 /** A dialled string split into the number and its extension: "MIL-0100 x17". */
 export function splitExtension(raw) {
   const m = /^(.*?)\s*(?:x|ext\.?)\s*(\d+)\s*$/i.exec(String(raw ?? ''));

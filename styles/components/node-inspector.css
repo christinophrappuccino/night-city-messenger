@@ -124,9 +124,21 @@
 
 .ncm-nin__logwrap { display: flex; flex-direction: column; min-height: 0; }
 .ncm-nin__log { max-height: 220px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ncm-border); background: var(--ncm-bg-pane); }
-.ncm-nin__log > div { display: grid; grid-template-columns: 50px 1fr; gap: 6px; padding: 4px 7px; border-bottom: 1px dashed var(--ncm-border); font-size: 11.5px; }
+.ncm-nin__log > div { display: grid; grid-template-columns: 50px 1fr auto; gap: 6px; align-items: start; padding: 4px 7px; border-bottom: 1px dashed var(--ncm-border); font-size: 11.5px; }
+/* the log's header: the caption and Clear on one row (tester 2026-11-09) */
+.ncm-nin__loghd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.ncm-nin__loghd .ncm-nin__k { margin-bottom: 0; cursor: help; }
+.ncm-nin__loghd .ncm-nin__k i { color: var(--ncm-act); }
+.ncm-nin__log .ln i.fa-eye { color: var(--ncm-act); font-size: 9.5px; }
+.ncm-nin__log .is-gm .ln { color: var(--ncm-text-secondary); }
+.ncm-nin__log .is-gm em { display: inline-block; font-style: normal; font-size: 10px; color: var(--ncm-text-label); }
+.ncm-app button.ncm-nin__logdel { width: auto !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 1px 4px !important; line-height: 1 !important;
+  appearance: none; box-shadow: none !important; background-color: transparent !important; background-image: none !important; border: 0 !important; color: var(--ncm-text-hint) !important; cursor: pointer; opacity: 0; }
+.ncm-app button.ncm-nin__logdel i { margin: 0 !important; font-size: 10px; }
+.ncm-nin__log > div:hover button.ncm-nin__logdel, .ncm-app button.ncm-nin__logdel:focus-visible { opacity: 1; }
+.ncm-app button.ncm-nin__logdel:hover { color: var(--ncm-danger, #ff5c7a) !important; }
 .ncm-nin__log .m { font-family: var(--ncm-font-mono); color: var(--ncm-text-time); }
-.ncm-nin__log .is-wiped span:last-child { text-decoration: line-through; color: var(--ncm-text-hint); }
+.ncm-nin__log .is-wiped .ln { text-decoration: line-through; color: var(--ncm-text-hint); }
 .ncm-nin__log .is-wiped em { text-decoration: none; display: inline-block; font-style: normal; color: var(--ncm-secret); font-size: 10px; }
 .ncm-nin__log .is-empty { display: block; color: var(--ncm-text-hint); font-style: italic; }
 

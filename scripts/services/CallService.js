@@ -24,7 +24,7 @@ import { ncmNotify } from '../utils/notify.js';
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM, resolveOperator, resolveDisplayPortrait, whisperCardHtml, getSetting, isPrimaryGM, userOwnsActor } from '../utils/helpers.js';
 import { serialize } from '../utils/serialize.js';
-import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines, numberAt, buildNumberContext, placeRows, sanitizeRules, pickableRows, sanitizeSpecial, specialKey, specialList, specialMap, specialOutcome, writtenToLog, lineTypes, lineTypeFor, lineShown, traceFinds, officeRowOf, officeKey, sanitizeOffice, splitExtension, placeOf } from '../utils/phoneNumbering.js';
+import { normaliseNumber, displayNumber, parseNumber, rowOf, fullForm, freeLines, numberAt, buildNumberContext, placeRows, sanitizeRules, pickableRows, sanitizeSpecial, specialKey, specialList, specialMap, specialOutcome, writtenToLog, lineTypes, lineTypeFor, lineShown, traceFinds, officeRowOf, officeKey, sanitizeOffice, officeShowsBoard, splitExtension, placeOf } from '../utils/phoneNumbering.js';
 import { createCall, createEndedCall, transition, resolveCallee, canCall, allowedModes, defaultMode, callSeconds, formatDuration, OUTCOMES,
   BUILT_MODES, makeLine, addLine, sideOf, transcriptOf, lineFromRightSide } from '../utils/callModel.js';
 import { dropReason, maskCaller, callerFor, interceptMail } from '../utils/callNet.js';
@@ -47,6 +47,7 @@ export const NUMBER_SETTINGS = Object.freeze(['phoneRules', 'phonePlaces', 'phon
 const newestFirst = (a, b) => ((Date.parse(b.gameTime) || 0) - (Date.parse(a.gameTime) || 0)) || ((b.startedAt || b.at || 0) - (a.startedAt || a.at || 0));
 const RING_BEAT_MS = 1100;
 const BOARD_OPEN_MS = 2 * 60 * 1000;    // a switchboard nobody picks from hangs up after this long   // one ring — the HUD dial fills on the same beat
+const ENDED_KEEP_MS = 30 * 60 * 1000;   // how long the GM can still check a caller's log against a call that ended
 
 export class CallService {
   constructor() {
@@ -1195,13 +1196,16 @@ export class CallService {
       if (ext && !hit) return { ok: false, error: 'No such extension.' };
       if (hit?.contactId && this.numberOfContact(hit.contactId)) return this.placeCall(this.numberOfContact(hit.contactId), as);
       // the main number with no extension: the switchboard first — the greeting, the listed extensions, the operator
-      // (tester 2026-11-08: the greeting never played and nobody asked for an extension)
-      if (!hit && !as.viaBoard && o.answers !== 'vm') board = { greet: o.greet || '', exts: o.exts.filter((e) => e.listed).map((e) => ({ x: e.x, who: e.who })), operator: o.answers === 'gm', dialled: number, art: o.art || '', as: { ...as } };
+      // (tester 2026-11-08: the greeting never played and nobody asked for an extension; 2026-11-09: in every mode
+      // that has something to show, Voicemail too, where "0" leaves a message)
+      if (!hit && !as.viaBoard && officeShowsBoard(o)) board = { greet: o.greet || '', exts: o.exts.filter((e) => e.listed).map((e) => ({ x: e.x, who: e.who })), operator: o.answers === 'gm', vm: o.answers === 'vm' && !!game.users?.activeGM, dialled: number, art: o.art || '', as: { ...as } };
       callee.special = true; callee.name = hit ? hit.who : officeRow.District;
+      // after the switchboard the greeting has been heard: the voicemail says only the tone line
+      const greet = as.viaBoard ? 'Nobody is free to take your call.' : o.greet;
       // the operator (the GM) who does not pick up: the office's voicemail, with its greeting
-      if (!hit && o.answers === 'gm' && game.users?.activeGM) { callee.office = officeKey(officeRow); callee.greet = o.greet; }
+      if (!hit && o.answers === 'gm' && game.users?.activeGM) { callee.office = officeKey(officeRow); callee.greet = greet; }
       // voicemail takes a real message; keeping one needs a GM's client, so with none online it plays as a recording
-      if (!hit && o.answers === 'vm' && game.users?.activeGM) { callee.kind = 'npc'; callee.office = officeKey(officeRow); callee.greet = o.greet; callee.goVm = true; if (o.mailbox) callee.contactId = o.mailbox; }
+      if (!hit && o.answers === 'vm' && game.users?.activeGM) { callee.kind = 'npc'; callee.office = officeKey(officeRow); callee.greet = greet; callee.goVm = true; if (o.mailbox) callee.contactId = o.mailbox; }
       else if (!hit && o.answers !== 'gm' && !board) return this._dialSpecial(number, sanitizeSpecial({ num: displayNumber(number, this.homeCode), name: officeRow.District, img: o.art, act: o.answers === 'recording' ? 'recording' : 'voicemail', text: o.greet }), o.answers === 'recording' ? 'recording' : 'voicemail', from);
     }
     // an NPC caller (GM) is wherever the NPC is — the GM's own connection does not matter
@@ -1246,6 +1250,8 @@ export class CallService {
     }
     this.eventBus.emit(EVENTS.CALL_RINGING, { call, role: 'caller' });
     if (!reachable) {
+      // nobody else holds this call (it never rang anywhere), so its log goes the never-rang way (tester 2026-11-09)
+      this._store({ ...this.calls.get(call.id), unrung: true });
       setTimeout(() => { if (!this._toVoicemail(call.id, 'offline')) this._endLocal(call.id, 'missed', { notify: false }); }, 4 * RING_BEAT_MS);
       this._startRingback(call.id); return { ok: true, call };
     }
@@ -1289,7 +1295,7 @@ export class CallService {
     if (!c || c.state !== 'board') return { ok: false, error: '' };
     const x = String(ext || '').replace(/D/g, '');
     if (!operator && !x) return { ok: false, error: 'Type an extension.' };
-    if (operator && !c.board.operator) return { ok: false, error: 'Nobody answers here. Pick an extension.' };
+    if (operator && !c.board.operator && !c.board.vm) return { ok: false, error: 'Nobody answers here. Pick an extension.' };
     clearTimeout(this._timers.get(callId)); this._timers.delete(callId);
     this.calls.delete(callId);
     this.eventBus.emit(EVENTS.CALL_ENDED, { call: { ...c, state: 'ended', outcome: 'answered' }, role: 'watch', quiet: true, transfer: true });
@@ -1456,7 +1462,24 @@ export class CallService {
     this.eventBus.emit(EVENTS.CALL_ENDED, { call: ended, role });
     if (outcome === 'missed' && role === 'callee') this.eventBus.emit(EVENTS.CALL_MISSED, { call: ended });
     if (role === 'caller') this._log(ended);
-    setTimeout(() => { if (this.calls.get(callId)?.state === 'ended') { this.calls.delete(callId); this._myMode.delete(callId); this._typingSent.delete(callId); this._myNet.delete(callId); } }, 8000);
+    setTimeout(() => {
+      const gone = this.calls.get(callId);
+      if (gone?.state !== 'ended') return;
+      this.calls.delete(callId); this._myMode.delete(callId); this._typingSent.delete(callId); this._myNet.delete(callId);
+      if (isGM()) this._keepEnded(gone);
+    }, 8000);
+  }
+
+  /**
+   * GM: an ended call stays checkable for its log a while longer. The caller logs a call only when it is over for
+   * THEM, and a call that rang out into voicemail is over for the GM long before (the greeting, then the message):
+   * the GM had already forgotten it and refused the log as "a call this GM never saw" (tester 2026-11-09).
+   */
+  _keepEnded(call) {
+    this._ended ??= new Map();
+    const now = Date.now();
+    for (const [id, e] of this._ended) if (now - e.at > ENDED_KEEP_MS) this._ended.delete(id);
+    this._ended.set(call.id, { call, at: now });
   }
 
   _store(call) { this.calls.set(call.id, call); }
@@ -2110,7 +2133,7 @@ export class CallService {
     const user = senderId ? game.users?.get(senderId) : null;
     if (!user) return { ok: false, why: 'unknown sender' };
     const callId = String(data.summary?.callId || '');
-    const call = this.calls.get(callId);
+    const call = this.calls.get(callId) || this._ended?.get(callId)?.call;
     if (!call) return data.summary?.unrung ? this._unrungSummary(data.summary, user) : { ok: false, why: 'a call this GM never saw' };
     const onIt = call.from?.userId === senderId || call.from?.realUserId === senderId || (call.to?.userIds || []).includes(senderId) || call.to?.userId === senderId;
     if (!user.isGM && !onIt) return { ok: false, why: 'the sender was not on that call' };
@@ -2118,6 +2141,8 @@ export class CallService {
     if (this._loggedCalls.has(callId)) return { ok: false, why: 'already logged' };
     this._loggedCalls.add(callId);
     const summary = { ...this._summary(call), sceneId: user.viewedScene || '' };
+    // the GM saw it ring out; only the caller saw it go on into voicemail and a message left
+    if (data.summary?.outcome === 'voicemail' && ['missed', 'declined', 'busy'].includes(summary.outcome)) summary.outcome = 'voicemail';
     if (!summary.lines?.length && Array.isArray(data.summary?.lines)) {
       summary.lines = data.summary.lines.slice(0, 300).map((l) => ({ ...(l && typeof l === 'object' ? l : {}), text: String(l?.text ?? '').slice(0, 500) }))
         .map(({ text, name, side, at }) => ({ text, name: String(name ?? '').slice(0, 60), side: side === 'callee' ? 'callee' : 'caller', at: Number(at) || 0 }));

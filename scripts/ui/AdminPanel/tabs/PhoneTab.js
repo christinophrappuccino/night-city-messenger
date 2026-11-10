@@ -565,7 +565,12 @@ export class PhoneTab extends BaseTab {
   async _shareLine(person, line) {
     if (!person || !line) return;
     const pcs = getPlayerCharacters().filter((p) => p.actorId !== person.id);
-    const pick = await showNamePicker({ title: `Share ${line.n}`, hint: 'Who gets this number? Nothing else about them is shared.', placeholder: 'search characters…', multi: true,
+    // the GM's contact groups tick their characters in one click (tester 2026-11-09: one at a time was slow)
+    const cgs = game.nightcity?.contactGroupService;
+    const sets = (cgs?.getMasterGroups?.() || []).map((g) => ({ label: g.name, icon: 'fas fa-users',
+      ids: (cgs.characterIdsOf?.(g) || []).filter((id) => pcs.some((p) => p.actorId === id)) }))
+      .filter((s) => s.ids.length);
+    const pick = await showNamePicker({ title: `Share ${line.n}`, hint: 'Who gets this number? Nothing else about them is shared.', placeholder: 'search characters…', multi: true, sets,
       preselected: pcs.filter((p) => line.holders.includes(p.actorId)).map((p) => p.actorId), doneLabel: 'Share',
       entries: pcs.map((p) => ({ id: p.actorId, name: p.actorName, img: p.actor?.img || '', sub: p.playerName || '' })) });
     if (!pick) return;

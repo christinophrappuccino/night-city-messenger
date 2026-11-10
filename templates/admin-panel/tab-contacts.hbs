@@ -688,7 +688,7 @@
           {{#if img}}<img class="ncm-ct2-gimg ncm-ct2-gimg--lg" src="{{img}}" alt="" style="--g:{{color}}">{{else}}<span class="ncm-ct2-gdot ncm-ct2-gdot--lg" style="--g:{{color}}"></span>{{/if}}
           <div class="ncm-ct2-r__txt"><div class="nm">{{name}}</div><div class="meta"><span class="ncm-tagp" style="--tc:{{color}}"><i class="fas fa-users"></i>{{n}} member{{#unless (eq n 1)}}s{{/unless}}</span>{{#if note}}<span class="ncm-tagp is-plain"><i class="fas fa-note-sticky"></i>{{note}}</span>{{/if}}</div></div>
           <div class="ncm-ct2-acts">
-            <button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary" data-action="tabAct" data-op="gPush" data-group-id="{{id}}"><i class="fas fa-share-nodes"></i> Push to players</button>
+            <button type="button" class="ncm-ct2-btn ncm-ct2-btn--primary" data-action="tabAct" data-op="gPush" data-group-id="{{id}}" data-tooltip="Each character gets everyone else in it: their address and their phone number. Nobody gets themselves"><i class="fas fa-share-nodes"></i> Push to players</button>
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="gMessage" data-group-id="{{id}}"><i class="fas fa-envelope"></i> Message the group</button>
             <button type="button" class="ncm-ct2-btn" data-action="tabAct" data-op="gEdit" data-group-id="{{id}}"><i class="fas fa-pen"></i> Edit</button>
             <button type="button" class="ncm-ct2-btn ncm-ct2-btn--danger" data-action="tabAct" data-op="gDelete" data-group-id="{{id}}"><i class="fas fa-trash"></i> Delete</button>

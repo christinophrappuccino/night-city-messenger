@@ -113,3 +113,11 @@ Sim `dev/tools/sims/test-tester-round-2026-11-08.mjs`; macro `dev/tools/test-tes
 - **Follow-up (same day):** a half-typed switchboard extension (and its focus) survives a HUD redraw; `greetingLink`
   refuses `http://` (an https server blocks it, so it would never play) and both editors say so with
   `GREETING_LINK_HELP`; the link field's tooltip says each caller's browser fetches it from that site.
+
+## Tester round 2026-11-09 (Aegaeon; built, not live-tested)
+"Rings, no greeting, beep, hang up twice, not in the GM's call log" on a corporate main number. Three causes, all fixed:
+- **The switchboard rule is `officeShowsBoard(o)`** (phoneNumbering.js), used by `placeCall`, the dial hint (callsTab `dialHint`) and the Admin preview: always for You / A recording; for Voicemail (the DEFAULT) only with a greeting or a listed extension. Voicemail used to skip the board outright while the hint promised one and the Greeting box was hidden (but still played). The Greeting box now shows in every mode. A Voicemail board has `board.vm`: **0 = Leave a message** (`boardPick({operator:true})` allowed when `operator || vm`). After the board the voicemail greeting is "Nobody is free to take your call." (never the office greeting twice).
+- **A held main number** (a contact's phone or a line on -0100) resolves as that person, so it rings them and never reaches the board. The hint checks `resolve(...).kind`; Admin → Corporations warns (`officeHolder`).
+- **Call log:** the caller logs when the call ends FOR THEM; a call that rang out into voicemail ended for the GM long before, and the GM's 8 s cleanup had dropped its copy → "a call this GM never saw". The GM now keeps ended calls in `_ended` (`_keepEnded`, 30 min) for `checkLogRequest`, and takes outcome 'voicemail' from the caller only over its own missed/declined/busy. A call to someone offline (`!reachable`, never sent) is marked `unrung`.
+- **N** now hangs up the voicemail screen (`CallHud.key`); the first N did nothing there.
+Sims: test-tester-round-2026-11-09 (60), 11-08b updated for the new rule. Macro dev/tools/test-tester-2026-11-09.macro.js.

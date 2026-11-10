@@ -52,3 +52,9 @@ Design + decisions: `dev/design/NETWORK-NODES.md` (rounds 1–2, the console-tic
 - **Edges:** the node console refuses to open (players: "There is nothing to connect to here."; GM: names the setting). `NETWORK_NODE_REQUEST` is feature-tagged (dropped). A GM dead-zone toggle's broadcast is ignored. Admin → Networks shows a band. Network and node data are kept and edit as normal.
 - **Registry change that came with it:** each FEATURES entry carries `default` (= the registered default, checked by `test-features`); an unset or unreadable setting answers that default instead of "off" — otherwise a mock (or any read before registration) would flip a world into simple mode.
 - Sims: `test-simple-network` (27), `test-features` (defaults). Macro `dev/tools/test-s2-step17.macro.js` (run in both modes). Not live-tested.
+
+## Node logs: GM lines, delete / clear, the ticker (tester round 2026-11-09)
+- The node log (`node.log`) and Admin → Networks → Activity log are TWO records (`_logNodeActivity` copies new lines across); clearing the Activity log never touched the node.
+- **GM-only lines:** `isGmLine(e)` = `e.gm` or `who === 'GM'` (GM_LOG_WHO, so lines stored before the flag count). `appendLog` / `sanitizeNode` set `gm`. The ticker reads `tickerLogLines(node)` (newest 5, not wiped, not GM) for everyone, GM included, so the console shows what players see.
+- **GM writers** `removeNodeLogLine(nodeId, index, ts)` (place AND stamp must match: `removeLogLine`) and `clearNodeLog` are in `NODE_WRITERS`. Inspect Node: × per line (hover), Clear (confirm), an eye on the lines on the ticker, "GM only" on the GM's.
+- **Ticker:** two copies in one strip moved by -50% (seamless), lap `tickerSeconds(text)` (~7 chars/s, ≥ 12 s); `_onRender` sets a negative `animation-delay` from one per-window clock so a redraw keeps its place. The old fixed 26 s / -7 s / padding-left:100% restarted on every node write.

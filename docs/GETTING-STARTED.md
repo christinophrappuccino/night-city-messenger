@@ -95,7 +95,7 @@ Admin Panel → **Contacts** is your master list of every NPC that players can m
 
 - **Directory** — your NPCs. **New → From an actor…** turns an existing actor into a contact in two clicks; the portrait and email come with it. Open a contact to edit it in place, see who knows them, and share it with players (**Share**) or take it back.
 - **Players** — each player character: what they know, the groups they hold, their identities.
-- **Groups** — named lists of contacts ("The Crew", "Arasaka Leads"). **Push** one to a player and it lands in their contact book, contacts included. Re-pushing updates their copy. A group can have a picture.
+- **Groups** — named lists of contacts ("The Crew", "Arasaka Leads"). **Push** one to a player and it lands in their contact book, contacts and their phone numbers included. Nobody gets themselves: a character is left out of their own copy. Re-pushing updates their copy. When you share a phone number (Admin → Phone), **Tick a group** picks a whole group at once. A group can have a picture.
 - **Who knows whom** — a map (or a table) of which character holds which contact.
 
 Also worth knowing:
@@ -289,7 +289,7 @@ Admin → **Networks** → **All networks** → pick a network → **Nodes** →
 
 <!-- fig: node-console.png | A node console, before jacking in | 70 -->
 
-Opening a node shows its **console**: its name, signal, state, alert level and a ticker of what's passing through. Anyone can **Connect** to its network from there. A netrunner can **Jack in**: a skill roll (Interface by default) against the node's DV, with a lock that opens ring by ring. Inside they get a number of **moves** depending on their rank, and can:
+Opening a node shows its **console**: its name, signal, state, alert level and a ticker of what's passing through. The ticker shows the newest lines of the node's log that aren't wiped; lines you made as GM ("GM — switched off") stay with you. **Inspect** the node to delete a line or clear the log. Clearing Admin → Networks → Activity log does not clear a node's own log. Anyone can **Connect** to its network from there. A netrunner can **Jack in**: a skill roll (Interface by default) against the node's DV, with a lock that opens ring by ring. Inside they get a number of **moves** depending on their rank, and can:
 
 - **Switch it off / on**, or **Jam** it for a while.
 - **Tap** it — copies of mail sent from that scene over that network land in their inbox.
@@ -387,7 +387,7 @@ Admin → **Phone** is everything about calls. Players call from the **Calls** t
 
 **Greetings.** Every number has its own greeting: the default, typed words, words read out, or **Audio** (record one, or paste a link or browse for a sound file in your world). Read out uses each listener's own computer voice, so it can sound different for each player; Audio sounds the same for everyone. Players set their own greeting from **Greeting** on their My line card.
 
-**Corporations.** An office has a main number with a switchboard, and extensions (`MIL-0100 x17`). Choose whether you answer, a recording plays, or it goes to voicemail. When you answer or a recording plays, a caller first gets the switchboard: the greeting, the listed extensions, a box for an unlisted one and (when you answer) the operator. If you don't pick up as the operator, the call goes to the office's voicemail with its greeting. Voicemail lands with a mailbox made for that office the first time someone leaves a message, or with a contact you pick. **New corporation** (on Numbers → Corporations, or Places → Add → A corporation) makes one in a step.
+**Corporations.** An office has a main number with a switchboard, and extensions (`MIL-0100 x17`). Choose whether you answer, a recording plays, or it takes a message. A caller first gets the switchboard: the greeting, the listed extensions, a box for an unlisted one, and **0**, which rings you as the operator (when you answer) or leaves a message (Voicemail). An office on Voicemail with no greeting and no listed extension skips the switchboard and goes straight to the tone. If you don't pick up as the operator, the call goes to the office's voicemail. If someone holds the office's main number, calls ring them instead, and Corporations warns you. Voicemail lands with a mailbox made for that office the first time someone leaves a message, or with a contact you pick. **New corporation** (on Numbers → Corporations, or Places → Add → A corporation) makes one in a step.
 
 **Special numbers.** A number that follows its own rules: a hidden line, a hotline, a recording, a macro. Each can have a name and a picture.
 

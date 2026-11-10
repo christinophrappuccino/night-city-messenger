@@ -277,7 +277,7 @@ export class CallHud {
     } else if (st === 'board') {
       // a corporate switchboard: the greeting, the listed extensions, the operator (CallService.boardPick)
       kind = 'Switchboard'; tone = 'live'; sigState = 'live';
-      keys = [...(call.board?.operator ? [['operator', '0', 'Operator', '']] : []), ['hangup', 'N', 'Hang up', 'bad']];
+      keys = [...(call.board?.operator ? [['operator', '0', 'Operator', '']] : call.board?.vm ? [['operator', '0', 'Leave a message', '']] : []), ['hangup', 'N', 'Hang up', 'bad']];
     } else if (st === 'held') {
       kind = 'On hold'; tone = 'held'; sigState = 'live'; keys = [['resume', 'H', 'Back to this call', ''], ['hangup', 'N', 'Hang up', 'bad']];
     } else {
@@ -511,7 +511,8 @@ export class CallHud {
     if (which === 'decline') {
       if (c.state === 'ringing' && main.role === 'callee') this.act('decline', c.id);
       else if (c.state === 'dialing' || (c.state === 'ringing' && main.role === 'caller')) this.act('cancel', c.id);
-      else if (c.state === 'live' || c.state === 'held' || c.state === 'board') this.act('hangup', c.id);
+      // the voicemail screen shows N too (tester 2026-11-09: the first N did nothing there, so it took two hang-ups)
+      else if (c.state === 'live' || c.state === 'held' || c.state === 'board' || c.state === 'voicemail') this.act('hangup', c.id);
       else return false;
       return true;
     }

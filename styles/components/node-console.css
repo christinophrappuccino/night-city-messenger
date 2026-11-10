@@ -106,13 +106,20 @@
 .ncm-ndc__ticker { position: relative; height: calc(24px * var(--ncm-text-scale, 1)); overflow: hidden; border-top: 1px solid color-mix(in srgb, var(--nc) 25%, transparent);
   font: calc(11px * var(--ncm-text-scale, 1)) / calc(24px * var(--ncm-text-scale, 1)) var(--ncm-font-mono, monospace);
   color: color-mix(in srgb, var(--nc) 60%, var(--ncm-text-secondary, #9aa4b8)); white-space: nowrap; }
-.ncm-ndc__ticker span { display: inline-block; padding-left: 100%; animation: ncm-ndc-tick 26s linear -7s infinite; }
-.ncm-ndc[data-state="off"] .ncm-ndc__ticker span, .ncm-ndc[data-state="damaged"] .ncm-ndc__ticker span { animation: none; padding-left: 16px; color: var(--ncm-text-muted, #77778a); }
-@keyframes ncm-ndc-tick { to { transform: translateX(-100%); } }
+/* one strip holding the text twice, moved by half its width: a seamless loop at a steady speed (the duration comes from
+   the text's length, NodeConsoleApp), so every line comes round again; the console keeps the phase across redraws */
+.ncm-ndc__ticker [data-ndc-tick] { display: inline-flex; white-space: nowrap; animation: ncm-ndc-tick var(--ndc-tick-s, 26s) linear infinite; will-change: transform; }
+.ncm-ndc__tick-txt, .ncm-ndc__tick-dup { display: inline-block; flex: none; padding-right: 48px; }
+.ncm-ndc__tick-txt { padding-left: 16px; }
+.ncm-ndc__tick-dup { padding-left: 16px; }
+.ncm-ndc[data-state="off"] .ncm-ndc__ticker [data-ndc-tick], .ncm-ndc[data-state="damaged"] .ncm-ndc__ticker [data-ndc-tick] { animation: none; color: var(--ncm-text-muted, #77778a); }
+.ncm-ndc[data-state="off"] .ncm-ndc__tick-dup, .ncm-ndc[data-state="damaged"] .ncm-ndc__tick-dup { display: none; }
+@keyframes ncm-ndc-tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 @media (prefers-reduced-motion: reduce) {
   .ncm-ndc *, .ncm-ndc *::before, .ncm-ndc *::after { animation: none !important; }
-  .ncm-ndc__ticker span { padding-left: 16px; white-space: normal; }
+  .ncm-ndc__ticker [data-ndc-tick] { white-space: normal; display: block; }
+  .ncm-ndc__tick-dup { display: none !important; }
   .ncm-ndc__ticker { height: auto; }
 }
 

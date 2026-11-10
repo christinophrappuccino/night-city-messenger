@@ -20,7 +20,7 @@ import { log, isGM, generateId, whisperCardHtml, userOwnsActor, runGmMacro } fro
 import { resolveJackIn, movesFor } from '../utils/jackIn.js';
 import { bypassDCFor } from '../utils/bypassSkills.js';
 import { sourceUuidOf, prewireFlags } from '../utils/scenesAtlas.js';
-import { liveRun, withRun, expiredRuns } from '../utils/networkNodes.js';
+import { liveRun, withRun, expiredRuns, removeLogLine } from '../utils/networkNodes.js';
 import { sanitizeNode, listNodes, cutNetworks, carriedNetworks, sceneBlocks, expiredJams, statePatch, appendLog, NODE_STATES, NODE_EFFECTS, activeEffects, withEffect, expiredEffects, nodeIsUp,
   NODE_PROGRAMS, makeInfection, familyNodes, wormTarget, customFires } from '../utils/networkNodes.js';
 import { programEntry } from '../utils/programSource.js';
@@ -1250,6 +1250,31 @@ export class NetworkService {
     return { success: true, wiped: n };
   }
 
+  /**
+   * GM: take one line out of a node's log for good (not a wipe — a wiped line stays, struck through). The line is
+   * named by its place in the stored log AND its stamp, so a line written in between is never the one removed.
+   */
+  async removeNodeLogLine(nodeId, index, ts) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const log = removeLogLine(node.log, index, ts);
+    if (!log) return { success: false, error: 'That line has changed. Look again.' };
+    await this._writeNode(nodeId, { ...node, log });
+    return { success: true };
+  }
+
+  /**
+   * GM: empty a node's log (tester 2026-11-09: clearing Admin → Networks → Activity log left the node's own log, and
+   * so its ticker, as it was — they are two records). The Activity log keeps its rows; it is the GM's history.
+   */
+  async clearNodeLog(nodeId) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    const node = this.getNode(nodeId); if (!node) return { success: false, error: 'Node not found' };
+    const n = node.log.length;
+    await this._writeNode(nodeId, { ...node, log: [] });
+    return { success: true, cleared: n };
+  }
+
   /** GM: turn jams whose time has run out back on. Called on a timer. */
   async reapNodeJams() {
     if (!isGM() || (game.users?.activeGM && game.users.activeGM.id !== game.user.id)) return;
@@ -1675,7 +1700,7 @@ export class NetworkService {
 // action saving the spent move AND writing its log line; two relayed player requests the GM handles at once) both
 // start from the same map, and the later one silently undoes the earlier. These methods now run one at a time.
 // None of them calls another (a nested call would wait on itself) — keep it that way.
-const NODE_WRITERS = ['setNodeState', 'nodeLog', 'bumpNodeAlert', 'wipeNodeLog', 'addNodeEffect', 'removeNodeEffect', 'saveRun', 'clearRun',
+const NODE_WRITERS = ['setNodeState', 'nodeLog', 'bumpNodeAlert', 'wipeNodeLog', 'removeNodeLogLine', 'clearNodeLog','addNodeEffect', 'removeNodeEffect', 'saveRun', 'clearRun',
   'kickRun', 'setRunUsed', 'updateInfection', 'insertProgram', 'cleanInfection', 'recallFamily', 'collectSniffer', 'saveNode', 'deleteNode',
   'reapNodeJams', 'tickInfections', 'tapDelivery', 'noteJackIn'];
 for (const name of NODE_WRITERS) {
