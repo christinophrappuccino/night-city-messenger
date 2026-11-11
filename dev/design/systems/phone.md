@@ -121,3 +121,6 @@ Sim `dev/tools/sims/test-tester-round-2026-11-08.mjs`; macro `dev/tools/test-tes
 - **Call log:** the caller logs when the call ends FOR THEM; a call that rang out into voicemail ended for the GM long before, and the GM's 8 s cleanup had dropped its copy → "a call this GM never saw". The GM now keeps ended calls in `_ended` (`_keepEnded`, 30 min) for `checkLogRequest`, and takes outcome 'voicemail' from the caller only over its own missed/declined/busy. A call to someone offline (`!reachable`, never sent) is marked `unrung`.
 - **N** now hangs up the voicemail screen (`CallHud.key`); the first N did nothing there.
 Sims: test-tester-round-2026-11-09 (60), 11-08b updated for the new rule. Macro dev/tools/test-tester-2026-11-09.macro.js.
+
+## Speed dial for a GM (tester round 2026-11-10)
+"After Push to players they have everybody, burners and aliases, in Speed dial": no code writes the directory into a character's contacts. `phoneBook` (callsTab.js) added EVERY directory line for any user who counts as a GM — the GM opening a player's Messenger, or an Assistant GM logged in "as the player". Now only when the Messenger is not a player character's (`game.user.isGM && !actor?.hasPlayerOwner`); an NPC's Messenger still dials anyone. Read-only check macro for a world: `dev/tools/diag-contacts-2026-11-10.macro.js` (roles, and what each character holds).

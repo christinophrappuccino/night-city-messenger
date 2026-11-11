@@ -12,6 +12,7 @@ import { wireAccessDrag } from '../../integrations/AccessPoints.js';
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { escapeHtml as h } from '../../utils/notify.js';
+import { adminConfirm } from '../../utils/adminTheme.js';
 import { DateRangePicker } from '../components/DateRangePicker.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { ToolsTab } from './tabs/ToolsTab.js';
@@ -58,6 +59,8 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   async close(options = {}) {
+    // edits a tab holds on screen until its own Save (Security's Hacking rules) are asked about first
+    if (!options.force && this.rendered && !(await this._confirmUnsaved())) return this;
     if (this._boundAdminKeydown) {
       document.removeEventListener('keydown', this._boundAdminKeydown);
       this._boundAdminKeydown = null;
@@ -89,6 +92,21 @@ export class AdminPanelApp extends BaseApplication {
       for (const tab of Object.values(this._tabs)) tab.onClose();
     }
     return super.close(options);
+  }
+
+  /**
+   * A tab with edits not saved yet (`unsavedEdits()` → names) — ask before they are thrown away. True = go ahead.
+   * Tester 2026-11-10: a Hacking rules checkbox "does not save when closed": each rule card has its own Save.
+   * @private
+   */
+  async _confirmUnsaved() {
+    const names = [];
+    for (const tab of Object.values(this._tabs || {})) { try { names.push(...(tab.unsavedEdits?.() || [])); } catch { /* never block a close */ } }
+    if (!names.length) return true;
+    const ok = await adminConfirm({ title: 'Unsaved changes',
+      content: `<p>${names.map((n) => `<b>${h(n)}</b>`).join(', ')} ${names.length === 1 ? 'has' : 'have'} changes you have not saved. Close anyway and lose them?</p><p>To keep them, choose No and press the card's Save button.</p>`,
+      defaultYes: false });
+    return ok === true;
   }
 
   // ── Overview tab state ── moved to tabs/OverviewTab.js

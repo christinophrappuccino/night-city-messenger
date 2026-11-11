@@ -45,6 +45,8 @@ const VIEWS = [
   { key: 'machines', icon: 'fa-server', label: 'Machines' },
   { key: 'rules', icon: 'fa-sliders', label: 'Hacking rules' },
 ];
+/** The Hacking rules cards by their data-fold key, as their headers name them (the unsaved-edits warning). */
+const RULE_CARD_TITLES = { res: 'Netrunning resolution', op: 'Terminal operator access', cmv: 'Countermeasure visibility', jack: 'Jacking in', role: 'Role ability rolls' };
 const HACK_RES = [
   { value: 'auto', label: 'Auto-roll', blurb: 'Rolls the check and applies the result. Most tables stay here.' },
   { value: 'flagged', label: '+ NET card', blurb: 'Same, and whispers you a card naming the NET action.' },
@@ -112,6 +114,13 @@ export class SecurityTab extends BaseTab {
    * only lose unsaved edits. AdminPanelApp asks this before every background render (clock, settings, events).
    */
   holdsRender() { return this._view === 'rules'; }
+
+  /**
+   * The rule cards with edits that have not been saved, by title — AdminPanelApp asks before closing (tester
+   * 2026-11-10: "the checkbox does not save when closed"; each card has its own Save and closing dropped the edit).
+   * @returns {string[]}
+   */
+  unsavedEdits() { return [...this._dirty].map((k) => RULE_CARD_TITLES[k] || k); }
 
   /** openAdminTab('security', { select }) — a sub-tab key opens that view. */
   openTo(select) { if (VIEWS.some(v => v.key === select)) this._view = select; }

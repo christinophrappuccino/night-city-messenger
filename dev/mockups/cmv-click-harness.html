@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- Real-click harness for the Hacking rules hidden-input jump (tester 2026-11-10). Driven by dev/tools/sims/cdp-cmv-click.mjs.
+     The real cascade: Foundry core, CPR, the module, the admin theme. #old re-creates the bug (unpositioned labels). -->
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="../../../../systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/night-city-messenger.css">
+<link rel="stylesheet" href="../../styles/themes/admin-theme.css">
+<style id="old"></style>
+</head>
+<body class="vtt game system-cyberpunk-red-core theme-dark">
+<div id="app" class="application ncm-app ncm-admin-panel" style="position:fixed;left:40px;top:30px;width:820px;height:600px;z-index:50">
+  <header class="window-header"><h1 class="window-title">Admin</h1></header>
+  <section class="window-content" id="wc">
+    <div class="ncm-admin-panel" style="display:flex;flex-direction:column;height:100%">
+      <nav class="ncm-admin-tabs" style="flex:none;height:40px">Security</nav>
+      <div class="ncm-admin-content" id="sc">
+        <div style="height:900px">filler: other rule cards</div>
+        <div class="ncm-sec-admin-card ncm-sec-admin-fold open" data-fold="cmv">
+          <div class="ncm-sec-admin-card__hd"><h3>Countermeasure visibility</h3></div>
+          <div class="ncm-sec-admin-card__bd" data-cmv-card>
+            <div class="ncm-cmv-block"><div class="ncm-cmv-block__bd">
+              <label class="ncm-cmv-check" id="lbl"><input type="checkbox" name="cmvFailTraced" id="inp"><span class="ncm-cmv-box"><i class="fas fa-check"></i></span><span>A failed scan counts as a traced action<small>Off: a miss just means going in blind.</small></span></label>
+            </div></div>
+            <label class="ncm-cmv-dvtoggle" id="lbl2"><input type="checkbox" name="cmvHideDV" id="inp2"><span class="ncm-cmv-knob"></span><span class="t">Hide the DV</span></label>
+            <div style="height:300px">more</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</body></html>

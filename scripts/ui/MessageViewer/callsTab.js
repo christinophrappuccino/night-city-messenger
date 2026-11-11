@@ -70,8 +70,10 @@ export function phoneBook(viewer) {
       if (n && !list.some((x) => x.normal === n)) list.push({ name: k.name, number, normal: n, img: k.portrait || '', known: true });
     }
   }
-  if (game.user.isGM) {
-    // the GM knows every number in the directory
+  // the GM knows every number in the directory — but a player character's Messenger shows that character's own book,
+  // whoever opens it (tester 2026-11-10: the GM, or an Assistant GM logged in "as the player", saw everyone, burners
+  // and aliases included, in a character's Speed dial and read it as the push having given them all)
+  if (game.user.isGM && !actor?.hasPlayerOwner) {
     for (const l of Object.values(s?.lines?.() || {})) {
       const n = normaliseNumber(l.number, home);
       if (!list.some((x) => x.normal === n)) list.push({ name: l.owner?.name || l.number, number: l.number, normal: n, img: '' });
