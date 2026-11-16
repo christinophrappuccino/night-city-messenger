@@ -43,6 +43,7 @@ import { rolledNote } from '../content/NetResolve.js';
 import { resolveEncoderConfig, isEligibleBlank, blankRuleRefusal } from '../content/EncoderModel.js';
 import { adminLabelFor, resolveAdminAccess, adminReadOnlyBlocks } from '../../utils/terminalAdmin.js';
 import { shardTerm as T, withArticle } from '../../utils/shardTerm.js';
+import { runTerminalCommand, commandsFor } from '../../utils/terminalCommands.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import { playBootVideo } from '../content/BootVideo.js';
 import { bypassDCFor } from '../../utils/bypassSkills.js';
@@ -2258,7 +2259,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (lower === 'reply' || lower === 'r') { if (!this._selectedMessageId) say('reply: open a message first (its number)'); else if (this._composeAsContext()) this._onReplyAs(); else say('reply: this account cannot send mail'); return; }
     if (['logout', 'exit', 'su', 'switch', 'users'].includes(lower)) { this._onLogout(); return; }
     if (lower === 'n' || lower === 'p') { this._currentPage += lower === 'n' ? 1 : -1; this.render(false); return; }
-    if (lower === '?' || lower === 'help') { say(`a number opens that row · m = mail · f = files · cd <folder> (cd .. = up) · n / p = next / previous page · ls = relist · logout = back to the login screen${this._composeAsContext() ? ' · write = new mail as this account · reply = answer the open message' : ''}${this.terminalService.getAccount(this.item, this._accountId)?.isAdmin ? ' · su <name> = view another account as admin · exit = back to your own' : ''}`); return; }
+    if (lower === '?' || lower === 'help') { const extra = commandsFor(this._ttyCmdCtx()).map((x) => `${x.name}${x.help ? ` = ${x.help}` : ''}`).join(' · '); say(`a number opens that row · m = mail · f = files · cd <folder> (cd .. = up) · n / p = next / previous page · ls = relist · logout = back to the login screen${this._composeAsContext() ? ' · write = new mail as this account · reply = answer the open message' : ''}${this.terminalService.getAccount(this.item, this._accountId)?.isAdmin ? ' · su <name> = view another account as admin · exit = back to your own' : ''}${extra ? ` · ${extra}` : ''}`); return; }
     const cd = /^cd\s+(.+)$/i.exec(c);
     if (cd) {
       const name = cd[1].trim().replace(/\/+$/, '');
@@ -2279,7 +2280,19 @@ export class TerminalViewerApp extends BaseApplication {
       say(`no such folder: ${name}`);
       return;
     }
-    say(`unknown command: ${c} — type ? for help`);
+    // API v2.2.0: a command another module registered (utils/terminalCommands.js), tried last.
+    runTerminalCommand(c, this._ttyCmdCtx()).then((lines) => {
+      if (!lines) { say(`unknown command: ${c} — type ? for help`); return; }
+      for (const l of lines.slice(0, 6)) say(l);
+      this.render(false);
+    });
+  }
+
+  /** What a registered terminal command is told about this session: plain data only. */
+  _ttyCmdCtx() {
+    const acct = this.terminalService?.getAccount?.(this.item, this._accountId);
+    return { itemId: this.item?.id ?? null, itemUuid: this.item?.uuid ?? null, terminalName: this._terminalName(), accountId: this._accountId ?? null,
+      username: acct?.username ?? null, userId: game.user?.id ?? null, actorId: game.user?.character?.id ?? null };
   }
 
   /**

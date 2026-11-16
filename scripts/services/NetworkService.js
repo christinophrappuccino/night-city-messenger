@@ -117,8 +117,23 @@ export class NetworkService {
   getAvailableNetworks() {
     if (this.simple) return [this.getNetwork(NETWORKS.CITINET)].filter(Boolean);
     if (this._isDeadZone) return [];
+    return this._networksOnScene(game.scenes?.viewed?.id);
+  }
 
-    const sceneId = game.scenes?.viewed?.id;
+  /**
+   * The networks that reach a given scene (API v2.2.0, networks.forScene): the same rule as getAvailableNetworks,
+   * for any scene, with that scene's own dead-zone flag in place of this client's.
+   * @param {string} sceneId
+   * @returns {object[]}
+   */
+  getAvailableNetworksFor(sceneId) {
+    if (this.simple) return [this.getNetwork(NETWORKS.CITINET)].filter(Boolean);
+    if (sceneId && this._getSceneNetworkFlags(sceneId)?.deadZone) return [];
+    return this._networksOnScene(sceneId);
+  }
+
+  /** @private node cuts, node carriers, global, the network's scene list, then the scene's own switches. */
+  _networksOnScene(sceneId) {
     const sceneFlags = this._getSceneNetworkFlags(sceneId);
     // A network whose every node on this scene is down does not reach it (utils/networkNodes.js, the scene rule).
     const cut = sceneId ? cutNetworks(this._nodeMap(), sceneId, this._nowMs()) : new Set();

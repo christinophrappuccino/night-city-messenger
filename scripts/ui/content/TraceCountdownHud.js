@@ -18,7 +18,7 @@
  */
 
 import { MODULE_ID } from '../../utils/constants.js';
-import { log } from '../../utils/helpers.js';
+import { log, getSetting } from '../../utils/helpers.js';
 
 const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
 
@@ -33,7 +33,7 @@ export class TraceCountdownHud {
     // Rebuild when the countdown list changes (start / call-off / expiry all
     // write the setting — fires on every client incl. the writer).
     this._hook = (setting) => {
-      if (setting?.key === `${MODULE_ID}.traceCountdowns`) this.refresh();
+      if (setting?.key === `${MODULE_ID}.traceCountdowns` || setting?.key === `${MODULE_ID}.hudTimers`) this.refresh();
     };
     Hooks.on('updateSetting', this._hook);
     this.refresh();
@@ -55,11 +55,15 @@ export class TraceCountdownHud {
     let list = [];
     try { list = game.settings.get(MODULE_ID, 'traceCountdowns') || []; } catch { return []; }
     const now = this._nowMs();
-    return list.filter(c => {
+    const traces = list.filter(c => {
       if (!c?.actorId || (c.expiresAt || 0) <= now) return false;
       const a = game.actors?.get(c.actorId);
       return !!a?.isOwner;
     });
+    // API v2.2.0 (hud.countdown): other modules' timers, for everyone or for owners of the actors named.
+    const timers = (getSetting('hudTimers', []) || []).filter(t => t && (t.expiresAt == null || t.expiresAt > now)
+      && (t.gmOnly ? !!game.user?.isGM : (t.everyone !== false || (t.actorIds || []).some(id => game.actors?.get(id)?.isOwner)))).map(t => ({ ...t, timer: true }));
+    return [...traces, ...timers];
   }
 
   _fmt(ms) {
@@ -84,6 +88,18 @@ export class TraceCountdownHud {
     this._el.innerHTML = rows.map(c => {
       const fresh = !this._seen.has(c.id);
       this._seen.add(c.id);
+      if (c.timer) {
+        const icon = /^fa-[a-z0-9-]+$/.test(c.icon || '') ? c.icon : 'fa-hourglass-half';
+        const tone = ['red', 'amber', 'cyan', 'green'].includes(c.tone) ? c.tone : 'amber';
+        return `<div class="ncm-trace-hud__row is-timer tone-${tone}${fresh ? ' is-new' : ''}" data-cd="${esc(c.id)}">
+        <i class="fas ${icon} ncm-trace-hud__ico"></i>
+        <div class="ncm-trace-hud__txt">
+          <div class="ncm-trace-hud__ttl">${esc(String(c.title || 'TIMER').toUpperCase())}</div>
+          ${c.text ? `<div class="ncm-trace-hud__src">${esc(c.text)}</div>` : ''}
+        </div>
+        ${c.expiresAt == null ? `<div class="ncm-trace-hud__time is-count">${esc(c.count ?? '')}</div>` : `<div class="ncm-trace-hud__time" data-exp="${c.expiresAt}">${this._fmt(c.expiresAt - now)}</div>`}
+      </div>`;
+      }
       const src = (c.source || '').trim() || 'A trace';
       return `<div class="ncm-trace-hud__row${fresh ? ' is-new' : ''}" data-cd="${esc(c.id)}">
         <i class="fas fa-satellite-dish ncm-trace-hud__ico"></i>
@@ -105,13 +121,13 @@ export class TraceCountdownHud {
     if (!this._el) return;
     const now = this._nowMs();
     let anyLive = false;
-    for (const cell of this._el.querySelectorAll('.ncm-trace-hud__time')) {
+    for (const cell of this._el.querySelectorAll('.ncm-trace-hud__time[data-exp]')) {
       const rem = Number(cell.dataset.exp || 0) - now;
       if (rem <= 0) { cell.closest('.ncm-trace-hud__row')?.classList.add('is-over'); cell.textContent = '00:00'; }
       else { anyLive = true; cell.textContent = this._fmt(rem); }
     }
     // When everything's expired, the setting write from the GM reaper will
     // refresh us; but if that client is offline, drop the panel ourselves.
-    if (!anyLive) this.refresh();
+    if (!anyLive && !this._el.querySelector('.ncm-trace-hud__time.is-count')) this.refresh();
   }
 }

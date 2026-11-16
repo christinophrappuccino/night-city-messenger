@@ -943,6 +943,16 @@ export class SettingsManager {
       default: {},
     });
 
+    // API v2.2.0 (hud.countdown): timers another module shows in the trace HUD. Never traces, never adds heat.
+    game.settings.register(MODULE_ID, 'hudTimers', {
+      name: 'HUD Timers',
+      hint: 'Countdowns other modules show in the trace HUD (a Response on its way, a generator spinning up). Not traces.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'traceCountdowns', {
       name: 'Trace Countdowns',
       hint: 'Active "the corp found you" trace countdowns (GM escalation). Fire on expiry via the time provider.',

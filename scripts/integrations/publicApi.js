@@ -21,10 +21,13 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { isFeatureOn, featureList, FEATURES } from '../utils/features.js';
-import { resolveDisplayName } from '../utils/helpers.js';
+import { resolveDisplayName, getSetting } from '../utils/helpers.js';
+import { itemTypes } from '../utils/cpr.js';
 import { PUBLIC_EVENTS } from './publicEvents.js';
+import { registerTerminalCommand, _registry as TERMINAL_COMMANDS } from '../utils/terminalCommands.js';
+import { SHARED_SCOPE } from '../utils/terminalFiles.js';
 
-export const API_V2_VERSION = '2.1.0';   // 2.1.0: directory add/update/pushToPlayer, groups.push, calls, networks.set
+export const API_V2_VERSION = '2.2.0';   // 2.1.0: directory add/update/pushToPlayer, groups.push, calls, networks.set · 2.2.0: shards, items, terminals, hud, networks.forScene
 
 /** The error codes a v2 method can return. */
 export const API_CODES = Object.freeze(['BAD_INPUT', 'NOT_GM', 'NOT_OWNER', 'NOT_FOUND', 'FEATURE_OFF', 'UNAVAILABLE', 'FAILED']);
@@ -84,6 +87,21 @@ const callSummary = (l) => ({ callId: l.callId, direction: l.direction === 'out'
   otherName: l.other?.name ?? '', otherNumber: l.other?.number ?? '', seconds: Number(l.seconds) || 0, startedAt: l.startedAt || 0,
   gameTime: l.gameTime || '', seen: !!l.seen, written: !!l.written });
 const networkSummary = (n) => (n ? { id: n.id, name: n.name ?? n.id, type: n.type ?? null } : null);
+const entrySummary = (m) => ({ id: m.id ?? m.messageId ?? null, subject: m.subject ?? '', from: m.from ?? '', contentType: m.contentType ?? null, timestamp: m.timestamp ?? null,
+  encrypted: !!m.encrypted, envelope: m.envelope ?? 'mail', filename: m.file?.filename ?? null });
+const timerSummary = (t) => ({ id: t.id, title: t.title ?? '', text: t.text ?? '', count: t.count ?? null, expiresAt: t.expiresAt ?? null, tone: t.tone ?? 'amber', icon: t.icon ?? null,
+  everyone: t.everyone !== false, gmOnly: !!t.gmOnly, actorIds: [...(t.actorIds || [])] });
+const short = (v, n) => String(v ?? '').slice(0, n);
+const nowMs = () => service('timeService')?.getCurrentTimeMs?.() ?? Date.now();
+/** A data shard by id or uuid (NOT_FOUND otherwise). */
+function shardItem(ref) {
+  const item = findItem(ref);
+  return item && service('dataShardService')?.isDataShard?.(item) ? { item } : { err: no('NOT_FOUND', 'No such data shard.') };
+}
+function terminalItem(ref) {
+  const item = findItem(ref);
+  return item && service('terminalService')?.isTerminal?.(item) ? { item } : { err: no('NOT_FOUND', 'No such terminal.') };
+}
 
 /**
  * Build the v2 object. Called once by IntegrationBridge at postReady; everything it touches is looked up at call time.
@@ -307,6 +325,16 @@ export function buildApiV2() {
         if (!n) return needs('networkService');
         return ok((n.getAvailableNetworks() || []).map(networkSummary));
       }),
+      /** The networks that reach a scene, and whether it is a dead zone (any scene, not just this client's). */
+      forScene: guard(async (sceneId) => {
+        const n = service('networkService');
+        if (!n) return needs('networkService');
+        const id = str(sceneId);
+        if (!id) return no('BAD_INPUT', 'A sceneId is required.');
+        if (globalThis.game?.scenes && !globalThis.game.scenes.get?.(id)) return no('NOT_FOUND', 'No such scene.');
+        const cfg = n.getSceneNetworkConfig?.(id) ?? {};
+        return ok({ sceneId: id, networks: (n.getAvailableNetworksFor(id) || []).map(networkSummary), defaultNetwork: cfg.defaultNetwork ?? null, deadZone: !n.simple && !!cfg.deadZone, simple: !!n.simple });
+      }),
       /** Put THIS client on a network (GM — as the GM's macro does; players switch through their network selector). */
       set: guard(async (networkId) => {
         if (!gm()) return no('NOT_GM', 'Only the GM switches by API.');
@@ -317,6 +345,147 @@ export function buildApiV2() {
         const res = await n.switchNetwork(str(networkId), { force: true });
         return fromService(res, () => networkSummary(n.currentNetwork));
       }),
+    },
+
+    // ───────────────────────── shards (GM) ─────────────────────────
+    shards: {
+      /** What is on a data shard, as summaries (no bodies). GM only: it shows locked and hidden entries too. */
+      entries: guard(async (ref) => {
+        if (!gm()) return no('NOT_GM', 'A shard\'s whole contents are the GM\'s.');
+        if (needs('dataShardService')) return needs('dataShardService');
+        const r = shardItem(ref); if (r.err) return r.err;
+        return ok(((await service('dataShardService').getShardMessages(r.item)) || []).map(entrySummary));
+      }),
+      /** The logins a shard's Credentials entries hold: [{ entryId, host, user, note, encrypted, cracked }] (never the secret). GM only. */
+      credentials: guard(async (ref) => {
+        if (!gm()) return no('NOT_GM', 'A shard\'s whole contents are the GM\'s.');
+        if (needs('dataShardService')) return needs('dataShardService');
+        const r = shardItem(ref); if (r.err) return r.err;
+        const out = [];
+        for (const m of (await service('dataShardService').getShardMessages(r.item)) || []) {
+          if (m.contentType !== 'credentials') continue;
+          for (const e of m.contentData?.entries || []) out.push({ entryId: m.id ?? null, host: String(e.host ?? ''), user: String(e.user ?? ''), note: String(e.note ?? ''), encrypted: !!e.encrypted, cracked: !!e.cracked });
+        }
+        return ok(out);
+      }),
+      /** Write an entry onto a shard, as the GM's composer does (a file when `file` is given). GM only; FAILED when it's full. */
+      addEntry: guard(async (ref, o = {}) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM writes onto shards.');
+        if (needs('dataShardService')) return needs('dataShardService');
+        const r = shardItem(ref); if (r.err) return r.err;
+        if (!str(o.subject) && !str(o.file?.filename)) return no('BAD_INPUT', 'An entry needs a subject (or a file name).');
+        const file = o.file && str(o.file.filename) ? { filename: short(o.file.filename, 80), path: short(o.file.path, 120), owner: short(o.file.owner ?? o.from, 60), modified: short(o.file.modified ?? service('timeService')?.getCurrentTime?.(), 40), size: Number(o.file.size) || null } : null;
+        const res = await service('dataShardService').addMessage(r.item, { from: short(o.from, 80), subject: short(o.subject || file?.filename, 120), body: String(o.body ?? ''),
+          ...(str(o.contentType) ? { contentType: str(o.contentType) } : {}), ...(o.contentData && typeof o.contentData === 'object' ? { contentData: o.contentData } : {}), ...(file ? { envelope: 'file', file } : {}) });
+        if (res?.full) return no('FAILED', 'The shard is full.');
+        return fromService(res, (x) => ({ messageId: x.messageId ?? null }));
+      }),
+    },
+
+    // ───────────────────────── items ─────────────────────────
+    items: {
+      /** An item's key-item tag (what a shard, terminal account or network with a key-item lock compares). */
+      keyTag: guard(async (ref) => {
+        const item = findItem(ref);
+        if (!item) return no('NOT_FOUND', 'No such item.');
+        return ok({ keyTag: item.getFlag?.(MODULE_ID, 'keyTag') ?? null });
+      }),
+      /** Make an item a key item with that tag, or not one (null). GM only. The tag is compared exactly ("arasaka:staff"). */
+      setKeyTag: guard(async (ref, tag) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM makes key items.');
+        const item = findItem(ref);
+        if (!item) return no('NOT_FOUND', 'No such item.');
+        const t = tag == null ? null : str(tag);
+        if (tag != null && !t) return no('BAD_INPUT', 'A tag is a non-empty string, or null to clear it.');
+        if (t) await item.setFlag(MODULE_ID, 'keyTag', t.slice(0, 80)); else await item.unsetFlag?.(MODULE_ID, 'keyTag');
+        return ok({ keyTag: t ? t.slice(0, 80) : null });
+      }),
+    },
+
+    // ───────────────────────── terminals ─────────────────────────
+    terminals: {
+      /**
+       * Make a world item a terminal (GM): { name, img?, config?, accounts?: [account] } — config and accounts take
+       * the same fields the GM's terminal editor does (mailboxStyle 'tty' gives the command prompt).
+       */
+      create: guard(async (o = {}) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM makes terminals.');
+        if (needs('terminalService')) return needs('terminalService');
+        if (!str(o.name)) return no('BAD_INPUT', 'A terminal needs a name.');
+        const types = [...(itemTypes() || [])];
+        const type = types.includes('gear') ? 'gear' : types[0] || 'gear';
+        /* createDocuments, not create: the CPR system's Item class overrides create() without returning the item */
+        const Doc = globalThis.CONFIG?.Item?.documentClass;
+        if (!Doc?.createDocuments) return no('UNAVAILABLE', 'Foundry\x27s Item class is not ready.');
+        const [item] = await Doc.createDocuments([{ name: short(o.name, 80), type, ...(str(o.img) ? { img: str(o.img) } : {}) }]);
+        if (!item) return no('FAILED', 'The item was not made.');
+        const conv = await service('terminalService').convertToTerminal(item, o.config && typeof o.config === 'object' ? o.config : {});
+        if (!conv?.success) { await item.delete?.(); return no('FAILED', conv?.error || 'It could not be made a terminal.'); }
+        const accountIds = [];
+        for (const a of (Array.isArray(o.accounts) ? o.accounts : []).slice(0, 20)) { const res = await service('terminalService').addAccount(item, { ...a }); if (res?.success) accountIds.push(res.accountId); }
+        return ok({ itemId: item.id, uuid: item.uuid, accountIds });
+      }),
+      /** Put a file on a terminal (GM): { accountId? (else the shared drive), path?, filename, body, subject?, from?, contentType?, contentData? }. */
+      addFile: guard(async (ref, o = {}) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM writes files onto terminals.');
+        if (needs('terminalService')) return needs('terminalService');
+        const r = terminalItem(ref); if (r.err) return r.err;
+        if (!str(o.filename)) return no('BAD_INPUT', 'A file needs a filename.');
+        const scope = str(o.accountId) || SHARED_SCOPE; const path = short(o.path, 120).replace(/^\/+|\/+$/g, '');
+        if (path) { const f = await service('terminalService').saveFileFolder(r.item, { scope, path }); if (!f?.success) return no('FAILED', f?.error || 'The folder was not made.'); }
+        const res = await service('terminalService').addAccountMessage(r.item, scope, { from: short(o.from, 80), subject: short(o.subject || o.filename, 120), body: String(o.body ?? ''),
+          ...(str(o.contentType) ? { contentType: str(o.contentType) } : {}), ...(o.contentData && typeof o.contentData === 'object' ? { contentData: o.contentData } : {}),
+          envelope: 'file', file: { filename: short(o.filename, 80), path, owner: short(o.from, 60), modified: service('timeService')?.getCurrentTime?.() ?? '', size: String(o.body ?? '').length } });
+        return fromService(res, (x) => ({ messageId: x.messageId ?? null }));
+      }),
+      /**
+       * Add a command to the TTY prompt on THIS client (register it on every client at ready). def: { name, help?,
+       * applies?(ctx), run(ctx) } — run gets { itemId, itemUuid, terminalName, accountId, username, args, raw, userId,
+       * actorId } and returns the line(s) to show. NCM's own commands can't be replaced.
+       */
+      registerCommand: guard(async (def = {}) => {
+        const off = registerTerminalCommand(def);
+        return off ? ok({ name: String(def.name).toLowerCase() }) : no('BAD_INPUT', 'A command needs a free name (a-z, 0-9, - or _) and a run function.');
+      }),
+      /** Take a registered command back off this client. */
+      unregisterCommand: guard(async (name) => {
+        const n = String(name || '').toLowerCase();
+        return TERMINAL_COMMANDS.delete(n) ? ok({ name: n }) : no('NOT_FOUND', 'No such registered command.');
+      }),
+      /** The commands registered on this client: [{ name, help }]. */
+      commands: guard(async () => ok([...TERMINAL_COMMANDS.values()].map((c) => ({ name: c.name, help: c.help })))),
+    },
+
+    // ───────────────────────── hud ─────────────────────────
+    hud: {
+      /**
+       * Show (or update, by id) a timer in NCM's trace HUD, on every client it's for (GM). o: { id?, title, text?,
+       * seconds? (counts down on NCM's clock) | count? (a fixed line, e.g. "3 rounds"), tone? red|amber|cyan|green,
+       * icon? (fa-…), everyone? (default true), actorIds? (else only their owners), gmOnly? (only GMs see it) }. It never traces anyone.
+       */
+      countdown: guard(async (o = {}) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM shows HUD timers.');
+        if (!str(o.title)) return no('BAD_INPUT', 'A timer needs a title.');
+        const secs = Number(o.seconds);
+        if (!(secs > 0) && o.count == null) return no('BAD_INPUT', 'Give seconds (a countdown) or count (a fixed line).');
+        const id = short(str(o.id) || `tm-${globalThis.foundry?.utils?.randomID?.(8) ?? Date.now().toString(36)}`, 40);
+        const row = { id, title: short(o.title, 40), text: short(o.text, 80), count: o.count == null ? null : short(o.count, 24), expiresAt: secs > 0 ? nowMs() + secs * 1000 : null,
+          tone: ['red', 'amber', 'cyan', 'green'].includes(o.tone) ? o.tone : 'amber', icon: /^fa-[a-z0-9-]+$/.test(o.icon || '') ? o.icon : null,
+          everyone: o.everyone !== false, gmOnly: !!o.gmOnly, actorIds: (Array.isArray(o.actorIds) ? o.actorIds : []).map(String).slice(0, 12) };
+        const now = nowMs(); const cur = (getSetting('hudTimers', []) || []).filter((t) => t.id !== id && (t.expiresAt == null || t.expiresAt > now));
+        await globalThis.game.settings.set(MODULE_ID, 'hudTimers', [...cur, row]);
+        return ok(timerSummary(row));
+      }),
+      /** Take a timer off the HUD (GM). */
+      clear: guard(async (id) => {
+        if (!gm()) return no('NOT_GM', 'Only the GM clears HUD timers.');
+        const cur = getSetting('hudTimers', []) || [];
+        if (!cur.some((t) => t.id === str(id))) return no('NOT_FOUND', 'No such timer.');
+        await globalThis.game.settings.set(MODULE_ID, 'hudTimers', cur.filter((t) => t.id !== str(id)));
+        return ok({ id: str(id) });
+      }),
+      /** The timers showing now (anyone). */
+      timers: guard(async () => { const now = nowMs(); return ok((getSetting('hudTimers', []) || []).filter((t) => t.expiresAt == null || t.expiresAt > now).map(timerSummary)); }),
     },
 
     // ───────────────────────── open (windows) ─────────────────────────

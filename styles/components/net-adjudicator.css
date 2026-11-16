@@ -283,3 +283,18 @@
   #ncm-trace-hud .ncm-trace-hud__ico { animation: none !important; }
   #ncm-trace-hud .ncm-trace-hud__row.is-new { animation: none !important; }
 }
+
+/* API v2.2.0 (hud.countdown): other modules' timers share the trace HUD; a tone recolours the row. */
+#ncm-trace-hud .ncm-trace-hud__row.is-timer.tone-amber { --ncm-hud-tone: #f2b134; }
+#ncm-trace-hud .ncm-trace-hud__row.is-timer.tone-cyan { --ncm-hud-tone: #3df2ff; }
+#ncm-trace-hud .ncm-trace-hud__row.is-timer.tone-green { --ncm-hud-tone: #6fd39b; }
+#ncm-trace-hud .ncm-trace-hud__row.is-timer.tone-red { --ncm-hud-tone: #ff2b3d; }
+#ncm-trace-hud .ncm-trace-hud__row.is-timer {
+  border-color: color-mix(in srgb, var(--ncm-hud-tone) 50%, transparent); border-left-color: var(--ncm-hud-tone);
+  box-shadow: 0 0 16px color-mix(in srgb, #000 55%, transparent), 0 0 6px color-mix(in srgb, var(--ncm-hud-tone) 40%, transparent);
+}
+#ncm-trace-hud .ncm-trace-hud__row.is-timer .ncm-trace-hud__ico,
+#ncm-trace-hud .ncm-trace-hud__row.is-timer .ncm-trace-hud__ttl,
+#ncm-trace-hud .ncm-trace-hud__row.is-timer .ncm-trace-hud__time { color: var(--ncm-hud-tone); }
+#ncm-trace-hud .ncm-trace-hud__row.is-timer .ncm-trace-hud__time { text-shadow: 0 0 10px color-mix(in srgb, var(--ncm-hud-tone) 45%, transparent); }
+#ncm-trace-hud .ncm-trace-hud__row.is-timer .ncm-trace-hud__time.is-count { font-size: 13px; }

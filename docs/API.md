@@ -1,6 +1,6 @@
 # Night City Messenger — API v2
 
-For other modules and for macros. Version **2.1.0** (2.1.0 added the writes: directory add / update / pushToPlayer, groups.push, calls, networks.set).
+For other modules and for macros. Version **2.2.0** (2.1.0 added the writes: directory add / update / pushToPlayer, groups.push, calls, networks.set; 2.2.0 added shards, items, terminals, hud and networks.forScene).
 
 ```js
 const ncm = game.modules.get('night-city-messenger')?.api?.v2;
@@ -153,9 +153,49 @@ The GM's master contact directory. It is GM-only because it holds GM notes. The 
 |---|---|
 | `networks.status()` | `{ network: { id, name, type }, signal, deadZone, simple }` for this client |
 | `networks.available()` | `[{ id, name, type }]`, the networks on offer on this client's scene |
+| `networks.forScene(sceneId)` | `{ sceneId, networks: [{ id, name, type }], defaultNetwork, deadZone, simple }` — the networks that reach that scene (any scene, not just this client's), by the same rule as `available()`, and whether the scene is a dead zone. `NOT_FOUND` for an unknown scene. *(2.2.0)* |
 | `networks.set(networkId)` | GM only: puts THIS client on a network, as the GM's macro does (players switch through their own selector). `FEATURE_OFF` for anything but CitiNet in simple network mode. |
 
 In simple network mode (`features.has('networks') === false`), `status()` always says CitiNet, at full signal, with no dead zone.
+
+## shards
+
+GM only: a shard's whole contents include its locked and hidden entries. *(2.2.0)*
+
+| Method | Who | `data` |
+|---|---|---|
+| `shards.entries(itemIdOrUuid)` | GM | `[{ id, subject, from, contentType, timestamp, encrypted, envelope, filename }]`, newest first — no bodies |
+| `shards.credentials(itemIdOrUuid)` | GM | `[{ entryId, host, user, note, encrypted, cracked }]` from the shard's Credentials entries — never the secret |
+| `shards.addEntry(itemIdOrUuid, { from?, subject, body, contentType?, contentData?, file?: { filename, path?, owner?, size? } })` | GM | `{ messageId }` — written as the GM's composer writes it; with `file` it's a file. `FAILED` "The shard is full." at capacity |
+
+## items
+
+| Method | Who | `data` |
+|---|---|---|
+| `items.keyTag(itemIdOrUuid)` | anyone | `{ keyTag }` — the tag a shard, terminal account or network with a key-item lock compares (`null`: not a key item). *(2.2.0)* |
+| `items.setKeyTag(itemIdOrUuid, tag | null)` | GM | `{ keyTag }` — makes the item a key item with that tag, or clears it. Tags are compared exactly, so a tag can carry more than a name (`"arasaka:staff"`). *(2.2.0)* |
+
+## terminals
+
+*(2.2.0)* Files and accounts take the same fields as the GM's terminal editor.
+
+| Method | Who | `data` |
+|---|---|---|
+| `terminals.create({ name, img?, config?, accounts? })` | GM | `{ itemId, uuid, accountIds }` — a new world item made a terminal. `config.mailboxStyle: 'tty'` gives the command prompt |
+| `terminals.addFile(itemIdOrUuid, { filename, body, accountId?, path?, subject?, from?, contentType?, contentData? })` | GM | `{ messageId }` — a file on that account's drive, or the shared drive; a `path` is made as a folder first |
+| `terminals.registerCommand({ name, help?, applies?(ctx), run(ctx) })` | anyone, on this client | `{ name }` — a command for the TTY prompt, tried after NCM's own and listed under `?`. `run` gets `{ itemId, itemUuid, terminalName, accountId, username, args, raw, userId, actorId }` on the client that typed it and returns the line(s) to show. It runs there and nowhere else: anything it changes outside NCM goes through the registering module's own checks. NCM's own names are refused (`BAD_INPUT`). Register on every client at ready |
+| `terminals.unregisterCommand(name)` | anyone, on this client | `{ name }` |
+| `terminals.commands()` | anyone | `[{ name, help }]` registered on this client |
+
+## hud
+
+Timers in NCM's trace HUD (top right), for another module's countdowns. A timer never traces anyone and never adds heat. *(2.2.0)*
+
+| Method | Who | `data` |
+|---|---|---|
+| `hud.countdown({ id?, title, text?, seconds? \| count?, tone?, icon?, everyone?, actorIds?, gmOnly? })` | GM | the timer: `{ id, title, text, count, expiresAt, tone, icon, everyone, gmOnly, actorIds }`. `seconds` counts down on NCM's clock; `count` is a fixed line instead ("3 rounds"). `tone`: red, amber (default), cyan, green. `everyone` (default true), or only the owners of `actorIds`; `gmOnly` shows it to GMs only. The same `id` updates it |
+| `hud.clear(id)` | GM | `{ id }` |
+| `hud.timers()` | anyone | the timers showing now |
 
 ## open
 

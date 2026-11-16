@@ -21,11 +21,14 @@ let me = users.gm;
 const actor = (id, name, owner) => ({ id, name, get isOwner() { return me.isGM || me.id === owner; }, items: { get: () => null } });
 const V = actor('V', 'V', 'p1'), NPC = actor('N', 'Rogue', null);
 const actors = Object.assign([V, NPC], { get: (id) => [V, NPC].find((a) => a.id === id) || null });
-const shard = { id: 'sh1', uuid: 'Item.sh1', name: 'Shard' }, term = { id: 't1', uuid: 'Item.t1', name: 'Box' };
+const flagged = (o) => Object.assign(o, { flags: {}, getFlag(m, k) { return this.flags[k] ?? null; }, async setFlag(m, k, v) { this.flags[k] = v; }, async unsetFlag(m, k) { delete this.flags[k]; } });
+const shard = flagged({ id: 'sh1', uuid: 'Item.sh1', name: 'Shard' }), term = flagged({ id: 't1', uuid: 'Item.t1', name: 'Box' }), card = flagged({ id: 'k1', uuid: 'Item.k1', name: 'Keycard' });
+const hudTimers = { v: [] };
+globalThis.CONFIG = { Item: { documentClass: { create: async () => undefined, createDocuments: async ([d]) => { calls.push(['Item.create', d.type]); return [flagged({ id: 'new-t', uuid: 'Item.new-t', name: d.name, delete: async () => {} })]; } } } }; /* like CPR: create() returns nothing */
 const calls = [];
 const hooks = new Map(); let hookId = 0;
 globalThis.Hooks = { on: (n, fn) => { const id = ++hookId; hooks.set(id, { n, fn }); return id; }, off: (n, id) => hooks.delete(id), callAll: (n, d) => { for (const h of hooks.values()) if (h.n === n) h.fn(d); }, once() {} };
-globalThis.fromUuidSync = (u) => ({ 'Item.sh1': shard, 'Item.t1': term }[u] ?? null);
+globalThis.fromUuidSync = (u) => ({ 'Item.sh1': shard, 'Item.t1': term, 'Item.k1': card }[u] ?? null);
 let boom = false;
 const msgs = [
   { messageId: 'm1', subject: 'Job', body: '<p>Meet at <b>Afterlife</b></p>', from: 'fixer@x', to: 'v@x', timestamp: '2045-01-02T00:00:00.000Z', status: { read: false }, toActorId: 'V' },
@@ -33,9 +36,9 @@ const msgs = [
   { messageId: 'mx', subject: 'Gone', body: '', timestamp: '2045-01-03T00:00:00.000Z', status: { deleted: true } },
 ];
 globalThis.game = {
-  get user() { return me; },
-  actors, items: { get: (id) => ({ sh1: shard, t1: term }[id] ?? null) },
-  settings: { get: (m, k) => (k === 'networkSimulationEnabled' ? true : k === 'conversationsEnabled' ? false : k === 'callsEnabled' ? true : undefined) },
+  get user() { return me; }, documentTypes: { Item: ['base', 'gear', 'weapon'] },
+  actors, items: { get: (id) => ({ sh1: shard, t1: term, k1: card }[id] ?? null) }, scenes: { get: (id) => (id === 's1' ? { id: 's1' } : null) },
+  settings: { get: (m, k) => (k === 'networkSimulationEnabled' ? true : k === 'conversationsEnabled' ? false : k === 'callsEnabled' ? true : k === 'hudTimers' ? hudTimers.v : undefined), set: async (m, k, v) => { if (k === 'hudTimers') hudTimers.v = v; } },
   nightcity: {
     messageService: {
       sendMessage: async (d) => { calls.push(['send', d]); if (boom) throw new Error('kaboom'); return { success: true, messageId: 'new1' }; },
@@ -58,11 +61,18 @@ globalThis.game = {
       findGroup(id, ctx) { return this.groupsFor(ctx).find((g) => g.id === id) || (id === 'gm1' ? { id: 'gm1', name: 'Fixers', members: [] } : null); },
       recipientsFor: (g) => ({ recipients: [{ actorId: 'V', contactId: null, email: 'v@x', name: 'V', secret: 'x' }], unresolved: [] }),
     },
-    networkService: { currentNetwork: { id: 'CITINET', name: 'CitiNet', type: 'public', security: { password: 'hunter2' } }, signalStrength: 80, isDeadZone: false, simple: false, getAvailableNetworks: () => [{ id: 'CITINET', name: 'CitiNet', type: 'public', security: {} }], getNode: (id) => (id === 'n1' ? { id: 'n1' } : null),
+    networkService: { getAvailableNetworksFor: (id) => (id === 's1' ? [{ id: 'CORP', name: 'Arasaka LAN', type: 'corp', security: { password: 'x' } }] : []), getSceneNetworkConfig: (id) => ({ deadZone: false, defaultNetwork: 'CORP', networkAvailability: {} }), currentNetwork: { id: 'CITINET', name: 'CitiNet', type: 'public', security: { password: 'hunter2' } }, signalStrength: 80, isDeadZone: false, simple: false, getAvailableNetworks: () => [{ id: 'CITINET', name: 'CitiNet', type: 'public', security: {} }], getNode: (id) => (id === 'n1' ? { id: 'n1' } : null),
       getNetwork: (id) => (['CITINET', 'DARK'].includes(id) ? { id } : null), simpleMode: false,
       switchNetwork: async (id) => (id === 'DARK' ? { success: false, reason: 'auth_required' } : { success: true }) },
     timeService: { getCurrentTime: () => '2045-01-05T12:00:00.000Z', getCurrentTimeMs: () => 1, getProviderInfo: () => ({ mode: 'manual' }) },
-    dataShardService: { isDataShard: (i) => i === shard }, terminalService: { isTerminal: (i) => i === term },
+    dataShardService: { isDataShard: (i) => i === shard,
+      getShardMessages: async () => [{ id: 'e1', subject: 'Vault', from: 'sec', contentType: 'credentials', contentData: { entries: [{ host: 'arasaka.lobby', user: 'ito', secret: 'hunter2', note: 'staff' }] }, timestamp: 't', body: 'x' }, { id: 'e2', subject: 'memo', contentType: 'text', envelope: 'file', file: { filename: 'a.txt' } }],
+      addMessage: async (i, d) => { calls.push(['addMessage', d.subject, d.envelope]); return d.subject === 'full' ? { success: false, full: true } : { success: true, messageId: 'me1' }; } },
+    terminalService: { isTerminal: (i) => i === term || i?.id === 'new-t',
+      convertToTerminal: async (i, c) => { calls.push(['convert', c?.mailboxStyle]); return { success: true, journalId: 'j1' }; },
+      addAccount: async (i, a) => ({ success: true, accountId: `acct_${a.username}` }),
+      saveFileFolder: async (i, f) => { calls.push(['folder', f.scope, f.path]); return { success: true, folder: f }; },
+      addAccountMessage: async (i, scope, d) => { calls.push(['termFile', scope, d.file?.filename]); return { success: true, messageId: 'tf1' }; } },
     openInbox: (a, m) => calls.push(['openInbox', a, m]), composeMessage: (o) => calls.push(['compose', o]),
     openDataShard: (i) => calls.push(['openShard', i.id]), openTerminal: (i) => calls.push(['openTerminal', i.id]), openNode: (n) => calls.push(['openNode', n]),
   },
@@ -172,7 +182,68 @@ r = await call('networks.set unknown', () => api.networks.set('NOPE'));
 ok(r.ok === false && r.code === 'NOT_FOUND', 'networks.set on an unknown network: NOT_FOUND');
 
 // ═══ player (owns V) ═══
+// ── 2.2.0: shards, items, terminals, hud, networks.forScene (GM) ──
+r = await call('shards.entries', () => api.shards.entries('sh1'));
+ok(r.ok && r.data.length === 2 && r.data[0].contentType === 'credentials' && !('body' in r.data[0]) && r.data[1].filename === 'a.txt', 'shards.entries: summaries, no bodies');
+r = await call('shards.credentials', () => api.shards.credentials('Item.sh1'));
+ok(r.ok && r.data.length === 1 && r.data[0].host === 'arasaka.lobby' && r.data[0].note === 'staff' && !JSON.stringify(r.data).includes('hunter2'), 'shards.credentials: the logins, never the secret');
+r = await call('shards.addEntry', () => api.shards.addEntry('sh1', { from: 'Arasaka', body: 'frames', file: { filename: 'cam1.vid' } }));
+ok(r.ok && r.data.messageId === 'me1' && calls.some((c) => c[0] === 'addMessage' && c[1] === 'cam1.vid' && c[2] === 'file'), 'shards.addEntry: a file entry, named by its file');
+r = await call('shards.addEntry full', () => api.shards.addEntry('sh1', { subject: 'full' }));
+ok(r.ok === false && r.code === 'FAILED' && /full/.test(r.error), 'a full shard: FAILED, says so');
+r = await call('shards.entries not a shard', () => api.shards.entries('t1'));
+ok(r.ok === false && r.code === 'NOT_FOUND', 'shards.entries on a terminal: NOT_FOUND');
+r = await call('items.setKeyTag', () => api.items.setKeyTag('k1', 'arasaka:staff'));
+ok(r.ok && r.data.keyTag === 'arasaka:staff' && card.flags.keyTag === 'arasaka:staff', 'items.setKeyTag writes the tag');
+r = await call('items.keyTag', () => api.items.keyTag('k1'));
+ok(r.ok && r.data.keyTag === 'arasaka:staff', 'items.keyTag reads it');
+r = await call('items.setKeyTag clear', () => api.items.setKeyTag('k1', null));
+ok(r.ok && r.data.keyTag === null && !('keyTag' in card.flags), 'null clears it');
+r = await call('items.setKeyTag bad', () => api.items.setKeyTag('k1', '  '));
+ok(r.ok === false && r.code === 'BAD_INPUT', 'a blank tag: BAD_INPUT');
+r = await call('terminals.create', () => api.terminals.create({ name: 'Security console', config: { mailboxStyle: 'tty' }, accounts: [{ username: 'sec' }] }));
+ok(r.ok && r.data.uuid === 'Item.new-t' && r.data.accountIds[0] === 'acct_sec' && calls.some((c) => c[0] === 'Item.create' && c[1] === 'gear') && calls.some((c) => c[0] === 'convert' && c[1] === 'tty'), 'terminals.create: a gear item, made a terminal, with its accounts');
+r = await call('terminals.addFile', () => api.terminals.addFile('t1', { filename: 'cam1.vid', path: '/footage/', body: 'x' }));
+ok(r.ok && calls.some((c) => c[0] === 'folder' && c[1] === '__shared__' && c[2] === 'footage') && calls.some((c) => c[0] === 'termFile' && c[1] === '__shared__' && c[2] === 'cam1.vid'), 'terminals.addFile: the shared drive, the folder made first');
+r = await call('terminals.registerCommand', () => api.terminals.registerCommand({ name: 'Alarm', help: 'fire it', run: () => 'ALARM' }));
+ok(r.ok && r.data.name === 'alarm', 'terminals.registerCommand');
+r = await call('terminals.registerCommand reserved', () => api.terminals.registerCommand({ name: 'logout', run: () => '' }));
+ok(r.ok === false && r.code === 'BAD_INPUT', "NCM's own commands can't be taken");
+r = await call('terminals.commands', () => api.terminals.commands());
+ok(r.ok && r.data.length === 1 && r.data[0].help === 'fire it', 'terminals.commands lists it (plain)');
+r = await call('terminals.unregisterCommand', () => api.terminals.unregisterCommand('alarm'));
+ok(r.ok && (await api.terminals.commands()).data.length === 0, 'terminals.unregisterCommand');
+r = await call('hud.countdown', () => api.hud.countdown({ id: 'resp', title: 'Response', count: '3 rounds', tone: 'red' }));
+ok(r.ok && r.data.count === '3 rounds' && r.data.expiresAt === null && hudTimers.v.length === 1, 'hud.countdown: a fixed line');
+r = await call('hud.countdown again', () => api.hud.countdown({ id: 'resp', title: 'Response', count: '2 rounds', tone: 'nope', icon: 'evil"><script' }));
+ok(r.ok && r.data.gmOnly === false && hudTimers.v.length === 1 && r.data.count === '2 rounds' && r.data.tone === 'amber' && r.data.icon === null, 'the same id updates it; a bad tone or icon falls back');
+r = await call('hud.countdown timed', () => api.hud.countdown({ title: 'Generator', seconds: 18 }));
+ok(r.ok && r.data.expiresAt === 1 + 18000 && hudTimers.v.length === 2, 'seconds count down on NCM\'s clock');
+r = await call('hud.countdown bad', () => api.hud.countdown({ title: 'x' }));
+ok(r.ok === false && r.code === 'BAD_INPUT', 'no seconds and no count: BAD_INPUT');
+r = await call('hud.countdown gm', () => api.hud.countdown({ id: 'gen', title: 'Generator', count: '3', gmOnly: true }));
+ok(r.ok && r.data.gmOnly === true, 'gmOnly is kept'); await api.hud.clear('gen');
+r = await call('hud.timers', () => api.hud.timers());
+ok(r.ok && r.data.length === 2, 'hud.timers');
+r = await call('hud.clear', () => api.hud.clear('resp'));
+ok(r.ok && hudTimers.v.length === 1, 'hud.clear');
+r = await call('hud.clear unknown', () => api.hud.clear('nope'));
+ok(r.ok === false && r.code === 'NOT_FOUND', 'an unknown timer: NOT_FOUND');
+r = await call('networks.forScene', () => api.networks.forScene('s1'));
+ok(r.ok && r.data.networks[0].id === 'CORP' && !('security' in r.data.networks[0]) && r.data.defaultNetwork === 'CORP' && r.data.deadZone === false, 'networks.forScene: that scene\'s networks, plain');
+r = await call('networks.forScene unknown', () => api.networks.forScene('nope'));
+ok(r.ok === false && r.code === 'NOT_FOUND', 'an unknown scene: NOT_FOUND');
+
 me = users.p1;
+for (const [label, fn] of [['p: shards.entries', () => api.shards.entries('sh1')], ['p: shards.credentials', () => api.shards.credentials('sh1')], ['p: shards.addEntry', () => api.shards.addEntry('sh1', { subject: 'x' })],
+  ['p: items.setKeyTag', () => api.items.setKeyTag('k1', 'x')], ['p: terminals.create', () => api.terminals.create({ name: 'x' })], ['p: terminals.addFile', () => api.terminals.addFile('t1', { filename: 'x' })],
+  ['p: hud.countdown', () => api.hud.countdown({ title: 'x', count: '1' })], ['p: hud.clear', () => api.hud.clear('x')]]) {
+  r = await call(label, fn); ok(r.ok === false && r.code === 'NOT_GM', `${label.slice(3)}: GM only`);
+}
+r = await call('p: items.keyTag', () => api.items.keyTag('k1'));
+ok(r.ok, 'a player can read a key tag');
+r = await call('p: hud.timers', () => api.hud.timers());
+ok(r.ok, 'a player can read the timers');
 r = await call('p: send as own', () => api.messages.send({ toActorId: 'N', fromActorId: 'V', subject: 's', body: 'b' }));
 ok(r.ok, 'a player sends as their own character');
 r = await call('p: send as NPC', () => api.messages.send({ toActorId: 'V', fromActorId: 'N', subject: 's', body: 'b' }));
@@ -234,7 +305,7 @@ ok(heard.join() === 'e1', 'events.on hears a documented event; the returned func
 ok(api.events.on('network:changed', () => {}) === null && api.events.on('message:sent', 'x') === null, 'only documented names, only functions');
 ok(!('emit' in api.events) && !JSON.stringify(Object.keys(api)).includes('eventBus'), 'no emit, no raw event bus');
 ok(Object.isFrozen(api) && Object.isFrozen(api.messages) && Object.isFrozen(api.open), 'the object and its namespaces are frozen');
-ok(API_V2_VERSION === '2.1.0' && api.version === '2.1.0', 'version 2.1.0 (writes added; nothing changed or removed)');
+ok(API_V2_VERSION === '2.2.0' && api.version === '2.2.0', 'version 2.2.0 (shards, items, terminals, hud, networks.forScene added; nothing changed or removed)');
 
 // ═══ wiring + docs ═══
 const B = read('scripts/integrations/IntegrationBridge.js');
