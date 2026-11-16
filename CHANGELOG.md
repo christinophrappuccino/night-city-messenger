@@ -3,6 +3,21 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [2.4.0] — 2026-11-16
+
+### Added
+- **Other modules can do more with NCM (API 2.2.0).** For module makers and macros, all documented in `docs/API.md`:
+  - **Shards:** read what's on one, read the logins its Credentials entries hold (never the passwords), and write new entries or files onto it. GM only.
+  - **Key items:** read or set an item's key tag. Tags still match exactly, so a tag can carry more than a name (`arasaka:staff`).
+  - **Terminals:** make a terminal with its accounts, put files on it, and add commands to the TTY prompt. NCM's own commands always come first, and added ones show under `?`.
+  - **HUD timers:** show a countdown or a fixed line ("3 rounds") in the trace HUD, for everyone, for the owners of certain characters, or for GMs only. A timer is never a trace and never adds heat.
+  - **Networks for any scene:** which networks reach it, and whether it's a dead zone.
+- **The trace HUD takes other timers.** Beside incoming traces it can now show a timer another module sets, in amber, cyan, green or red.
+
+### Fixed
+- **Admin → Security: the Hacking rules card jumped** when you ticked a checkbox. It stays put now, and closing over unsaved rule edits asks first.
+- **A player character's Speed dial showed other characters' numbers** when a GM opened it. It lists only that character's own numbers.
+
 ## [2.3.5] — 2026-11-10
 
 ### Added
