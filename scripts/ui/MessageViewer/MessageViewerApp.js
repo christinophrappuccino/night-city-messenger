@@ -60,6 +60,7 @@ import { callsState, buildCallsContext, wireCallsTab, handleCallsAction, missedC
 import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { ImagePopoutClass, renderTemplate } from '../../utils/compat.js';
+import { paintMessageActions } from '../../utils/messageActions.js'; // API v2 2.3.0: other modules' buttons under a message
 
 const MODULE_ID = 'night-city-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -1107,6 +1108,8 @@ export class MessageViewerApp extends BaseApplication {
       });
       replyInput._ncmBound = true;
     }
+    // Other modules' actions under the shown message, and their quick-reply rules (API v2 2.3.0, messages.addActions)
+    try { paintMessageActions(html, context?.selectedMessage, { actorId: this.actorId ?? null, isGM: !!game.user?.isGM }); } catch (err) { console.warn('night-city-messenger | message actions', err); }
 
     // Bypass password input — removed, now handled via NetworkAuthDialog
 

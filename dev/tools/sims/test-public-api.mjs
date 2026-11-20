@@ -305,7 +305,26 @@ ok(heard.join() === 'e1', 'events.on hears a documented event; the returned func
 ok(api.events.on('network:changed', () => {}) === null && api.events.on('message:sent', 'x') === null, 'only documented names, only functions');
 ok(!('emit' in api.events) && !JSON.stringify(Object.keys(api)).includes('eventBus'), 'no emit, no raw event bus');
 ok(Object.isFrozen(api) && Object.isFrozen(api.messages) && Object.isFrozen(api.open), 'the object and its namespaces are frozen');
-ok(API_V2_VERSION === '2.2.0' && api.version === '2.2.0', 'version 2.2.0 (shards, items, terminals, hud, networks.forScene added; nothing changed or removed)');
+// ── 2.3.0: other modules' buttons under a message, and quick-reply rules ──
+{
+  const { paintMessageActions, quickReplyShown, messageView } = await import(new URL('../../../scripts/utils/messageActions.js', import.meta.url));
+  const r1 = await api.messages.addActions((m) => (m.id === 'mA' ? { note: 'Answer:', actions: [{ label: 'On my way', run: () => { globalThis.__picked = m.id; } }, { label: 'x', icon: 'bad icon' }] } : null), { id: 'sim' });
+  ok(r1.ok && r1.data.id === 'sim', 'messages.addActions registers a provider under an id');
+  ok((await api.messages.addActions('nope')).code === 'BAD_INPUT', 'a provider must be a function');
+  const r2 = await api.messages.quickReply((m) => (m.id === 'mA' ? false : undefined), { id: 'sim' });
+  ok(r2.ok && quickReplyShown({ id: 'mA' }, {}) === false && quickReplyShown({ id: 'mB' }, {}) === true, 'a quick-reply rule hides the box only where it says false');
+  const v = messageView({ messageId: 'mA', subject: 'S', body: '<p>secret body</p>', status: { read: true } });
+  ok(v.id === 'mA' && v.read === true && !('body' in v), 'providers see the headers, never the body');
+  const root = globalThis.document?.createElement?.('div');
+  if (root) {
+    root.innerHTML = '<div class="ncm-viewer__detail"><div class="ncm-viewer__detail-actions"></div><div class="ncm-viewer__quick-reply"></div></div>';
+    paintMessageActions(root, { messageId: 'mA' }, { actorId: 'a1', isGM: false });
+    ok(root.querySelectorAll('[data-ext-action]').length === 1 && root.querySelector('.ncm-viewer__quick-reply').hidden === true, 'the inbox draws the valid buttons and hides the quick reply');
+  }
+  ok((await api.messages.removeActions('sim')).ok && (await api.messages.quickReply(null, { remove: 'sim' })).ok, 'both come off again by id');
+  ok((await api.messages.removeActions('sim')).code === 'NOT_FOUND', 'removing twice says so');
+}
+ok(API_V2_VERSION === '2.3.0' && api.version === '2.3.0', 'version 2.3.0 (messages.addActions, removeActions, quickReply, refresh added; nothing changed or removed)');
 
 // ═══ wiring + docs ═══
 const B = read('scripts/integrations/IntegrationBridge.js');

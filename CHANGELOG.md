@@ -3,6 +3,11 @@
 All notable changes to Night City Messenger. Versions follow `MAJOR.MINOR.PATCH`:
 patch = fixes, minor = new features, major = breaking changes.
 
+## [Unreleased]
+
+### Added
+- **Other modules can put buttons under a message (API 2.3.0).** `messages.addActions` adds a module's own buttons under a message in the inbox (and a short note above them); `messages.quickReply` lets a module hide the quick-reply box for a message; `messages.refresh` redraws open inboxes. NCM registers none itself. Documented in `docs/API.md`.
+
 ## [2.4.0] — 2026-11-16
 
 ### Added

@@ -1285,3 +1285,9 @@
   border-top: 2px solid rgba(68, 136, 255, 0.2);
   padding-top: 12px;
 }
+
+/* API v2 2.3.0: other modules' actions under a message (scripts/utils/messageActions.js) */
+.ncm-app .ncm-viewer__ext-actions { display: grid; gap: 8px; padding: 10px 14px 4px; border-top: 1px solid var(--ncm-border, rgba(25, 243, 247, .18)); }
+.ncm-app .ncm-viewer__ext-group { display: grid; gap: 6px; }
+.ncm-app .ncm-viewer__ext-note { font-family: var(--ncm-font-body, sans-serif); font-size: 11px; color: var(--ncm-text-muted, #7d8a99); }
+.ncm-app .ncm-viewer__ext-row { display: flex; flex-wrap: wrap; gap: 6px; }

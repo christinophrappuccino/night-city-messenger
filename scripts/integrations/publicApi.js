@@ -26,8 +26,9 @@ import { itemTypes } from '../utils/cpr.js';
 import { PUBLIC_EVENTS } from './publicEvents.js';
 import { registerTerminalCommand, _registry as TERMINAL_COMMANDS } from '../utils/terminalCommands.js';
 import { SHARED_SCOPE } from '../utils/terminalFiles.js';
+import { addActionProvider, removeActionProvider, addQuickReplyRule, removeQuickReplyRule, refreshViewers } from '../utils/messageActions.js';
 
-export const API_V2_VERSION = '2.2.0';   // 2.1.0: directory add/update/pushToPlayer, groups.push, calls, networks.set · 2.2.0: shards, items, terminals, hud, networks.forScene
+export const API_V2_VERSION = '2.3.0';   // 2.3.0: messages.addActions / removeActions / quickReply / refresh · 2.1.0: directory add/update/pushToPlayer, groups.push, calls, networks.set · 2.2.0: shards, items, terminals, hud, networks.forScene
 
 /** The error codes a v2 method can return. */
 export const API_CODES = Object.freeze(['BAD_INPUT', 'NOT_GM', 'NOT_OWNER', 'NOT_FOUND', 'FEATURE_OFF', 'UNAVAILABLE', 'FAILED']);
@@ -179,6 +180,20 @@ export function buildApiV2() {
         list.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
         return ok(list.slice(0, Math.max(1, Math.min(500, Number(o.limit) || 50))).map(messageSummary));
       }),
+      /**
+       * 2.3.0: put your own buttons under a message in the inbox. provider(message, context) returns an array of
+       * { label, icon?, tooltip?, primary?, disabled?, run } (or { actions, note }, or null for none); message is the
+       * headers only (id, threadId, subject, from…, toActorId, timestamp, read, sent), context is { actorId, isGM }.
+       * Called on every render of a shown message; errors are caught. Returns { id } (pass the same id to replace it).
+       */
+      addActions: guard(async (provider, o = {}) => (typeof provider === 'function' ? ok({ id: addActionProvider(provider, o.id) }) : no('BAD_INPUT', 'A provider must be a function.'))),
+      /** 2.3.0: take your buttons away again. @param {string} id */
+      removeActions: guard(async (id) => (removeActionProvider(str(id)) ? ok({ id }) : no('NOT_FOUND', 'No such provider.'))),
+      /** 2.3.0: decide whether the quick-reply box shows for a message: rule(message, context) => false hides it
+       *  (true or nothing leaves it). Any rule saying false wins. Pass { remove: id } to take a rule away. */
+      quickReply: guard(async (rule, o = {}) => { if (o.remove) return removeQuickReplyRule(str(o.remove)) ? ok({ id: o.remove }) : no('NOT_FOUND', 'No such rule.'); return typeof rule === 'function' ? ok({ id: addQuickReplyRule(rule, o.id) }) : no('BAD_INPUT', 'A rule must be a function.'); }),
+      /** 2.3.0: redraw open inboxes (after your actions or rules changed). */
+      refresh: guard(async () => ok({ redrawn: refreshViewers() })),
       /** Mark one of a character's messages read. @param {string} actorId @param {string} messageId */
       markRead: guard(async (actorId, messageId) => {
         if (needs('messageService')) return needs('messageService');

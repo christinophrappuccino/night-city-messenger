@@ -110,6 +110,28 @@ const res = await ncm.messages.send({
 if (!res.ok) ui.notifications.warn(`NCM: ${res.error}`);
 ```
 
+### Buttons under a message (2.3.0)
+
+Your module can put its own buttons under a message in the inbox, and decide whether the quick-reply box shows for it. NCM registers none itself.
+
+| Method | Who | `data` |
+|---|---|---|
+| `messages.addActions(provider, { id? })` | anyone (on their own client) | `{ id }` (the same `id` again replaces it) |
+| `messages.removeActions(id)` | anyone | `{ id }` |
+| `messages.quickReply(rule, { id? })` / `messages.quickReply(null, { remove: id })` | anyone | `{ id }` |
+| `messages.refresh()` | anyone | `{ redrawn }`: how many open inboxes were redrawn |
+
+`provider(message, context)` is called each time a message is shown. `message` is the headers only (`id, threadId, subject, from, fromActorId, fromContactId, toActorId, toContactId, timestamp, read, sent`); `context` is `{ actorId, isGM }` (whose inbox). Return an array of `{ label, icon?, tooltip?, primary?, disabled?, run }`, or `{ actions, note }` to add a short line above them, or `null` for nothing. `run` is called when the button is pressed (the button waits while it runs). A `rule(message, context)` that returns `false` hides the quick-reply box for that message; any rule saying `false` wins. Errors in your functions are caught and logged.
+
+```js
+// answer buttons on mail that carries your choices
+const choices = new Map(); // messageId → ['On my way', 'Not tonight']
+await ncm.messages.addActions((m) => choices.has(m.id)
+  ? { note: 'Answer:', actions: choices.get(m.id).map((t) => ({ label: t, run: () => answer(m, t) })) }
+  : null, { id: 'my-module' });
+await ncm.messages.quickReply((m) => (choices.has(m.id) ? false : undefined), { id: 'my-module' });
+```
+
 ## contacts
 
 | Method | Who | `data` |
