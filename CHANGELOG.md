@@ -5,6 +5,8 @@ patch = fixes, minor = new features, major = breaking changes.
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-11-20
+
 ### Added
 - **Other modules can put buttons under a message (API 2.3.0).** `messages.addActions` adds a module's own buttons under a message in the inbox (and a short note above them); `messages.quickReply` lets a module hide the quick-reply box for a message; `messages.refresh` redraws open inboxes. NCM registers none itself. Documented in `docs/API.md`.
 - **Delete a directory contact from the API (2.3.0).** `directory.remove(contactId, { fromCharacters })` (GM): a macro can make a single-use contact and clean it up afterwards; `fromCharacters: true` also takes it out of every character's own contacts.
