@@ -28,7 +28,7 @@ import { registerTerminalCommand, _registry as TERMINAL_COMMANDS } from '../util
 import { SHARED_SCOPE } from '../utils/terminalFiles.js';
 import { addActionProvider, removeActionProvider, addQuickReplyRule, removeQuickReplyRule, refreshViewers } from '../utils/messageActions.js';
 
-export const API_V2_VERSION = '2.3.0';   // 2.3.0: messages.addActions / removeActions / quickReply / refresh · 2.1.0: directory add/update/pushToPlayer, groups.push, calls, networks.set · 2.2.0: shards, items, terminals, hud, networks.forScene
+export const API_V2_VERSION = '2.3.0';   // 2.3.0: messages.addActions / removeActions / quickReply / refresh, directory.remove · 2.1.0: directory add/update/pushToPlayer, groups.push, calls, networks.set · 2.2.0: shards, items, terminals, hud, networks.forScene
 
 /** The error codes a v2 method can return. */
 export const API_CODES = Object.freeze(['BAD_INPUT', 'NOT_GM', 'NOT_OWNER', 'NOT_FOUND', 'FEATURE_OFF', 'UNAVAILABLE', 'FAILED']);
@@ -252,6 +252,28 @@ export function buildApiV2() {
         if (needs('masterContactService')) return needs('masterContactService');
         if (!service('masterContactService').getContact?.(str(contactId))) return no('NOT_FOUND', 'No such directory contact.');
         return fromService(await service('masterContactService').updateContact(str(contactId), { ...changes }), () => ({ contactId: str(contactId) }));
+      }),
+      /**
+       * 2.3.0: delete a directory contact (GM), e.g. a single-use contact a macro made. Its aliases are re-homed as in
+       * the GM's directory. { fromCharacters: true } also takes it out of every character's own contact list (the copies
+       * pushToPlayer made, matched by masterContactId); otherwise those copies stay as unverified contacts, as when the
+       * GM deletes one by hand.
+       * @param {string} contactId @param {object} [o] { fromCharacters = false }
+       * @returns {Promise<{ok, data:{ contactId, fromCharacters: number }}>}
+       */
+      remove: guard(async (contactId, o = {}) => {
+        if (!gm()) return no('NOT_GM', 'The directory is the GM\'s.');
+        if (needs('masterContactService')) return needs('masterContactService');
+        const id = str(contactId); if (!id) return no('BAD_INPUT', 'A contactId is required.');
+        if (!service('masterContactService').getContact?.(id)) return no('NOT_FOUND', 'No such directory contact.');
+        /* the copies are found first: removing the directory contact re-verifies characters' lists, which unlinks them */
+        const copies = [];
+        if (o.fromCharacters) for (const a of globalThis.game?.actors?.contents || []) for (const c of (a.getFlag?.(MODULE_ID, 'contacts') || []).filter((x) => x.masterContactId === id)) copies.push([a.id, c.id]);
+        const res = await service('masterContactService').removeContact(id);
+        if (!res?.success) return no('FAILED', res?.error || 'The contact was not removed.');
+        let n = 0; const repo = service('contactRepository');
+        for (const [actorId, cid] of copies) { const r = repo ? await repo.removeContact(actorId, cid) : { success: false }; if (r?.success) n++; }
+        return ok({ contactId: id, fromCharacters: n });
       }),
       /** Put a directory contact in a character's own contact list (GM). @param {string} contactId @param {string} actorId */
       pushToPlayer: guard(async (contactId, actorId) => {

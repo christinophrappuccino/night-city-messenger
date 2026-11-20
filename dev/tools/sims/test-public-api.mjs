@@ -324,6 +324,8 @@ ok(Object.isFrozen(api) && Object.isFrozen(api.messages) && Object.isFrozen(api.
   ok((await api.messages.removeActions('sim')).ok && (await api.messages.quickReply(null, { remove: 'sim' })).ok, 'both come off again by id');
   ok((await api.messages.removeActions('sim')).code === 'NOT_FOUND', 'removing twice says so');
 }
+ok(typeof api.directory.remove === 'function', 'directory.remove is there (2.3.0)');
+ok((await api.directory.remove('')).code === 'BAD_INPUT' || (await api.directory.remove('')).code === 'NOT_GM', 'directory.remove needs a contactId (and the GM)');
 ok(API_V2_VERSION === '2.3.0' && api.version === '2.3.0', 'version 2.3.0 (messages.addActions, removeActions, quickReply, refresh added; nothing changed or removed)');
 
 // ═══ wiring + docs ═══

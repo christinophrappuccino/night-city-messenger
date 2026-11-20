@@ -152,6 +152,18 @@ The GM's master contact directory. It is GM-only because it holds GM notes. The 
 | `directory.update(contactId, changes)` | GM | `{ contactId }` |
 | `directory.pushToPlayer(contactId, actorId)` | GM | `{ contactId, actorId }` — puts the contact in that character's own list (as the GM's Push does) |
 
+### Deleting a directory contact (2.3.0)
+
+`directory.remove(contactId, { fromCharacters? })` (GM) deletes a directory contact, as the GM's directory does (its aliases move to a new home). With `{ fromCharacters: true }` it also takes the copies out of every character's own contact list (the ones `pushToPlayer` made); without it those stay as unverified contacts, as when you delete one by hand. `data` is `{ contactId, fromCharacters }` (how many copies were taken out).
+
+```js
+// a single-use contact for a macro, cleaned up afterwards
+const made = await ncm.directory.add({ name: 'Unknown caller', email: 'nobody@burner.nc' });
+await ncm.directory.pushToPlayer(made.data.contactId, actor.id);
+// … the macro does its thing …
+await ncm.directory.remove(made.data.contactId, { fromCharacters: true });
+```
+
 ## groups
 
 | Method | Who | `data` |
